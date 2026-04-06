@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#273046",
+                        "surface-bright": "#303950",
+                        "secondary-fixed": "#e2dfff",
+                        "on-primary": "#1d00a5",
+                        "surface-container-low": "#111b30",
+                        "on-surface": "#d9e2ff",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "tertiary-fixed-dim": "#ffb695",
+                        "background": "#091328",
+                        "inverse-primary": "#4d44e3",
+                        "on-primary-container": "#dad7ff",
+                        "surface-container": "#161f35",
+                        "outline": "#918fa1",
+                        "surface-container-highest": "#2b344b",
+                        "error": "#ffb4ab",
+                        "tertiary-container": "#a44100",
+                        "on-tertiary-fixed": "#351000",
+                        "on-error": "#690005",
+                        "on-secondary-container": "#b0aef9",
+                        "on-tertiary": "#571f00",
+                        "secondary-fixed-dim": "#c3c0ff",
+                        "surface-container-high": "#202a40",
+                        "primary": "#c3c0ff",
+                        "secondary": "#c3c0ff",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed": "#ffdbcc",
+                        "surface-tint": "#c3c0ff",
+                        "surface-container-lowest": "#040d22",
+                        "on-secondary-fixed-variant": "#413f82",
+                        "inverse-surface": "#d9e2ff",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "on-tertiary-fixed-variant": "#7b2f00",
+                        "on-surface-variant": "#c7c4d8",
+                        "surface": "#091328",
+                        "error-container": "#93000a",
+                        "on-secondary": "#2a276a",
+                        "primary-container": "#4f46e5",
+                        "surface-dim": "#091328",
+                        "tertiary": "#ffb695",
+                        "on-tertiary-container": "#ffd2be",
+                        "outline-variant": "#464555",
+                        "secondary-container": "#413f82",
+                        "surface-variant": "#2b344b",
+                        "primary-fixed": "#e2dfff",
+                        "on-secondary-fixed": "#140f54",
+                        "on-primary-fixed": "#0f0069",
+                        "on-background": "#d9e2ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    }
+                },
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body selection:bg-primary/30">
+<!-- Top Navigation Anchor (from JSON) -->
+<nav class="fixed top-0 w-full z-50 bg-slate-50/60 dark:bg-[#091328]/60 backdrop-blur-xl">
+<div class="flex items-center px-6 h-16 w-full max-w-7xl mx-auto">
+<div class="flex items-center gap-4">
+<button class="text-[#4F46E5] dark:text-[#C3C0FF] hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-['Space_Grotesk'] font-medium tracking-tight text-lg text-slate-900 dark:text-slate-50">Settings</h1>
+</div>
+</div>
+</nav>
+<main class="pt-24 pb-32 px-6 max-w-2xl mx-auto min-h-screen">
+<!-- Profile Header Section (Asymmetric) -->
+<section class="mb-12 flex items-end justify-between">
+<div>
+<span class="font-label text-primary-container text-xs tracking-widest uppercase block mb-2">Configuration Hub</span>
+<h2 class="font-headline text-4xl font-bold tracking-tighter text-on-surface">System Preferences</h2>
+</div>
+<div class="hidden md:block">
+<div class="w-16 h-1 bg-primary-container/20 rounded-full"></div>
+<div class="w-8 h-1 bg-primary-container mt-1 rounded-full"></div>
+</div>
+</section>
+<!-- Accordion Settings Container -->
+<div class="space-y-4">
+<!-- AI Infrastructure Section -->
+<div class="group overflow-hidden rounded-xl bg-surface-container-low transition-all duration-300">
+<button class="w-full flex items-center justify-between p-6 text-left hover:bg-surface-container transition-colors ease-out">
+<div class="flex items-center gap-4">
+<div class="p-2 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined" data-icon="memory">memory</span>
+</div>
+<div>
+<p class="font-headline font-semibold text-on-surface">AI Infrastructure</p>
+<p class="text-xs text-outline font-body">Manage Large Language Model nodes</p>
+</div>
+</div>
+<span class="material-symbols-outlined transition-transform duration-300 group-focus-within:rotate-180" data-icon="expand_more">expand_more</span>
+</button>
+<div class="max-h-0 group-focus-within:max-h-[500px] transition-all duration-500 ease-in-out">
+<div class="p-6 pt-0 space-y-6 border-t border-outline-variant/10">
+<!-- Model Item -->
+<div class="flex items-center justify-between p-4 rounded-lg bg-surface-container-lowest">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-sm text-primary" data-icon="cloud">cloud</span>
+<span class="font-body text-sm">Tencent Hunyuan</span>
+</div>
+<div class="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center">
+<div class="w-2 h-2 bg-primary rounded-full"></div>
+</div>
+</div>
+<!-- Model Item -->
+<div class="flex items-center justify-between p-4 rounded-lg bg-surface-container-lowest opacity-60">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-sm" data-icon="cloud_queue">cloud_queue</span>
+<span class="font-body text-sm">Alibaba Tongyi</span>
+</div>
+<div class="w-5 h-5 rounded-full border-2 border-outline-variant"></div>
+</div>
+<!-- Custom API Input -->
+<div class="space-y-2">
+<label class="font-label text-[10px] text-outline uppercase tracking-wider">Custom API / Model Endpoint</label>
+<input class="w-full bg-surface-container-high border-0 border-b-2 border-outline-variant/30 focus:border-primary-container focus:ring-0 text-sm py-3 transition-colors" placeholder="https://api.custom-model.ai/v1" type="text"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Appearance Section -->
+<div class="group overflow-hidden rounded-xl bg-surface-container-low transition-all duration-300">
+<button class="w-full flex items-center justify-between p-6 text-left hover:bg-surface-container transition-colors ease-out">
+<div class="flex items-center gap-4">
+<div class="p-2 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined" data-icon="palette">palette</span>
+</div>
+<div>
+<p class="font-headline font-semibold text-on-surface">Appearance</p>
+<p class="text-xs text-outline font-body">Interface theme and visual depth</p>
+</div>
+</div>
+<span class="material-symbols-outlined transition-transform duration-300 group-focus-within:rotate-180" data-icon="expand_more">expand_more</span>
+</button>
+<div class="max-h-0 group-focus-within:max-h-[500px] transition-all duration-500 ease-in-out">
+<div class="p-6 pt-0 space-y-8 border-t border-outline-variant/10">
+<!-- Dark Mode Toggle -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="dark_mode">dark_mode</span>
+<span class="font-body text-sm font-medium">Dark Mode Atmosphere</span>
+</div>
+<div class="w-12 h-6 bg-primary-container rounded-full relative flex items-center px-1">
+<div class="w-4 h-4 bg-white rounded-full translate-x-6"></div>
+</div>
+</div>
+<!-- Glassmorphism Slider -->
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<span class="font-label text-[10px] text-outline uppercase tracking-wider">Glassmorphism Depth</span>
+<span class="text-xs text-primary font-bold">85%</span>
+</div>
+<div class="h-1 bg-surface-container-high w-full rounded-full relative">
+<div class="absolute top-0 left-0 h-full bg-gradient-to-r from-primary-container to-primary w-[85%] rounded-full shadow-[0_0_8px_rgba(195,192,255,0.4)]"></div>
+<div class="absolute top-1/2 left-[85%] -translate-y-1/2 -translate-x-1/2 w-4 h-4 bg-on-surface rounded-full border-2 border-primary"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Community Workshop Section -->
+<div class="group overflow-hidden rounded-xl bg-surface-container-low transition-all duration-300">
+<button class="w-full flex items-center justify-between p-6 text-left hover:bg-surface-container transition-colors ease-out">
+<div class="flex items-center gap-4">
+<div class="p-2 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+</div>
+<div>
+<p class="font-headline font-semibold text-on-surface">Community Workshop</p>
+<p class="text-xs text-outline font-body">Manage and sync prompt templates</p>
+</div>
+</div>
+<span class="material-symbols-outlined transition-transform duration-300 group-focus-within:rotate-180" data-icon="expand_more">expand_more</span>
+</button>
+<div class="max-h-0 group-focus-within:max-h-[500px] transition-all duration-500 ease-in-out">
+<div class="p-6 pt-0 space-y-4 border-t border-outline-variant/10">
+<div class="grid grid-cols-2 gap-4">
+<div class="p-4 rounded-lg bg-surface-container-highest flex flex-col gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="auto_awesome">auto_awesome</span>
+<p class="text-xs font-semibold">Creative Mode</p>
+<span class="text-[10px] text-outline uppercase">Active Sync</span>
+</div>
+<div class="p-4 rounded-lg bg-surface-container border border-outline-variant/10 flex flex-col gap-3">
+<span class="material-symbols-outlined text-outline" data-icon="terminal">terminal</span>
+<p class="text-xs font-semibold">System Prompt</p>
+<span class="text-[10px] text-outline uppercase">Manual Only</span>
+</div>
+</div>
+<button class="w-full py-3 bg-primary-container text-on-primary-container rounded-lg font-label text-[10px] tracking-widest uppercase font-bold hover:shadow-[0_8px_16px_rgba(79,70,229,0.2)] transition-all">
+                            Browse New Templates
+                        </button>
+</div>
+</div>
+</div>
+<!-- Account & Privacy Section -->
+<div class="group overflow-hidden rounded-xl bg-surface-container-low transition-all duration-300">
+<button class="w-full flex items-center justify-between p-6 text-left hover:bg-surface-container transition-colors ease-out">
+<div class="flex items-center gap-4">
+<div class="p-2 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined" data-icon="shield">shield</span>
+</div>
+<div>
+<p class="font-headline font-semibold text-on-surface">Account &amp; Privacy</p>
+<p class="text-xs text-outline font-body">Security credentials and encryption</p>
+</div>
+</div>
+<span class="material-symbols-outlined transition-transform duration-300 group-focus-within:rotate-180" data-icon="expand_more">expand_more</span>
+</button>
+<div class="max-h-0 group-focus-within:max-h-[500px] transition-all duration-500 ease-in-out">
+<div class="p-6 pt-0 space-y-4 border-t border-outline-variant/10">
+<div class="flex items-center justify-between py-2">
+<span class="text-sm font-body">End-to-End Encryption</span>
+<span class="text-xs text-primary font-bold">VERIFIED</span>
+</div>
+<div class="flex items-center justify-between py-2">
+<span class="text-sm font-body">Two-Factor Authentication</span>
+<span class="text-xs text-error font-bold uppercase">Disabled</span>
+</div>
+<div class="pt-4">
+<p class="text-[10px] font-label text-outline uppercase mb-4">Identity Visualization</p>
+<div class="flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/5">
+<div class="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+<img alt="Cyberpunk avatar" class="w-full h-full object-cover" data-alt="close-up of futuristic cybernetic character with neon accents and high-tech visor in dramatic low light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAv3JFJ63rVv1RWoc6wEdwOe6QlRxjcAGYpJhk64UZxStHKqEXj21phN5tvjRNgJvfxct9qzj5n_hjun5ZAl-Wq4vYRc-bbziNVhhuPP_mO9gof3cyXGRa-K-2dKTwKPsQLdcqYC1safY0UGEPkumMf7tDBRy1TiWyDe5h7nj8KG18PpuCiJOq1Caoy5Gsx4IByPRcyn5YXCCK24YuJNSxIkTKqQhFSR6ObyRJcMOP9BjuDVcSeS9h9kbIyEOzDhV0hH8TPVqLtqZ4f"/>
+</div>
+<div class="flex-grow">
+<p class="text-sm font-headline font-bold">Neo_Navigator_88</p>
+<p class="text-[10px] text-outline font-mono">ID: 0x82...3f92</p>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="qr_code_2">qr_code_2</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Logout / Destructive Action (Asymmetric alignment) -->
+<div class="mt-12 flex justify-end">
+<button class="px-8 py-3 bg-error-container text-on-error-container font-label text-[10px] tracking-widest uppercase font-bold rounded-lg hover:bg-error transition-colors ease-out">
+                Purge Session
+            </button>
+</div>
+</main>
+<!-- Bottom Navigation Shell (from JSON) -->
+<footer class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-2 bg-slate-50/70 dark:bg-[#091328]/70 backdrop-blur-xl shadow-[0_-4px_24px_rgba(0,0,0,0.04)] z-50">
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-[#464555] p-3 hover:scale-110 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-[#464555] p-3 hover:scale-110 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="contacts_product">contacts_product</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-[#464555] p-3 hover:scale-110 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="explore">explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-[#464555] p-3 hover:scale-110 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="architecture">architecture</span>
+</a>
+<!-- Active Tab: Settings -->
+<a class="flex flex-col items-center justify-center text-[#4F46E5] dark:text-[#C3C0FF] bg-slate-200/50 dark:bg-[#4F46E5]/10 rounded-xl p-3 hover:scale-110 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</a>
+</footer>
+</body></html>

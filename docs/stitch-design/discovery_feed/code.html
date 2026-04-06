@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kinetic Blueprint - Discovery Feed</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#1f2b49",
+                    "outline": "#6d758c",
+                    "surface-container-low": "#091328",
+                    "on-secondary-fixed-variant": "#4e5c71",
+                    "on-secondary": "#455367",
+                    "surface": "#060e20",
+                    "primary-container": "#8e98ff",
+                    "on-background": "#dee5ff",
+                    "secondary": "#d5e3fd",
+                    "tertiary": "#ff9dd1",
+                    "primary": "#9fa7ff",
+                    "tertiary-dim": "#eb7bba",
+                    "surface-tint": "#9fa7ff",
+                    "on-primary-fixed-variant": "#000b98",
+                    "surface-container-lowest": "#000000",
+                    "error-container": "#a70138",
+                    "tertiary-fixed": "#fd8bca",
+                    "on-tertiary": "#6c0f4d",
+                    "surface-variant": "#192540",
+                    "surface-container-high": "#141f38",
+                    "primary-fixed-dim": "#7d88ff",
+                    "primary-dim": "#5764f1",
+                    "on-primary-fixed": "#000000",
+                    "error": "#ff6e84",
+                    "background": "#060e20",
+                    "outline-variant": "#40485d",
+                    "surface-dim": "#060e20",
+                    "on-tertiary-fixed-variant": "#6d104e",
+                    "tertiary-container": "#fa88c8",
+                    "primary-fixed": "#8e98ff",
+                    "on-error-container": "#ffb2b9",
+                    "on-tertiary-container": "#5e0042",
+                    "inverse-primary": "#404dda",
+                    "on-error": "#490013",
+                    "secondary-fixed-dim": "#c7d5ee",
+                    "on-tertiary-fixed": "#360024",
+                    "error-dim": "#d73357",
+                    "inverse-on-surface": "#4d556b",
+                    "on-surface": "#dee5ff",
+                    "on-primary-container": "#00087d",
+                    "tertiary-fixed-dim": "#ee7ebc",
+                    "on-surface-variant": "#a3aac4",
+                    "on-secondary-container": "#c3d1ea",
+                    "secondary-container": "#3a485c",
+                    "on-secondary-fixed": "#324054",
+                    "on-primary": "#000c9f",
+                    "surface-container-highest": "#192540",
+                    "inverse-surface": "#faf8ff",
+                    "surface-container": "#0f1930",
+                    "secondary-dim": "#c7d5ee",
+                    "secondary-fixed": "#d5e3fd"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Space Grotesk"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar from JSON -->
+<header class="bg-slate-950/60 backdrop-blur-xl fixed top-0 w-full z-50 flex justify-between items-center px-6 h-20 w-full">
+<div class="flex items-center gap-4">
+<img alt="User Profile" class="w-10 h-10 rounded-full border border-outline-variant/30" data-alt="Close up portrait of a professional developer in a dimly lit studio with soft blue neon backlighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4mDklcD6tJlM1ntj8c8JAPewCAFCHbw4qIGHXxllC4pJkt6h5Q5T6a7OFsFkFuscS7DUdCdYEZO0MJ1F6KARoeqp7JNbnf42GDYgCth_0f9RbA5sGrnKSd7vGaqd8GjZwOOizns1hjelPtdKHPOC5HmyAcRWiVQ74sgPWISwn_GNOWaNGY2mu0W8smpllhEWz9nTBtT0MRMoDMggTlkdLDV18WMFYB-HBb-YCBBf1F4kKDUFuDvDvIPKL6Wjo7RNUKBet4cnZ0b5y"/>
+<h1 class="text-[#9fa7ff] font-['Space_Grotesk'] font-black uppercase tracking-widest text-2xl">Kinetic Blueprint</h1>
+</div>
+<div class="flex items-center gap-3">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[#192540] transition-colors duration-200 press:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[#9fa7ff]">tune</span>
+</button>
+</div>
+</header>
+<main class="pt-24 pb-28 px-4 md:px-8 max-w-5xl mx-auto">
+<!-- Feed Navigation / Filters -->
+<div class="flex gap-4 mb-8 overflow-x-auto hide-scrollbar py-2">
+<button class="px-5 py-2 rounded-full bg-primary-container text-on-primary-container font-medium text-sm whitespace-nowrap">For You</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors font-medium text-sm whitespace-nowrap">Trending</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors font-medium text-sm whitespace-nowrap">New Releases</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors font-medium text-sm whitespace-nowrap">AI Tools</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Bento Feed Item 1: Featured AIGC Post -->
+<article class="md:col-span-8 bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/10 group">
+<div class="p-6">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-tertiary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div>
+<h3 class="font-headline font-bold text-on-surface leading-none">Neural_Architect</h3>
+<span class="font-mono text-[10px] text-outline uppercase tracking-wider">2h ago • Model: GPT-4o</span>
+</div>
+</div>
+<span class="bg-surface-dim px-2 py-1 rounded font-mono text-[10px] text-tertiary-container border border-outline-variant/20 uppercase">Encryption Badge</span>
+</div>
+<h2 class="text-2xl font-headline font-bold text-on-surface mb-3 leading-tight">Optimizing React Server Components with Atomic State Logic</h2>
+<p class="text-on-surface-variant text-sm mb-6 leading-relaxed">Implementing a custom hook factory for zero-latency hydration in complex dashboard environments. This approach leverages the new experimental scheduler for priority-based rendering.</p>
+<div class="bg-surface-container-lowest rounded-lg p-5 mb-6 overflow-hidden border border-outline-variant/10">
+<div class="flex justify-between items-center mb-3">
+<span class="font-mono text-[10px] text-outline">typescript/react</span>
+<button class="text-primary text-[10px] font-mono hover:underline flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">content_copy</span> Copy Prompt
+                            </button>
+</div>
+<pre class="font-mono text-sm text-primary-container overflow-x-auto hide-scrollbar"><code>const useAtomicState = (initial) =&gt; {
+  const [state, setState] = useOptimistic(initial);
+  return [state, (next) =&gt; startTransition(() =&gt; {
+    setState(next);
+  })];
+};</code></pre>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-outline-variant/5">
+<div class="flex gap-6">
+<button class="flex items-center gap-2 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg">favorite</span>
+<span class="font-mono text-xs">1.2k</span>
+</button>
+<button class="flex items-center gap-2 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg">chat_bubble</span>
+<span class="font-mono text-xs">84</span>
+</button>
+<button class="flex items-center gap-2 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg">share</span>
+</button>
+</div>
+<button class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center hover:bg-primary-container hover:text-on-primary-container transition-all">
+<span class="material-symbols-outlined">bookmark</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Sidebar Stats / Secondary Cards -->
+<aside class="md:col-span-4 space-y-6">
+<div class="bg-surface-container-high rounded-xl p-6 border border-outline-variant/10">
+<h4 class="font-headline font-bold text-primary mb-4 text-sm uppercase tracking-widest">Trending Tags</h4>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-surface-dim text-on-surface-variant text-[11px] font-mono rounded-full border border-outline-variant/10 hover:border-primary/40 cursor-pointer transition-colors">#typescript</span>
+<span class="px-3 py-1 bg-surface-dim text-on-surface-variant text-[11px] font-mono rounded-full border border-outline-variant/10 hover:border-primary/40 cursor-pointer transition-colors">#wasm</span>
+<span class="px-3 py-1 bg-surface-dim text-on-surface-variant text-[11px] font-mono rounded-full border border-outline-variant/10 hover:border-primary/40 cursor-pointer transition-colors">#nextjs</span>
+<span class="px-3 py-1 bg-surface-dim text-on-surface-variant text-[11px] font-mono rounded-full border border-outline-variant/10 hover:border-primary/40 cursor-pointer transition-colors">#ai_agents</span>
+</div>
+</div>
+<div class="bg-surface-container-high rounded-xl overflow-hidden border border-outline-variant/10">
+<div class="h-32 w-full bg-cover bg-center" data-alt="Abstract visualization of React components as 3D crystalline structures with neon purple and blue glowing edges" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCpguXxMAPUeSL2ZAn5qn-z2S252lF674vm8fj30L2wLX8YTabB6dt52e_AxOTMt2N0pFowExdCaZ6LjCXItR7EKip4_G9krCM1rUPCoZe-rTdWDVB7Ky2C0Hodi9r_qvhAZs-DrZlVA9oOi-swgMtIOurw0VmBwajrLxsrrkJU3OKOmYjlgSGnCDJ71ukIOjYNQcHOcdrZJkMyFkO2b3d0S_X55FY5HaH8HZBqMye_LaFPhrVnTlmV3sTeTwwhLibrbAr2tyz70x0f')"></div>
+<div class="p-4">
+<h4 class="font-headline font-bold text-on-surface text-sm mb-2">Workshop: Advanced CSS Houdini</h4>
+<p class="text-xs text-on-surface-variant mb-4">Master the paint API and create impossible layouts with low runtime overhead.</p>
+<button class="w-full py-2 bg-primary-dim hover:bg-primary text-on-primary-fixed font-bold text-xs rounded transition-colors uppercase tracking-tight">Register Now</button>
+</div>
+</div>
+</aside>
+<!-- Feed Item 2: Visual Heavy Post -->
+<article class="md:col-span-12 bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/10">
+<div class="grid grid-cols-1 md:grid-cols-2">
+<div class="h-64 md:h-full min-h-[300px]">
+<img alt="Hardware interface" class="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" data-alt="Highly detailed macro photo of a futuristic circuit board with glowing green LED indicators and fiber optic cables" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPpQb46xjw0SgFgHSr02eBkA2_xCdHg7_QjYHHAH27-rOg4nJzUAWfplqKU9DQLWDcjyiAGSM8H1h7qoppi9Y6M9wYB6YkYVVYr23LEqT47wOqEuoT3AGnwfbnWM4EyCW4yFPv_YUkVpwZQQQsLwkv4x2UjHyfcMFObYaTbxvFVI7I3E6dSIFHsq5rVlj70AbP_mtNisJy68O4QWOPkVQCe-1zunn73agN5pdV34o3zBNytS-KJzPUbqOXZMrDNQxbxdPAVWpe7b7F"/>
+</div>
+<div class="p-8 flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-3 mb-6">
+<img alt="Author" class="w-10 h-10 rounded-full border-2 border-primary/20" data-alt="Professional headshot of a software architect, sharp lighting, urban high-tech background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0xnnoi43EqZtSatJVMbRy16M4wYa1cyO9m-8YlSq2y664uNtGPscBEb8JxR_WDPOu00fE0Y2G1ZtjTP6QrEp3WXbH-8xmiQr2UGcCjjE2uN5xv43Q6ZkjWpxJ-4TDqwyczIA1eqzXkzHHT4dMfNCwhhiaAWgToaNsxbrTnckmXGuSXIQjE93xddNC42cXaibcZKLYlHoQkoW4EucYGGFLZvOdeO13ABzayfDASQPhXsomYXNb_Y7Uf-wxpD1Tyu3AY_FqcBg-oxCQ"/>
+<div>
+<h3 class="font-headline font-bold text-on-surface">The_Architect</h3>
+<span class="font-mono text-[10px] text-outline uppercase">Principal Engineer @ Kinetic</span>
+</div>
+</div>
+<h2 class="text-3xl font-headline font-bold text-on-surface mb-4">Hardware Abstraction Layers: A 2024 Retrospective</h2>
+<ul class="space-y-3 mb-6">
+<li class="flex items-start gap-3 text-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-sm mt-0.5">terminal</span>
+                                    The decline of monolithic drivers in favor of micro-kernels.
+                                </li>
+<li class="flex items-start gap-3 text-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-sm mt-0.5">terminal</span>
+                                    Rust as the new standard for memory-safe firmware development.
+                                </li>
+</ul>
+</div>
+<div class="flex items-center gap-4">
+<button class="px-6 py-2 bg-gradient-to-br from-primary to-primary-dim text-on-primary-fixed font-bold rounded-md transition-transform active:scale-95">Read Article</button>
+<button class="px-4 py-2 text-primary font-mono text-xs border border-primary/20 rounded-md hover:bg-primary/5 transition-colors">Bookmark</button>
+</div>
+</div>
+</div>
+</article>
+<!-- Feed Item 3: Quick Tip Card -->
+<article class="md:col-span-6 bg-surface-container-high rounded-xl p-6 border border-outline-variant/10">
+<div class="flex justify-between items-start mb-4">
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase">Quick Tip</span>
+<span class="font-mono text-[10px] text-outline">#productivity</span>
+</div>
+<h3 class="text-lg font-headline font-bold text-on-surface mb-3">VS Code Macro: Auto-Documentation</h3>
+<p class="text-sm text-on-surface-variant mb-4">Tired of writing JSDoc? Use this prompt with Copilot for context-aware technical documentation that actually makes sense.</p>
+<div class="bg-surface-container-lowest p-4 rounded-lg font-mono text-xs text-secondary mb-4 border border-outline-variant/5">
+                    "Review the above method and generate a JSDoc block following the Google Style Guide. Focus on side-effects."
+                </div>
+<button class="flex items-center gap-2 text-primary text-xs font-bold hover:gap-3 transition-all">
+                    VIEW ALL MACROS <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</article>
+<!-- Feed Item 4: Poll Card -->
+<article class="md:col-span-6 bg-surface-container-high rounded-xl p-6 border border-outline-variant/10">
+<h3 class="text-lg font-headline font-bold text-on-surface mb-4">Which state manager are you shipping in 2024?</h3>
+<div class="space-y-3">
+<div class="relative w-full h-12 bg-surface-container-lowest rounded-lg border border-outline-variant/10 flex items-center px-4 overflow-hidden group cursor-pointer">
+<div class="absolute inset-y-0 left-0 bg-primary/10 w-[65%] z-0 group-hover:bg-primary/20 transition-all"></div>
+<span class="relative z-10 text-sm font-medium text-on-surface">Zustand</span>
+<span class="relative z-10 ml-auto font-mono text-xs text-primary">65%</span>
+</div>
+<div class="relative w-full h-12 bg-surface-container-lowest rounded-lg border border-outline-variant/10 flex items-center px-4 overflow-hidden group cursor-pointer">
+<div class="absolute inset-y-0 left-0 bg-primary/10 w-[12%] z-0 group-hover:bg-primary/20 transition-all"></div>
+<span class="relative z-10 text-sm font-medium text-on-surface">Redux Toolkit</span>
+<span class="relative z-10 ml-auto font-mono text-xs text-outline">12%</span>
+</div>
+<div class="relative w-full h-12 bg-surface-container-lowest rounded-lg border border-outline-variant/10 flex items-center px-4 overflow-hidden group cursor-pointer">
+<div class="absolute inset-y-0 left-0 bg-primary/10 w-[23%] z-0 group-hover:bg-primary/20 transition-all"></div>
+<span class="relative z-10 text-sm font-medium text-on-surface">TanStack Store</span>
+<span class="relative z-10 ml-auto font-mono text-xs text-outline">23%</span>
+</div>
+</div>
+<div class="mt-4 text-[10px] font-mono text-outline uppercase">4,209 Votes • 12h Left</div>
+</article>
+</div>
+</main>
+<!-- BottomNavBar from JSON -->
+<!-- Determined active tab: Discovery -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe bg-[#091328]/80 backdrop-blur-2xl h-20 shadow-[0px_-20px_40px_rgba(159,167,255,0.06)] border-t border-[#40485d]/15">
+<a class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined mb-1">chat_bubble</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Messages</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined mb-1">group</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Contacts</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#9fa7ff] font-bold scale-110 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">explore</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Discovery</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined mb-1">psychology</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Workshop</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined mb-1">settings</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Settings</span>
+</a>
+</nav>
+<!-- Contextual FAB (Only for Home/Discovery context) -->
+<button class="fixed bottom-24 right-6 w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary-dim text-on-primary-fixed shadow-[0px_10px_30px_rgba(159,167,255,0.3)] flex items-center justify-center z-40 hover:scale-110 transition-transform active:scale-95">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'wght' 600;">add</span>
+</button>
+</body></html>

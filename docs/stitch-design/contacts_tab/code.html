@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@700;900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#1f2b49",
+                    "outline": "#6d758c",
+                    "surface-container-low": "#091328",
+                    "on-secondary-fixed-variant": "#4e5c71",
+                    "on-secondary": "#455367",
+                    "surface": "#060e20",
+                    "primary-container": "#8e98ff",
+                    "on-background": "#dee5ff",
+                    "secondary": "#d5e3fd",
+                    "tertiary": "#ff9dd1",
+                    "primary": "#9fa7ff",
+                    "tertiary-dim": "#eb7bba",
+                    "surface-tint": "#9fa7ff",
+                    "on-primary-fixed-variant": "#000b98",
+                    "surface-container-lowest": "#000000",
+                    "error-container": "#a70138",
+                    "tertiary-fixed": "#fd8bca",
+                    "on-tertiary": "#6c0f4d",
+                    "surface-variant": "#192540",
+                    "surface-container-high": "#141f38",
+                    "primary-fixed-dim": "#7d88ff",
+                    "primary-dim": "#5764f1",
+                    "on-primary-fixed": "#000000",
+                    "error": "#ff6e84",
+                    "background": "#060e20",
+                    "outline-variant": "#40485d",
+                    "surface-dim": "#060e20",
+                    "on-tertiary-fixed-variant": "#6d104e",
+                    "tertiary-container": "#fa88c8",
+                    "primary-fixed": "#8e98ff",
+                    "on-error-container": "#ffb2b9",
+                    "on-tertiary-container": "#5e0042",
+                    "inverse-primary": "#404dda",
+                    "on-error": "#490013",
+                    "secondary-fixed-dim": "#c7d5ee",
+                    "on-tertiary-fixed": "#360024",
+                    "error-dim": "#d73357",
+                    "inverse-on-surface": "#4d556b",
+                    "on-surface": "#dee5ff",
+                    "on-primary-container": "#00087d",
+                    "tertiary-fixed-dim": "#ee7ebc",
+                    "on-surface-variant": "#a3aac4",
+                    "on-secondary-container": "#c3d1ea",
+                    "secondary-container": "#3a485c",
+                    "on-secondary-fixed": "#324054",
+                    "on-primary": "#000c9f",
+                    "surface-container-highest": "#192540",
+                    "inverse-surface": "#faf8ff",
+                    "surface-container": "#0f1930",
+                    "secondary-dim": "#c7d5ee",
+                    "secondary-fixed": "#d5e3fd"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Space Grotesk"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #40485d40; border-radius: 10px; }
+        .glass-panel {
+            background: rgba(25, 37, 64, 0.6);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface selection:bg-primary selection:text-on-primary">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-slate-950/60 backdrop-blur-xl flex justify-between items-center px-6 h-20 w-full">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant/20">
+<img alt="User Profile" data-alt="close up portrait of a digital architect with neon highlights and sleek glass eyewear in a dark studio setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOnh4dyT_HGd9S5Yu_H1zMJ7a7fsp4qbGf4vLIH9G_s9_dhQL9ENTH2vYTpYNBg5tA9oSKrV0voaCed2KTT9Z26myYXYUeTJyaHIwOB2yC5qZEh4WQqkjAdmQje70-3Xs-i9XYXWq9aKMv8kaIS05qgMpR7GT3y34PyVUuVFo7kYGdyW652gsPdX7JhSElBAmR3eaMmr-eIny6dZNYM2eLwC43I2fQyp3joD4YdfMN724Kz0xoPMtapnaNwHEr2IedxM-ZOlKrtXqn"/>
+</div>
+<h1 class="font-['Space_Grotesk'] font-bold tracking-tight text-2xl text-[#9fa7ff]">Kinetic Blueprint</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="material-symbols-outlined text-slate-400 p-2 rounded-full hover:bg-[#192540] transition-colors duration-200 press:scale-95 transition-transform" data-icon="tune">tune</button>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-4xl mx-auto flex gap-6 min-h-screen">
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col gap-6">
+<!-- Filter & Search Section -->
+<div class="flex items-center justify-between">
+<div class="relative group">
+<select class="appearance-none bg-surface-container-low border-none text-primary font-mono text-xs uppercase tracking-widest pl-4 pr-10 py-3 rounded-lg focus:ring-1 focus:ring-primary/40 cursor-pointer hover:bg-surface-variant transition-colors">
+<option>A-Z</option>
+<option>Newest First</option>
+<option>Oldest First</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-primary pointer-events-none text-sm">unfold_more</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-lowest px-4 py-2.5 rounded-lg border border-outline-variant/10">
+<span class="material-symbols-outlined text-outline text-lg">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-xs font-mono text-on-surface-variant placeholder:text-outline-variant/50 w-32 md:w-48 uppercase" placeholder="QUERY DATABASE..." type="text"/>
+</div>
+</div>
+<!-- Contacts List (Bento-style grouping) -->
+<div class="flex flex-col gap-8">
+<!-- Section A -->
+<section>
+<div class="flex items-center gap-3 mb-4">
+<span class="font-headline text-primary text-xl font-black">A</span>
+<div class="h-px flex-1 bg-outline-variant/10"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+<!-- Contact Card -->
+<div class="group flex items-center gap-4 p-4 rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all duration-200 cursor-pointer">
+<div class="relative">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="professional headshot of a woman with short hair wearing a tech-inspired blazer in front of a dark blue background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjBIbcTbZ2UeOMeKWov3cODjk7LttnKIJ_VPz9dPoy0YC29c1nV36a6N4a4t8nga2V3Wcs2C2ZG9YMVxYlnCgz5Xdnvm0ZQjag33hf0q9ZQBmu5SYSw3zQBiX_V0NzBsG-B6zjnHkZXqrFEsQcmEF5syei6oZssObwvRByiZVAnN2dcKnFSspD1m7F337dMc2X4B2tqcYDTQ_1qB9F55ZxNP156qYb9QIbgiV-djBViOX3DBR_N_X342C870pFWa8wOQWEa-thZOFF"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full border-2 border-surface-container-low"></div>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="text-on-surface font-semibold truncate">Alex Rivera</h3>
+<p class="text-outline-variant text-[10px] font-mono uppercase tracking-tighter">Senior Architect</p>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+<div class="group flex items-center gap-4 p-4 rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all duration-200 cursor-pointer border-l-4 border-transparent hover:border-primary">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="minimalist 3d avatar of a man with glasses and a hoodie rendered in a soft cinematic style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-f_84aaDnvjV2L6Wfk-gCDs3-2wlsl8e1bqdhrdhKVj8fAOvxZb2cyqfh4SKlSY07YaSxrpgc1aQAzImj59EpI387k-kDt9CGbs3PiTxhgCDnHXfDYTEMFG6OfRKGA5CFlIraI8133BUez40J8_xyf-NqBq36INcB90hE008qiOz0NwRurOLQdV2B3dlWwpQg7KAPYn9XlCRqDj0O0gCdN9JqekRLkuFGvjoXtgczOu1bQSD_vYfVT9tPa-2JTc-0rKDExWDMjYo9"/>
+<div class="flex-1 min-w-0">
+<h3 class="text-on-surface font-semibold truncate">Aria Vance</h3>
+<p class="text-outline-variant text-[10px] font-mono uppercase tracking-tighter">Security Vault</p>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Section B -->
+<section>
+<div class="flex items-center gap-3 mb-4">
+<span class="font-headline text-primary text-xl font-black">B</span>
+<div class="h-px flex-1 bg-outline-variant/10"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+<div class="group flex items-center gap-4 p-4 rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all duration-200 cursor-pointer">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="cyberpunk aesthetic portrait of a young man with glowing facial tattoos and dark futuristic clothing" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7QpzntxNwaPeW2TYsoY2-FD_tNpkd0vh4_t76_Kfk_r3OgO_jf6dMQ1vLPJfUVSSHEgpIREHUO1RncrAknNw9AdF75OZrWHXeXx1guMj3reLvMTeE5CzLm1N5_IQCAB1El2WBMBDdr3qlcHyfhP3k6g9vUXBmfnMPv_gL9bfxEzL9Xrn1G3UgLAl4RWb2jOSLgWjcudag9DAmy6ZsGqJv3FrKzgjq0gh0KvQEW5-Q0AwRFD1DJ3-QiKrwyp9B4VVRrSwTlTZxXplr"/>
+<div class="flex-1 min-w-0">
+<h3 class="text-on-surface font-semibold truncate">Benjamin Thorne</h3>
+<p class="text-outline-variant text-[10px] font-mono uppercase tracking-tighter">AI Engineer</p>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Section C -->
+<section>
+<div class="flex items-center gap-3 mb-4">
+<span class="font-headline text-primary text-xl font-black">C</span>
+<div class="h-px flex-1 bg-outline-variant/10"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+<div class="group flex items-center gap-4 p-4 rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all duration-200 cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-headline text-lg">CP</div>
+<div class="flex-1 min-w-0">
+<h3 class="text-on-surface font-semibold truncate">Caleb Pierce</h3>
+<p class="text-outline-variant text-[10px] font-mono uppercase tracking-tighter">External Liaison</p>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+<div class="group flex items-center gap-4 p-4 rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all duration-200 cursor-pointer">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="detailed close-up of a person with colorful braids and high-tech earphones in a night-time urban setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuATazQpGrPbHp7l85l36m2qoO5gobmkxcqTJ5Riecdc6J9gRi9OwzWg74JGjEY5tcAA9ilbQe6mfFaEOzJ_VE4ZOhk07WdJFOA1-gz-yAGmC-sY-sS7qeB2L1VuV17FLOBKU6DhgD829NfHLwWIE8nMuS8SkaKa1dlnx0dMyMHiD_QVfdJ9_bf9hRJxkoFxYAGCWq1xOx941JVJdtnxE6uaNeHD6gFieuYfV286VWmXfsRYM2xl9oTFxnI8z6L6OCYxcfhW5r1DVS4_"/>
+<div class="flex-1 min-w-0">
+<h3 class="text-on-surface font-semibold truncate">Clara Wu</h3>
+<p class="text-outline-variant text-[10px] font-mono uppercase tracking-tighter">Lead Designer</p>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Alpha Index Rail -->
+<aside class="hidden md:flex flex-col items-center justify-center gap-1.5 py-8 sticky top-24 h-[calc(100vh-12rem)]">
+<a class="text-[10px] font-mono text-primary font-black w-6 h-6 flex items-center justify-center rounded-full bg-primary/20 border border-primary/30" href="#">A</a>
+<a class="text-[10px] font-mono text-outline-variant hover:text-primary transition-colors" href="#">B</a>
+<a class="text-[10px] font-mono text-outline-variant hover:text-primary transition-colors" href="#">C</a>
+<a class="text-[10px] font-mono text-outline-variant hover:text-primary transition-colors" href="#">D</a>
+<a class="text-[10px] font-mono text-outline-variant hover:text-primary transition-colors" href="#">E</a>
+<a class="text-[10px] font-mono text-outline-variant hover:text-primary transition-colors" href="#">F</a>
+<a class="text-[10px] font-mono text-outline-variant hover:text-primary transition-colors" href="#">G</a>
+<a class="text-[10px] font-mono text-outline-variant hover:text-primary transition-colors" href="#">H</a>
+<a class="text-[10px] font-mono text-outline-variant hover:text-primary transition-colors" href="#">I</a>
+<a class="text-[10px] font-mono text-outline-variant hover:text-primary transition-colors" href="#">J</a>
+<div class="w-1 h-1 bg-outline-variant/30 rounded-full my-1"></div>
+<a class="text-[10px] font-mono text-outline-variant hover:text-primary transition-colors" href="#">Z</a>
+</aside>
+</main>
+<!-- Navigation Drawer (Side for desktop feel) -->
+<nav class="hidden lg:flex flex-col h-full py-8 px-4 fixed left-0 top-20 w-80 bg-[#060e20] z-40 border-r border-outline-variant/10">
+<div class="mb-8 px-4">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container-highest overflow-hidden">
+<img alt="architect_avatar" data-alt="minimalist white line art icon of an architect's profile on a deep navy background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcqx1l19O8V1sNg2MDtdiDebbb2ltp7F_EwxV72HR-fSl6IWl3YFVgW4lxPQI_cYd0HoHMm1_r95Nudh96_aSM7-eAHH-RhrdhGZgxHI7ioCfprC3RpZxTS0CDwYDvUyyEnxsinsBve2VEd0sPXIhsb-dgYI8WfQYynT1kkTbOZJANcN_0pk0mWV_XhiAEujgyYym-78z45Dio-SrqDxzWmJjBZ-2aURJ3AaOvGRtx23aWzOJKULZAPmLWGl7KOqW1af8XDO0yBORp"/>
+</div>
+<div>
+<h2 class="font-['Space_Grotesk'] text-[#9fa7ff] font-bold">The Architect</h2>
+<p class="text-[10px] font-mono text-slate-500 uppercase">E2E Encrypted Status</p>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<a class="flex items-center gap-4 px-4 py-3 text-slate-400 hover:bg-[#091328] font-['Inter'] text-sm rounded-lg transition-all 200ms" href="#">
+<span class="material-symbols-outlined">person</span>
+                Personal Space
+            </a>
+<a class="flex items-center gap-4 px-4 py-3 text-slate-400 hover:bg-[#091328] font-['Inter'] text-sm rounded-lg transition-all 200ms" href="#">
+<span class="material-symbols-outlined">model_training</span>
+                AI Model Settings
+            </a>
+<a class="flex items-center gap-4 px-4 py-3 text-slate-400 hover:bg-[#091328] font-['Inter'] text-sm rounded-lg transition-all 200ms" href="#">
+<span class="material-symbols-outlined">verified_user</span>
+                Security Vault
+            </a>
+</div>
+<div class="mt-auto px-4">
+<span class="text-[10px] font-mono text-slate-600">v1.0.4-stable</span>
+</div>
+</nav>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe bg-[#091328]/80 backdrop-blur-2xl h-20 shadow-[0px_-20px_40px_rgba(159,167,255,0.06)] border-t border-[#40485d]/15">
+<a class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined mb-1">chat_bubble</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Messages</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#9fa7ff] font-bold scale-110 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Contacts</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined mb-1">explore</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Discovery</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined mb-1">psychology</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Workshop</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined mb-1">settings</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Settings</span>
+</a>
+</nav>
+</body></html>

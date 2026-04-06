@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Discovery Feed - Developer Network</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-container": "#4f46e5",
+                        "surface": "#f7f9fb",
+                        "error-container": "#ffdad6",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#7e3000",
+                        "on-tertiary-container": "#ffd2be",
+                        "surface-dim": "#d8dadc",
+                        "outline-variant": "#c7c4d8",
+                        "secondary-container": "#d0e1fb",
+                        "on-primary-fixed": "#0f0069",
+                        "on-background": "#191c1e",
+                        "surface-variant": "#e0e3e5",
+                        "on-secondary-fixed": "#0b1c30",
+                        "primary-fixed": "#e2dfff",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#4d44e3",
+                        "on-surface-variant": "#464555",
+                        "on-tertiary-fixed-variant": "#7b2f00",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "inverse-surface": "#2d3133",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#54647a",
+                        "tertiary-container": "#a44100",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed": "#351000",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#ffdbcc",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "secondary": "#505f76",
+                        "primary": "#3525cd",
+                        "surface-container-high": "#e6e8ea",
+                        "secondary-fixed": "#d3e4fe",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#f7f9fb",
+                        "inverse-on-surface": "#eff1f3",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "surface-container-low": "#f2f4f6",
+                        "on-surface": "#191c1e",
+                        "inverse-primary": "#c3c0ff",
+                        "on-primary-container": "#dad7ff",
+                        "tertiary-fixed-dim": "#ffb695",
+                        "background": "#f7f9fb",
+                        "outline": "#777587",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-container": "#eceef0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body text-on-surface antialiased">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#f7f9fb]/80 backdrop-blur-xl flex justify-between items-center px-6 h-16 w-full">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#4F46E5] hover:bg-[#e6e8ea]/50 transition-colors p-2 rounded-xl cursor-pointer">arrow_back</span>
+<h1 class="text-xl font-bold text-[#191c1e] font-['Space_Grotesk'] tracking-tight">Messages</h1>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#464555] hover:bg-[#e6e8ea]/50 transition-colors p-2 rounded-xl cursor-pointer">search</span>
+<span class="material-symbols-outlined text-[#464555] hover:bg-[#e6e8ea]/50 transition-colors p-2 rounded-xl cursor-pointer">more_vert</span>
+</div>
+</header>
+<div class="flex min-h-screen pt-16 pb-20 md:pb-0">
+<!-- NavigationDrawer (Sidebar for Desktop) -->
+<aside class="hidden md:flex flex-col p-6 gap-2 h-full w-80 bg-white sticky top-16 shadow-2xl z-40">
+<div class="flex items-center gap-4 mb-8 px-2">
+<img alt="Alex Rivers" class="w-12 h-12 rounded-full object-cover" data-alt="professional headshot of a young male architect with minimalist glasses warm studio lighting clean background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHAe4ujBuqd_pPF2DxpFs0hq_pF5xQCuWA_RiZt4FOBXIYszXvnSaSX1XxG8Yq_M2zFf8t47Osx8E01qIyj7ACUgno7LNsSQCPiXmqciTCYpl5TDmSPtNr5xoaSOX4UXOnKtg31QFLOjPoBnCst0C0sMNLGtxvmfqRK7hVyeuTJvhx8-XLTwv8ZyxuAo5x_JfBNIrht6xHOrug29dP3GSae6DcrPptxP0tSqbhShtaZ5cXQAvzU5KJaxyZit75F0TP8YhC3NiqmsPL"/>
+<div>
+<p class="font-['Space_Grotesk'] text-[#4F46E5] font-bold text-sm">Alex Rivers</p>
+<p class="text-xs text-[#464555] opacity-70">Architect • Online</p>
+</div>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 p-3 bg-[#4F46E5]/5 text-[#4F46E5] font-bold rounded-lg transition-all duration-300" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-['Inter'] text-sm">Profile</span>
+</a>
+<a class="flex items-center gap-3 p-3 text-[#464555] hover:bg-[#f2f4f6] rounded-lg transition-all duration-300" href="#">
+<span class="material-symbols-outlined">archive</span>
+<span class="font-['Inter'] text-sm">Archived</span>
+</a>
+<a class="flex items-center gap-3 p-3 text-[#464555] hover:bg-[#f2f4f6] rounded-lg transition-all duration-300" href="#">
+<span class="material-symbols-outlined">star</span>
+<span class="font-['Inter'] text-sm">Starred</span>
+</a>
+<a class="flex items-center gap-3 p-3 text-[#464555] hover:bg-[#f2f4f6] rounded-lg transition-all duration-300" href="#">
+<span class="material-symbols-outlined">lock</span>
+<span class="font-['Inter'] text-sm">Privacy</span>
+</a>
+<a class="flex items-center gap-3 p-3 text-[#464555] hover:bg-[#f2f4f6] rounded-lg transition-all duration-300" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-['Inter'] text-sm">Help</span>
+</a>
+</nav>
+</aside>
+<!-- Main Feed Content -->
+<main class="flex-1 max-w-4xl mx-auto px-4 py-8 md:px-8 bg-surface">
+<!-- Feed Filter Chips -->
+<div class="flex gap-3 mb-8 overflow-x-auto no-scrollbar pb-2">
+<button class="px-5 py-2 bg-primary-container text-white rounded-full text-sm font-medium whitespace-nowrap shadow-sm">All Posts</button>
+<button class="px-5 py-2 bg-white text-on-surface-variant hover:bg-surface-container-low rounded-full text-sm font-medium whitespace-nowrap transition-colors">CSS Magic</button>
+<button class="px-5 py-2 bg-white text-on-surface-variant hover:bg-surface-container-low rounded-full text-sm font-medium whitespace-nowrap transition-colors">MDX Guide</button>
+<button class="px-5 py-2 bg-white text-on-surface-variant hover:bg-surface-container-low rounded-full text-sm font-medium whitespace-nowrap transition-colors">React Tips</button>
+</div>
+<!-- Bento Grid / Post Layout -->
+<div class="grid grid-cols-1 gap-8">
+<!-- Featured Post Card -->
+<article class="bg-surface-container-lowest rounded-3xl p-6 md:p-8 shadow-[0_12px_40px_rgba(25,28,30,0.04)] border-l-4 border-primary-container relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4">
+<span class="bg-secondary-fixed text-on-secondary-fixed-variant px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Featured</span>
+</div>
+<div class="flex items-center gap-4 mb-6">
+<img alt="Dev Avatar" class="w-12 h-12 rounded-full object-cover" data-alt="profile picture of a female software engineer cyberpunk minimalist aesthetic soft blue backlighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPsmFL_C0WmlFBcpt-fL1rYApOtcqEJ02z1ZOhT1f-wjLV3BMM0FbstiD1o1F_n_y5Sov68P0WbzPc6QibD7qKT9bMuEHByG4o2LLzHpfB36YR9SHBHrU1-CqJ171ia-5483ltTpMbzpCxo_-tRyl4dE6o0l2PKYeKZqVUTrn0M3onREiwTZE6FtaCDTAAe5KUqwlC1NSt-ltWEt7jxg48NUSqZdeg-loZ5bnU6fGv4vgnuKUp9tQEFhDAmFSSg1OxV0hppuV2ixOw"/>
+<div>
+<h3 class="font-headline font-bold text-on-surface">Elena Vance</h3>
+<p class="text-xs text-on-surface-variant">2 hours ago • <span class="text-primary-container font-medium">@vance_codes</span></p>
+</div>
+</div>
+<h2 class="font-headline text-2xl font-bold mb-4 leading-tight">Mastering Bento Grids with Modern CSS</h2>
+<p class="text-on-surface-variant leading-relaxed mb-6 font-body">
+                        The secret to a perfect bento grid isn't just `grid-template-columns`. It's the intentional use of `aspect-ratio` and tonal layering. Check out this snippet for high-end surface nesting:
+                    </p>
+<!-- Code Snippet Area -->
+<div class="bg-surface-container-low rounded-2xl p-6 mb-6 font-mono text-sm overflow-x-auto border border-outline-variant/15">
+<pre class="text-on-surface"><span class="text-primary-container">.bento-container</span> {
+  <span class="text-tertiary-container">display</span>: grid;
+  <span class="text-tertiary-container">grid-template-columns</span>: repeat(auto-fit, minmax(300px, 1fr));
+  <span class="text-tertiary-container">gap</span>: 1.5rem;
+  <span class="text-tertiary-container">padding</span>: 2rem;
+  <span class="text-tertiary-container">background</span>: <span class="text-primary">var(--surface)</span>;
+}</pre>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-outline-variant/10">
+<div class="flex gap-4">
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">favorite</span>
+<span class="text-sm">1.2k</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">chat_bubble</span>
+<span class="text-sm">84</span>
+</button>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">bookmark</span>
+</button>
+</div>
+</article>
+<!-- Standard Post Card -->
+<article class="bg-surface-container-lowest rounded-3xl p-6 md:p-8 shadow-[0_12px_40px_rgba(25,28,30,0.04)]">
+<div class="flex items-center gap-4 mb-6">
+<img alt="Founder Avatar" class="w-12 h-12 rounded-full object-cover" data-alt="portrait of a mature man tech founder smiling soft natural daylight minimalist office background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTidjELMEKshMsN-sMs9imX6ExktJ4kjRpCY87s6e-yutYqGaLdmxWiOPOK1vh9syGyjMOvDFqH4LK_qrH6lFRszPQEOJ8SN6cIW_rTvI1-odcLt196cAlQXkttdDvgkYDSFq_qEip0CbYJP_NqdMEzEOMBeYYiI9orfw2RSgWkR79yfoKr6f8WY8t6yp--fuB2uc7WNfd0uZJJEdd3xggJ1HP3VMzZE8AOjkz7aurCdUyx_IRplkG4nuDADuijGjRRyOPGqV_tvx0"/>
+<div>
+<h3 class="font-headline font-bold text-on-surface">Marcus Thorne</h3>
+<p class="text-xs text-on-surface-variant">5 hours ago • <span class="text-on-surface-variant font-medium">@m_thorne</span></p>
+</div>
+</div>
+<h2 class="font-headline text-xl font-bold mb-4">Why MDX is the Future of Documentation</h2>
+<div class="prose prose-sm text-on-surface-variant mb-6 font-body">
+<p>Markdown is great, but components inside markdown? That's a game changer. Imagine rendering a live React component directly inside your technical docs.</p>
+</div>
+<div class="flex items-center gap-2 mb-6">
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-lg text-xs font-medium">#MDX</span>
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-lg text-xs font-medium">#DevX</span>
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-lg text-xs font-medium">#WebDev</span>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-outline-variant/10">
+<div class="flex gap-4">
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">favorite</span>
+<span class="text-sm">450</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">chat_bubble</span>
+<span class="text-sm">12</span>
+</button>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">share</span>
+</button>
+</div>
+</article>
+<!-- Visual Insight Card -->
+<article class="bg-surface-container-lowest rounded-3xl p-6 md:p-8 shadow-[0_12px_40px_rgba(25,28,30,0.04)] grid grid-cols-1 md:grid-cols-5 gap-6">
+<div class="md:col-span-3">
+<div class="flex items-center gap-4 mb-4">
+<div class="w-10 h-10 bg-primary/10 flex items-center justify-center rounded-full text-primary font-bold">JD</div>
+<div>
+<h3 class="font-headline font-bold text-sm">Julian Doe</h3>
+<p class="text-[10px] text-on-surface-variant">Yesterday</p>
+</div>
+</div>
+<h2 class="font-headline text-lg font-bold mb-2">Color Theory in Code</h2>
+<p class="text-sm text-on-surface-variant leading-relaxed">
+                            Using HSL instead of Hex for theme systems. It's about relative lightness, not absolute values.
+                        </p>
+</div>
+<div class="md:col-span-2">
+<div class="w-full aspect-square md:aspect-auto md:h-full bg-gradient-to-br from-[#4F46E5] to-[#7e3000] rounded-2xl flex items-center justify-center p-4">
+<div class="text-white text-center">
+<p class="text-xs font-mono opacity-80">--primary-l: 45%</p>
+<div class="w-full h-2 bg-white/20 rounded-full my-2 overflow-hidden">
+<div class="w-3/4 h-full bg-white"></div>
+</div>
+<p class="text-[10px] font-bold">Relative Lightness Gradient</p>
+</div>
+</div>
+</div>
+</article>
+</div>
+</main>
+<!-- Right Side: Trending/Contextual -->
+<aside class="hidden lg:block w-72 p-6 h-full sticky top-16">
+<div class="bg-white rounded-3xl p-6 shadow-sm mb-6">
+<h4 class="font-headline font-bold mb-4 text-[#191c1e]">Trending Snippets</h4>
+<ul class="space-y-4">
+<li class="flex items-start gap-3">
+<span class="text-primary font-bold text-lg font-headline">01</span>
+<div>
+<p class="text-sm font-medium">Tailwind Container Queries</p>
+<p class="text-[10px] text-on-surface-variant">4.2k shares</p>
+</div>
+</li>
+<li class="flex items-start gap-3">
+<span class="text-primary font-bold text-lg font-headline">02</span>
+<div>
+<p class="text-sm font-medium">Framer Motion Layout IDs</p>
+<p class="text-[10px] text-on-surface-variant">3.1k shares</p>
+</div>
+</li>
+<li class="flex items-start gap-3">
+<span class="text-primary font-bold text-lg font-headline">03</span>
+<div>
+<p class="text-sm font-medium">Lucide Icon Optimization</p>
+<p class="text-[10px] text-on-surface-variant">2.8k shares</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="p-6 bg-primary-container rounded-3xl text-white relative overflow-hidden">
+<div class="relative z-10">
+<h4 class="font-headline font-bold mb-2">Join the Workshop</h4>
+<p class="text-xs opacity-90 mb-4">Learn advanced MDX patterns with Elena Vance this Friday.</p>
+<button class="w-full py-2 bg-white text-primary-container rounded-xl text-sm font-bold">Reserve Seat</button>
+</div>
+<div class="absolute -right-4 -bottom-4 opacity-20 transform rotate-12">
+<span class="material-symbols-outlined text-8xl" style="font-variation-settings: 'FILL' 1;">terminal</span>
+</div>
+</div>
+</aside>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 w-full bg-white/90 backdrop-blur-md rounded-t-3xl z-50 flex justify-around items-center h-20 px-4 pb-safe border-t border-[#c7c4d8]/15 shadow-[0_-12px_40px_rgba(25,28,30,0.04)]">
+<a class="flex flex-col items-center justify-center text-[#4F46E5] bg-[#4F46E5]/10 rounded-xl px-4 py-1 transition-opacity duration-150 scale-90" href="#">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide">Chats</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#464555] opacity-60 hover:opacity-100 transition-opacity duration-150 scale-90" href="#">
+<span class="material-symbols-outlined">call</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide">Calls</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#464555] opacity-60 hover:opacity-100 transition-opacity duration-150 scale-90" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide">People</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#464555] opacity-60 hover:opacity-100 transition-opacity duration-150 scale-90" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide">Settings</span>
+</a>
+</nav>
+</body></html>

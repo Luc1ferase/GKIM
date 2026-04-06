@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AIGC Workshop | Kinetic Blueprint</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#1f2b49",
+                    "outline": "#6d758c",
+                    "surface-container-low": "#091328",
+                    "on-secondary-fixed-variant": "#4e5c71",
+                    "on-secondary": "#455367",
+                    "surface": "#060e20",
+                    "primary-container": "#8e98ff",
+                    "on-background": "#dee5ff",
+                    "secondary": "#d5e3fd",
+                    "tertiary": "#ff9dd1",
+                    "primary": "#9fa7ff",
+                    "tertiary-dim": "#eb7bba",
+                    "surface-tint": "#9fa7ff",
+                    "on-primary-fixed-variant": "#000b98",
+                    "surface-container-lowest": "#000000",
+                    "error-container": "#a70138",
+                    "tertiary-fixed": "#fd8bca",
+                    "on-tertiary": "#6c0f4d",
+                    "surface-variant": "#192540",
+                    "surface-container-high": "#141f38",
+                    "primary-fixed-dim": "#7d88ff",
+                    "primary-dim": "#5764f1",
+                    "on-primary-fixed": "#000000",
+                    "error": "#ff6e84",
+                    "background": "#060e20",
+                    "outline-variant": "#40485d",
+                    "surface-dim": "#060e20",
+                    "on-tertiary-fixed-variant": "#6d104e",
+                    "tertiary-container": "#fa88c8",
+                    "primary-fixed": "#8e98ff",
+                    "on-error-container": "#ffb2b9",
+                    "on-tertiary-container": "#5e0042",
+                    "inverse-primary": "#404dda",
+                    "on-error": "#490013",
+                    "secondary-fixed-dim": "#c7d5ee",
+                    "on-tertiary-fixed": "#360024",
+                    "error-dim": "#d73357",
+                    "inverse-on-surface": "#4d556b",
+                    "on-surface": "#dee5ff",
+                    "on-primary-container": "#00087d",
+                    "tertiary-fixed-dim": "#ee7ebc",
+                    "on-surface-variant": "#a3aac4",
+                    "on-secondary-container": "#c3d1ea",
+                    "secondary-container": "#3a485c",
+                    "on-secondary-fixed": "#324054",
+                    "on-primary": "#000c9f",
+                    "surface-container-highest": "#192540",
+                    "inverse-surface": "#faf8ff",
+                    "surface-container": "#0f1930",
+                    "secondary-dim": "#c7d5ee",
+                    "secondary-fixed": "#d5e3fd"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Space Grotesk"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-headline { font-family: 'Space Grotesk', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface selection:bg-primary selection:text-on-primary">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-slate-950/60 backdrop-blur-xl flex justify-between items-center px-6 h-20 w-full">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="close-up portrait of a digital architect with neon blue lighting accents on skin and tech glasses" src="https://lh3.googleusercontent.com/aida-public/AB6AXuApnUVeT_n9pjaPdyEY8O1f2hH08U1Bg1WEt2hJQmhsz_ONONbXaQziVaN25REbaQKkFAZBjpGFabS4ze2Mmszjr2pInziJfnBUXMAuv51_BvrObq-r4wj9m2cnjFyTfrrCDyBbhI1gygm4Yak5i74klWbKyPHutLtLCUBlo14dsBRiBxq1OGk1hV1-nKPukh4PpP8Zf4sFHRriMtm2k9DOM5dRQbrKIstFBu1jUDoSuPATzo-IbZxGKIE_aww5MUCpH09jW69iYJl9"/>
+</div>
+<h1 class="font-['Space_Grotesk'] font-black uppercase tracking-widest text-[#9fa7ff]">Kinetic Blueprint</h1>
+</div>
+<div class="flex items-center gap-6">
+<button class="text-slate-400 hover:bg-[#192540] transition-colors duration-200 p-2 rounded-lg">
+<span class="material-symbols-outlined" data-icon="tune">tune</span>
+</button>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-7xl mx-auto">
+<!-- Search & Discovery Header -->
+<section class="mb-12">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-8">
+<div class="space-y-2">
+<div class="flex items-center gap-2 text-tertiary-fixed text-xs font-mono uppercase tracking-[0.2em]">
+<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+                        AIGC Workshop v1.0.4
+                    </div>
+<h2 class="text-5xl font-headline font-bold text-on-surface tracking-tighter">Community Prompt Hub</h2>
+</div>
+<div class="w-full md:w-96 relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline-variant" data-icon="search">search</span>
+<input class="w-full bg-surface-container-lowest border-none focus:ring-1 focus:ring-primary py-4 pl-12 pr-4 rounded-lg font-mono text-sm text-on-surface-variant placeholder:text-outline-variant" placeholder="Query templates..." type="text"/>
+</div>
+</div>
+</section>
+<!-- Category Filter -->
+<section class="mb-10 no-scrollbar overflow-x-auto">
+<div class="flex gap-3 min-w-max">
+<button class="px-6 py-2 rounded-full bg-primary text-on-primary-fixed font-bold text-sm tracking-tight transition-transform active:scale-95">All Prompts</button>
+<button class="px-6 py-2 rounded-full bg-secondary-container text-on-secondary-container hover:bg-surface-container-highest text-sm transition-all">Cyberpunk</button>
+<button class="px-6 py-2 rounded-full bg-secondary-container text-on-secondary-container hover:bg-surface-container-highest text-sm transition-all">Realistic</button>
+<button class="px-6 py-2 rounded-full bg-secondary-container text-on-secondary-container hover:bg-surface-container-highest text-sm transition-all">Abstract</button>
+<button class="px-6 py-2 rounded-full bg-secondary-container text-on-secondary-container hover:bg-surface-container-highest text-sm transition-all">Code Art</button>
+</div>
+</section>
+<!-- Bento Grid Layout -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Featured Card 1 (Large) -->
+<div class="lg:col-span-2 lg:row-span-2 group relative overflow-hidden rounded-xl bg-surface-container-low transition-all">
+<div class="absolute inset-0 z-10 bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest/20 to-transparent"></div>
+<img class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="vibrant neon cyberpunk cityscape with rainy streets and glowing holographic advertisements in deep purple and cyan" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD43419D7CCYfcb-ko7t24Xdx3i1Is1jnSkYZGX04MwZC87HRhDEROhs7LF8gG2Bxfis57usW4xup2B2tV5wr1HlYorv_W9uqFggTeBvrh-NoPvCi_n9Ww73_TQWPRG2ygrn2tcraPc6CdNy7WH9R0S421vGj9k8c4NabggNy5AQI2anqA6I4KcFMWWbQCazG7uu8S56Ww9jedke5uB16Sqpne4mCS6V66XbMkX17ywN4VLhY-u4sljIttwJqmI_pnL2L0u6AZ_Y5sR"/>
+<div class="relative z-20 h-full p-8 flex flex-col justify-end">
+<div class="flex gap-2 mb-4">
+<span class="px-3 py-1 bg-primary/20 backdrop-blur-md text-primary text-[10px] font-mono uppercase tracking-widest rounded">Cyberpunk</span>
+<span class="px-3 py-1 bg-surface-dim/40 backdrop-blur-md text-on-surface-variant text-[10px] font-mono uppercase tracking-widest rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="visibility">visibility</span> 12.4k
+                        </span>
+</div>
+<h3 class="text-3xl font-headline font-bold text-on-surface mb-2 leading-tight">Neon Enigma Hyper-Structure</h3>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<img class="w-8 h-8 rounded-full border border-outline-variant" data-alt="stylized illustrated avatar of a digital artist" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZV3yeco2cmIco6aLwW065DoCzbc4lEt28epymYHhxQGJMG64u5GvO2Z3vkyAiYKlLNcLg8fyWsr211JjdDs3-o6TmZZDlIhWM9nqjBf0mD7sgvw-FPL5phCDryeDPuTKn-6chR7fCsSx80TsxrBJ3OzERWtS0hwRz4zrEN6Jxo14HN325-7O0ADQ8Gre9PQ2q3zZcP1a0s-e7sV0ruHoblRnYfkdshJAm3obY1hUeyUtBnmGiA8a8CFLYCwkkcTim9LRI7Ph3hYsR"/>
+<span class="text-sm font-medium text-on-surface-variant">By @KuroSynth</span>
+</div>
+<button class="p-3 rounded-full bg-primary-container text-on-primary-container hover:scale-110 transition-transform">
+<span class="material-symbols-outlined" data-icon="copy_all">copy_all</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-high rounded-xl p-6 flex flex-col group hover:bg-surface-container-highest transition-colors">
+<div class="aspect-square rounded-lg overflow-hidden mb-5">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="hyper-realistic macro photography of a human iris with intricate colorful patterns and liquid textures" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCNWkF716qZUL4QUAFxS47e3gi2O0uXggmMjjWmqp-UfgW1yYTq7ux-Xx8MwhB1qyodxJ3RbJ2baKmUatpMdBfCwMjK74B1i8uRBpphBGMrXOHa242zV_NJpGiyPwYTZbLedrKGahuRlqW_XpsWJHGMzTeI5BA_1e96o7YZpjxV-eGXGxicc-3W87C366iKSxxETYXf92W0SD3DmnthD5Ykb_6VWqeOEvnCk2NGC0b-i8_x2r3wRafQ_wMyR0iRs21tbndQqPKuEPpD"/>
+</div>
+<div class="flex-1">
+<span class="text-[10px] font-mono text-tertiary mb-2 block">REALISTIC</span>
+<h4 class="text-lg font-headline font-semibold text-on-surface mb-4">Organic Macro Lenses v4</h4>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-xs text-outline font-mono">By @LensMaster</span>
+<span class="text-xs text-outline font-mono">3.2k uses</span>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-high rounded-xl p-6 flex flex-col group hover:bg-surface-container-highest transition-colors">
+<div class="aspect-square rounded-lg overflow-hidden mb-5">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="abstract procedural 3D art featuring liquid gold shapes flowing through dark obsidian space" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8R2p985ycnkQHrRaBPmpGwB7emqSPg0nztZiIN3dohgTcEypUc2ZUR9FLQq9XE4SqbD8kZhxK5GCri-Wv5laUdG8M3qKMwPHMoW0K0d4afABcxwiksj4F-cvtDKGBT_s_FQ0c490cwBiQEPMZltE0YVxd2bpmvDFFTVvELaRpJy5WXS0JBFT3GjLqDDogUxu7P0LvtEKWNk1Zasa5TezGcLWuSubUohlH4lrltC4Sp_1zCLqTTAtEYfwdfk_rYkEsBeeYlQfDFPqN"/>
+</div>
+<div class="flex-1">
+<span class="text-[10px] font-mono text-[#ff9dd1] mb-2 block">ABSTRACT</span>
+<h4 class="text-lg font-headline font-semibold text-on-surface mb-4">Fluid Obsidian Dynamics</h4>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-xs text-outline font-mono">By @VoidPainter</span>
+<span class="text-xs text-outline font-mono">1.8k uses</span>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-high rounded-xl p-6 flex flex-col group hover:bg-surface-container-highest transition-colors">
+<div class="aspect-square rounded-lg overflow-hidden mb-5">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="intricate computer circuit board patterns glowing with emerald green light in a dark tech environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrqSIhUUBypjFIH1juUFlg3yXE-z_uSoY-0YQ065GetR8ZuI4XBliAjI-sMuc3xzq2zMFeipgrtHH_sEodSa2N0hCbC7QOEX67HUXCtFfvyGxQO-PpEz3iEddLjxqc_1IG6-QZLMHKHiVSVyNOctQRIJqGNiyLJbE0Beq1xpaA_GVGY0zlJpHJVGTslNcrEWsTAuSW68XNP3sY2d2fjbr37TPvKBFuysYBzT3AKwrmRxVMnlzUbXN3LJUH_worGjls_1mNdnBjlqSG"/>
+</div>
+<div class="flex-1">
+<span class="text-[10px] font-mono text-primary mb-2 block">CODE ART</span>
+<h4 class="text-lg font-headline font-semibold text-on-surface mb-4">Neural Architecture Viz</h4>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-xs text-outline font-mono">By @Architect_01</span>
+<span class="text-xs text-outline font-mono">8.9k uses</span>
+</div>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="bg-surface-container-high rounded-xl p-6 flex flex-col group hover:bg-surface-container-highest transition-colors">
+<div class="aspect-square rounded-lg overflow-hidden mb-5">
+<img class="w-full h-full object-cover transition-transform group-hover:scale-105" data-alt="abstract explosion of colorful paint pigments suspended in zero gravity with dramatic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXaJ6nF05yJZ0309dTpwv1AQDVLoijQnejmviFaziOnb_THFRNewXpZp_Z1bFdmWhhmJrtUwuro0oRogWKjxchVZvMwTrHqRpe7IUFwj_NiE-WOKC1jFbx0EWbpvMeXGLnHJWAk7xybcRBSE7I2ZemrCLCbFjTSiHJgfBJAv37deK2HqxvO7OC9zRq7gbn-gVWMCBXJx-4rKWUt2BtRs_-UB9ZHL08pmNw1Gr0Ynhr0PFSLIZawx60O5uygE4n0zHcTsjutR0PHZdK"/>
+</div>
+<div class="flex-1">
+<span class="text-[10px] font-mono text-[#ff9dd1] mb-2 block">ABSTRACT</span>
+<h4 class="text-lg font-headline font-semibold text-on-surface mb-4">Chromatic Singularity</h4>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-xs text-outline font-mono">By @FluxGen</span>
+<span class="text-xs text-outline font-mono">2.1k uses</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Upload FAB -->
+<button class="fixed bottom-28 right-8 z-40 bg-gradient-to-br from-primary to-primary-dim text-on-primary-fixed p-4 rounded-xl shadow-[0px_20px_40px_rgba(159,167,255,0.2)] flex items-center gap-3 transition-transform hover:scale-105 active:scale-95 group">
+<span class="material-symbols-outlined" data-icon="upload">upload</span>
+<span class="font-bold text-sm uppercase tracking-tight">Upload Your Prompt</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-[#091328]/80 backdrop-blur-2xl h-20 flex justify-around items-center px-4 pb-safe border-t border-[#40485d]/15 shadow-[0px_-20px_40px_rgba(159,167,255,0.06)]">
+<a class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter mt-1">Messages</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter mt-1">Contacts</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined" data-icon="explore">explore</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter mt-1">Discovery</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#9fa7ff] font-bold scale-110 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined" data-icon="psychology" style="font-variation-settings: 'FILL' 1;">psychology</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter mt-1">Workshop</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter mt-1">Settings</span>
+</a>
+</nav>
+<!-- Side Navigation Drawer (Hidden on mobile, showing logic) -->
+<aside class="hidden lg:flex fixed left-0 top-0 h-full w-20 bg-[#060e20] border-r border-outline-variant/10 flex-col items-center py-8 z-40">
+<div class="mb-12 font-['Space_Grotesk'] text-[#9fa7ff] font-black text-xl">K</div>
+<div class="flex flex-col gap-8">
+<span class="material-symbols-outlined text-slate-400 hover:text-primary cursor-pointer" data-icon="person">person</span>
+<span class="material-symbols-outlined text-primary" data-icon="model_training" style="font-variation-settings: 'FILL' 1;">model_training</span>
+<span class="material-symbols-outlined text-slate-400 hover:text-primary cursor-pointer" data-icon="verified_user">verified_user</span>
+</div>
+</aside>
+</body></html>

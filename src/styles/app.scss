@@ -1,0 +1,53 @@
+@import url(''https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap'');
+@import '@/uni.scss';
+
+page {
+  background: $color-surface;
+  color: $color-on-surface;
+  font-family: $font-body;
+}
+
+view,
+text,
+button,
+input,
+textarea,
+picker {
+  box-sizing: border-box;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  line-height: 1;
+}
+
+button::after {
+  border: 0;
+}
+
+.safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 32rpx);
+}
+
+.page-shell {
+  min-height: 100vh;
+  padding: 32rpx;
+}
+
+.glass-card {
+  background: rgba(9, 19, 40, 0.66);
+  backdrop-filter: blur(24rpx);
+}
+
+.section-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.body-muted {
+  color: $color-on-surface-variant;
+}

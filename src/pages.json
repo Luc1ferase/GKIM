@@ -1,0 +1,77 @@
+{
+  "pages": [
+    {
+      "path": "pages/messages/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#091328"
+      }
+    },
+    {
+      "path": "pages/contacts/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#091328"
+      }
+    },
+    {
+      "path": "pages/space/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#091328"
+      }
+    },
+    {
+      "path": "pages/chat/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#091328"
+      }
+    },
+    {
+      "path": "pages/workshop/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#091328"
+      }
+    },
+    {
+      "path": "pages/settings/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#091328"
+      }
+    }
+  ],
+  "globalStyle": {
+    "backgroundColor": "#091328",
+    "navigationBarTextStyle": "white",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#8C93AF",
+    "selectedColor": "#C3C0FF",
+    "backgroundColor": "#091328",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/messages/index",
+        "text": "Messages",
+        "iconPath": "static/tabbar/messages.svg",
+        "selectedIconPath": "static/tabbar/messages-active.svg"
+      },
+      {
+        "pagePath": "pages/contacts/index",
+        "text": "Contacts",
+        "iconPath": "static/tabbar/contacts.svg",
+        "selectedIconPath": "static/tabbar/contacts-active.svg"
+      },
+      {
+        "pagePath": "pages/space/index",
+        "text": "Space",
+        "iconPath": "static/tabbar/space.svg",
+        "selectedIconPath": "static/tabbar/space-active.svg"
+      }
+    ]
+  }
+}

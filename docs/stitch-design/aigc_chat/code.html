@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kinetic Blueprint | AIGC Interface</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#1f2b49",
+                        "outline": "#6d758c",
+                        "surface-container-low": "#091328",
+                        "on-secondary-fixed-variant": "#4e5c71",
+                        "on-secondary": "#455367",
+                        "surface": "#060e20",
+                        "primary-container": "#8e98ff",
+                        "on-background": "#dee5ff",
+                        "secondary": "#d5e3fd",
+                        "tertiary": "#ff9dd1",
+                        "primary": "#9fa7ff",
+                        "tertiary-dim": "#eb7bba",
+                        "surface-tint": "#9fa7ff",
+                        "on-primary-fixed-variant": "#000b98",
+                        "surface-container-lowest": "#000000",
+                        "error-container": "#a70138",
+                        "tertiary-fixed": "#fd8bca",
+                        "on-tertiary": "#6c0f4d",
+                        "surface-variant": "#192540",
+                        "surface-container-high": "#141f38",
+                        "primary-fixed-dim": "#7d88ff",
+                        "primary-dim": "#5764f1",
+                        "on-primary-fixed": "#000000",
+                        "error": "#ff6e84",
+                        "background": "#060e20",
+                        "outline-variant": "#40485d",
+                        "surface-dim": "#060e20",
+                        "on-tertiary-fixed-variant": "#6d104e",
+                        "tertiary-container": "#fa88c8",
+                        "primary-fixed": "#8e98ff",
+                        "on-error-container": "#ffb2b9",
+                        "on-tertiary-container": "#5e0042",
+                        "inverse-primary": "#404dda",
+                        "on-error": "#490013",
+                        "secondary-fixed-dim": "#c7d5ee",
+                        "on-tertiary-fixed": "#360024",
+                        "error-dim": "#d73357",
+                        "inverse-on-surface": "#4d556b",
+                        "on-surface": "#dee5ff",
+                        "on-primary-container": "#00087d",
+                        "tertiary-fixed-dim": "#ee7ebc",
+                        "on-surface-variant": "#a3aac4",
+                        "on-secondary-container": "#c3d1ea",
+                        "secondary-container": "#3a485c",
+                        "on-secondary-fixed": "#324054",
+                        "on-primary": "#000c9f",
+                        "surface-container-highest": "#192540",
+                        "inverse-surface": "#faf8ff",
+                        "surface-container": "#0f1930",
+                        "secondary-dim": "#c7d5ee",
+                        "secondary-fixed": "#d5e3fd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: #060e20; }
+        .glass-panel {
+            background: rgba(25, 37, 64, 0.6);
+            backdrop-filter: blur(24px);
+        }
+        .text-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface selection:bg-primary/30">
+<!-- TopAppBar -->
+<header class="bg-slate-950/60 backdrop-blur-xl fixed top-0 w-full z-50 flex justify-between items-center px-6 h-20 w-full">
+<div class="flex items-center gap-4">
+<img alt="User Profile" class="w-10 h-10 rounded-full border border-outline-variant/30" data-alt="Close-up studio portrait of a futuristic digital architect with subtle bioluminescent facial markings and sharp lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBSrnrxN6ixme9nR2vEjvzp4WxMsW8la08H6h0_OQxpg-jv9SkRVjzuluxXml2yioK8WT8CwLTXh5Fs29spRfghIFL-_spPPGbtW_1XzNh27odbKtHrlWZgpematPipakiwmbV4QPsJJgGObSFtFWyuxsj5qIMWfg0K48Ywr78VQ5v-lPqIPg8Vtp_hvvx7MYMww0pcwOhUVfKwoOhf6mwEzxfcVKMmh5hrq5RsB6tnetnwFtditDjJiD9DTd9Q-d2jhMC9V4Ob0mi"/>
+<h1 class="font-['Space_Grotesk'] font-bold tracking-tight text-2xl text-[#9fa7ff]">Kinetic Blueprint</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="bg-surface-dim px-3 py-1 rounded text-mono text-[10px] text-tertiary-container border border-outline-variant/15">
+                E2E ENCRYPTED
+            </div>
+<button class="material-symbols-outlined text-slate-400 hover:bg-[#192540] p-2 rounded transition-colors duration-200">tune</button>
+</div>
+</header>
+<main class="pt-24 pb-44 px-4 md:px-0 max-w-4xl mx-auto flex flex-col gap-8">
+<!-- Chat History -->
+<div class="flex flex-col gap-6">
+<!-- System/Time Marker -->
+<div class="flex justify-center">
+<span class="text-mono text-[10px] uppercase tracking-widest text-outline">Session Initialized: 04.22.2024 // 14:00:22</span>
+</div>
+<!-- Incoming Message -->
+<div class="flex flex-col gap-2 items-start max-w-[85%]">
+<div class="bg-surface-container-high text-on-surface px-5 py-4 rounded-xl rounded-tl-none shadow-sm leading-relaxed">
+                    Greetings, Architect. I have completed the conceptual rendering for the Neo-Tokyo orbital terminal. Shall we refine the atmospheric scattering parameters?
+                </div>
+<span class="text-mono text-[10px] text-outline px-1">02:14 PM</span>
+</div>
+<!-- Outgoing Message -->
+<div class="flex flex-col gap-2 items-end ml-auto max-w-[85%]">
+<div class="bg-primary-container text-on-primary-container px-5 py-4 rounded-xl rounded-tr-none font-medium leading-relaxed">
+                    Yes, proceed. I'm looking for a more "Electric Indigo" hue in the skyline. Use the 1.5pt stroke style for the architectural wireframes in the background.
+                </div>
+<div class="flex items-center gap-1 px-1">
+<span class="material-symbols-outlined text-[12px] text-primary" style="font-variation-settings: 'FILL' 1;">done_all</span>
+<span class="text-mono text-[10px] text-outline">02:16 PM</span>
+</div>
+</div>
+<!-- AI Generated Result -->
+<div class="flex flex-col gap-4 items-start max-w-[90%]">
+<div class="bg-surface-container-high p-2 rounded-xl border border-outline-variant/15 overflow-hidden">
+<div class="relative group">
+<img alt="AI Generated Landscape" class="w-full aspect-video object-cover rounded-lg" data-alt="Futuristic cybernetic city skyline with neon indigo lights, massive orbital structures, and atmospheric haze in a digital painting style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_ONLwDjZuKWbslasgkgpZPHXGzHshHyCpc9JzbNo6Jp3a1TZQfWudSnAYJfGKzqvVeZVCzV5ZGVclBLMJqykw_IIS05SeXw4ndE0Ig0FYDzNnBFJCD_J0MOSBG_FUG5QBnbkmj5-HZHO8U7zgJkebL6nLiYzDfgBXbqrtvKInvEh6ZkogCfd5zXkC7nGSZAaNxS6ZM8CmN81_P85HtF8RncX4HWR89_05qPrFbDI8qtdeceWcooKR6nd3XdXcNHEH6MZ4HYppEqbx"/>
+<div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+<button class="bg-surface-bright/90 backdrop-blur-md p-3 rounded-full text-primary hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">zoom_in</span>
+</button>
+</div>
+</div>
+<div class="p-3 flex items-center justify-between">
+<div class="flex flex-col">
+<span class="text-mono text-[11px] text-tertiary-container uppercase font-bold">Generation ID: XJ-992-B</span>
+<span class="text-xs text-outline italic">Refined with Kinetic Blueprint v1.0.4</span>
+</div>
+<div class="flex gap-2">
+<button class="flex items-center gap-2 bg-surface-variant hover:bg-surface-bright px-4 py-2 rounded-lg text-primary text-xs font-bold transition-all">
+<span class="material-symbols-outlined text-sm">refresh</span>
+                                REGENERATE
+                            </button>
+<button class="flex items-center gap-2 bg-primary-container text-on-primary-container hover:brightness-110 px-4 py-2 rounded-lg text-xs font-bold transition-all">
+<span class="material-symbols-outlined text-sm">edit_note</span>
+                                REFINE
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Message with Chip -->
+<div class="flex flex-col gap-2 items-start max-w-[85%]">
+<div class="bg-surface-container-high text-on-surface px-5 py-4 rounded-xl rounded-tl-none leading-relaxed">
+                    Generating variants... also, I've categorized the latest asset packs for your review.
+                </div>
+<div class="flex gap-2 mt-1">
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Metropolis</span>
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Indigo_v2</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Toolbar Area -->
+<div class="fixed bottom-0 left-0 w-full z-40">
+<!-- AIGC Sleek Overlay (Triggered State Illustration) -->
+<div class="max-w-4xl mx-auto px-4 mb-4">
+<div class="glass-panel border border-outline-variant/20 rounded-2xl p-4 grid grid-cols-3 gap-4 shadow-2xl">
+<button class="flex flex-col items-center justify-center gap-3 p-4 rounded-xl hover:bg-white/5 transition-colors group">
+<div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl">convert_to_text</span>
+</div>
+<span class="text-mono text-[10px] font-bold uppercase tracking-tighter text-on-surface">Text-to-Image</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-3 p-4 rounded-xl hover:bg-white/5 transition-colors group">
+<div class="w-12 h-12 rounded-xl bg-tertiary/10 flex items-center justify-center text-tertiary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl">image_search</span>
+</div>
+<span class="text-mono text-[10px] font-bold uppercase tracking-tighter text-on-surface">Image-to-Image</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-3 p-4 rounded-xl hover:bg-white/5 transition-colors group">
+<div class="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl">movie_edit</span>
+</div>
+<span class="text-mono text-[10px] font-bold uppercase tracking-tighter text-on-surface">Video-to-Video</span>
+</button>
+</div>
+</div>
+<!-- Input Bar Shell -->
+<div class="bg-[#091328]/80 backdrop-blur-2xl border-t border-[#40485d]/15 pb-safe px-6 py-4 flex items-center gap-4">
+<button class="w-12 h-12 flex items-center justify-center rounded-xl bg-[#192540] text-primary hover:bg-[#1f2b49] transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+</button>
+<div class="flex-1 relative">
+<input class="w-full bg-surface-container-lowest border-none focus:ring-1 focus:ring-primary rounded-xl px-6 py-3.5 text-on-surface placeholder-outline/50 font-body text-sm" placeholder="Command the Blueprint..." type="text"/>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors">photo_library</button>
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors">mic</button>
+</div>
+</div>
+<button class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dim text-on-primary-fixed hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</div>
+<!-- BottomNavBar (Hidden on desktop as per Shell visibility rules, active logic applied) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe bg-[#091328]/80 backdrop-blur-2xl border-t border-[#40485d]/15 h-20 md:hidden">
+<button class="flex flex-col items-center justify-center text-[#9fa7ff] font-bold scale-110">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Messages</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-500 opacity-60">
+<span class="material-symbols-outlined">group</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Contacts</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-500 opacity-60">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Discovery</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-500 opacity-60">
+<span class="material-symbols-outlined">psychology</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Workshop</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-500 opacity-60">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter">Settings</span>
+</button>
+</nav>
+<!-- Side Navigation for Web View (Drawer) -->
+<aside class="hidden md:flex fixed left-0 top-0 h-full w-20 flex-col py-8 items-center gap-10 bg-[#060e20] border-r border-outline-variant/10 z-50">
+<div class="text-[#9fa7ff] font-['Space_Grotesk'] font-black uppercase text-xl">KB</div>
+<div class="flex flex-col gap-8">
+<button class="material-symbols-outlined text-[#9fa7ff]" style="font-variation-settings: 'FILL' 1;">chat_bubble</button>
+<button class="material-symbols-outlined text-slate-500 hover:text-primary transition-colors">group</button>
+<button class="material-symbols-outlined text-slate-500 hover:text-primary transition-colors">explore</button>
+<button class="material-symbols-outlined text-slate-500 hover:text-primary transition-colors">psychology</button>
+</div>
+<div class="mt-auto">
+<button class="material-symbols-outlined text-slate-500 hover:text-primary transition-colors">settings</button>
+</div>
+</aside>
+</body></html>

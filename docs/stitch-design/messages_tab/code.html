@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kinetic Blueprint - Messages</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space+Grotesk:wght@300;400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#1f2b49",
+                        "outline": "#6d758c",
+                        "surface-container-low": "#091328",
+                        "on-secondary-fixed-variant": "#4e5c71",
+                        "on-secondary": "#455367",
+                        "surface": "#060e20",
+                        "primary-container": "#8e98ff",
+                        "on-background": "#dee5ff",
+                        "secondary": "#d5e3fd",
+                        "tertiary": "#ff9dd1",
+                        "primary": "#9fa7ff",
+                        "tertiary-dim": "#eb7bba",
+                        "surface-tint": "#9fa7ff",
+                        "on-primary-fixed-variant": "#000b98",
+                        "surface-container-lowest": "#000000",
+                        "error-container": "#a70138",
+                        "tertiary-fixed": "#fd8bca",
+                        "on-tertiary": "#6c0f4d",
+                        "surface-variant": "#192540",
+                        "surface-container-high": "#141f38",
+                        "primary-fixed-dim": "#7d88ff",
+                        "primary-dim": "#5764f1",
+                        "on-primary-fixed": "#000000",
+                        "error": "#ff6e84",
+                        "background": "#060e20",
+                        "outline-variant": "#40485d",
+                        "surface-dim": "#060e20",
+                        "on-tertiary-fixed-variant": "#6d104e",
+                        "tertiary-container": "#fa88c8",
+                        "primary-fixed": "#8e98ff",
+                        "on-error-container": "#ffb2b9",
+                        "on-tertiary-container": "#5e0042",
+                        "inverse-primary": "#404dda",
+                        "on-error": "#490013",
+                        "secondary-fixed-dim": "#c7d5ee",
+                        "on-tertiary-fixed": "#360024",
+                        "error-dim": "#d73357",
+                        "inverse-on-surface": "#4d556b",
+                        "on-surface": "#dee5ff",
+                        "on-primary-container": "#00087d",
+                        "tertiary-fixed-dim": "#ee7ebc",
+                        "on-surface-variant": "#a3aac4",
+                        "on-secondary-container": "#c3d1ea",
+                        "secondary-container": "#3a485c",
+                        "on-secondary-fixed": "#324054",
+                        "on-primary": "#000c9f",
+                        "surface-container-highest": "#192540",
+                        "inverse-surface": "#faf8ff",
+                        "surface-container": "#0f1930",
+                        "secondary-dim": "#c7d5ee",
+                        "secondary-fixed": "#d5e3fd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-panel {
+            background: rgba(25, 37, 64, 0.6);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body selection:bg-primary-container/30">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-slate-950/60 backdrop-blur-xl flex justify-between items-center px-6 h-20 w-full">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-outline-variant/20">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="high-contrast studio portrait of a modern digital architect with cool lighting and minimalist tech attire" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCj9fk6QOgtpyUed0lISrqvhrj-4ypCv10nTGTnqwTvpFFb5Z5XHHpmQii_Jqwqp6LtD8D45qfBFDOgyISYramZGJxxPKDkyu4kMGbQ3cQP3XR2XizQRiMIikTVpSXFhQEJeAW8qW7HVqOtR7DI-txwcX1KLIuxT_4aXJQ9VjKLWTiqnVwpQ2-PPes7jjpmf5ZsSYCXc2SKwz0lbjL9i32dYt9oHMCq48bKEAT9fT643x6pCg2GH0F2sU0-aFGfIaQhYdkpdAhg4a7I"/>
+</div>
+<h1 class="font-['Space_Grotesk'] font-bold tracking-tight text-2xl text-[#9fa7ff]">Kinetic Blueprint</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[#192540] transition-colors duration-200 press:scale-95 transition-transform text-slate-400">
+<span class="material-symbols-outlined">tune</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg bg-primary-container text-on-primary-container hover:brightness-110 transition-all active:scale-95">
+<span class="material-symbols-outlined">edit_square</span>
+</button>
+</div>
+</header>
+<main class="pt-24 pb-32 px-4 max-w-2xl mx-auto">
+<!-- Search & Filter Area -->
+<section class="mb-8">
+<div class="relative group">
+<div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-outline">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="w-full bg-surface-container-lowest border border-outline-variant/15 rounded-xl py-4 pl-12 pr-4 text-sm font-mono focus:ring-1 focus:ring-primary focus:border-primary transition-all duration-200 outline-none placeholder:text-outline/50" placeholder="Filter transmissions..." type="text"/>
+</div>
+<div class="flex gap-2 mt-4 overflow-x-auto no-scrollbar pb-2">
+<span class="px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container text-xs font-bold whitespace-nowrap">All Broadcasts</span>
+<span class="px-4 py-1.5 rounded-full bg-secondary-container text-on-secondary-container text-xs font-medium whitespace-nowrap hover:bg-surface-container-highest transition-colors cursor-pointer">Unread</span>
+<span class="px-4 py-1.5 rounded-full bg-secondary-container text-on-secondary-container text-xs font-medium whitespace-nowrap hover:bg-surface-container-highest transition-colors cursor-pointer">Architects</span>
+<span class="px-4 py-1.5 rounded-full bg-secondary-container text-on-secondary-container text-xs font-medium whitespace-nowrap hover:bg-surface-container-highest transition-colors cursor-pointer">Encrypted</span>
+</div>
+</section>
+<!-- Encryption Status Badge -->
+<div class="mb-6 flex justify-center">
+<div class="bg-surface-dim border border-outline-variant/15 px-3 py-1 rounded-md flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-tertiary-container" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<span class="font-mono text-[10px] text-tertiary-container tracking-widest uppercase">E2E Quantum-Safe Layer Active</span>
+</div>
+</div>
+<!-- Message List -->
+<div class="space-y-3">
+<!-- Chat Item: Unread -->
+<div class="group relative bg-surface-container-high rounded-2xl p-4 transition-all duration-200 hover:bg-surface-container-highest cursor-pointer border-l-4 border-primary">
+<div class="flex items-center gap-4">
+<div class="relative flex-shrink-0">
+<div class="w-14 h-14 rounded-full overflow-hidden border-2 border-primary/20">
+<img alt="Leo Vance" class="w-full h-full object-cover" data-alt="portrait of a man with tech glasses in a dark environment with blue neon highlights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXRn6_gBKgB9CF9jMD6cf1v09jqLN8hlWIyJkCSR1aVpLqYI7CeBTHTfJXwUOafSXmnx3uXlATx_75yPqqkQueD1mVKCfSAAGrvc5z5aoXbkK0wjinW60gq0t0VVZZms8Ez8RlWZb1HBtjFbcNGXIS514DMLksDTf0U3kG0VhMN84uQwLgAYObMDLyHSQT2953F22s8aChn8wNntmT1XbXaLmHWmzCN9X5KxNAwrkkiUGxOe1I3pK7OOPKs7FYUiNL2rcQtsitqtYO"/>
+</div>
+<div class="absolute bottom-0 right-0 w-4 h-4 bg-primary border-4 border-surface-container-high rounded-full"></div>
+</div>
+<div class="flex-grow min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<h3 class="font-headline font-bold text-on-surface truncate">Leo Vance</h3>
+<span class="font-mono text-[10px] text-primary">09:42 UTC</span>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-on-surface font-medium text-sm truncate pr-4">The architectural schematics are ready for review. Proceed with caution.</p>
+<div class="flex-shrink-0 w-5 h-5 bg-primary text-on-primary-fixed rounded-full flex items-center justify-center text-[10px] font-black shadow-[0_0_12px_rgba(159,167,255,0.4)]">2</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Chat Item: Read -->
+<div class="group relative bg-surface-container-low rounded-2xl p-4 transition-all duration-200 hover:bg-surface-container-high cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="relative flex-shrink-0">
+<div class="w-14 h-14 rounded-full overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-300">
+<img alt="Sloane Reed" class="w-full h-full object-cover" data-alt="portrait of a professional woman with a minimalist aesthetic against a deep indigo background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA34b-Ur3PGhN8KOP4GjvgftHv5k3aC1nOzhqY_ogu_wk7gpGRLmI-vt1Gv6pn2zKJa6Il3VO2nsFyvqCTCl-MgtBExAVfaCQigB5eLFdS30-f4nDgg9tBfvbEltrimR2sIfZQkRaqWU3g04TYwJF0q1EEtSjnAljJX2j9nmbK-30G_-ZezUIxZ2jP4ExScQLeIcQ9ZYIVEl0QLWKWxpnOqKyx2xEqryh42pIbgnhMLnaoQD1d3Me3-Hd2sce_L-OqckvMS-4dv8j5j"/>
+</div>
+</div>
+<div class="flex-grow min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<h3 class="font-headline font-medium text-on-surface-variant group-hover:text-on-surface truncate">Sloane Reed</h3>
+<span class="font-mono text-[10px] text-outline">Yesterday</span>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-on-surface-variant text-sm truncate pr-4">Protocol updated to v1.0.4. Please resync your security vault.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Chat Item: Read -->
+<div class="group relative bg-surface-container-low rounded-2xl p-4 transition-all duration-200 hover:bg-surface-container-high cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="relative flex-shrink-0">
+<div class="w-14 h-14 rounded-full overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-300">
+<img alt="Marcus Chen" class="w-full h-full object-cover" data-alt="close up of a tech-savvy man in a dark hoodie with subtle violet lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8fEK0a3btoSFkuhNyUP3Qs5OmvwnGAc6MX00QDJlevz-tfbIVGFKwCdaO9NQY-CQPrpeNXWu8FpwfbmkCdsILP_8SZ-8sBcGUcfJudsfq-ZG5VRNOz4ew-uCDHMkU86GSYa0NI9TuV2ArnRIGttkRWbDYRLYU74C9jSBmY_-s7cIjhIpBA6hJEOGaRVrF3Cct_Bo8IUgicXjwy8fWHAL_fvz34lKHYcIYXgbLNCH4-qknGjO11CunZf1Arzpcmys9wj44oewLnvHz"/>
+</div>
+</div>
+<div class="flex-grow min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<h3 class="font-headline font-medium text-on-surface-variant group-hover:text-on-surface truncate">Marcus Chen</h3>
+<span class="font-mono text-[10px] text-outline">OCT 24</span>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-on-surface-variant text-sm truncate pr-4">Sent an encrypted image of the server node cluster.</p>
+<span class="material-symbols-outlined text-[16px] text-outline">image</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Chat Item: Unread -->
+<div class="group relative bg-surface-container-high rounded-2xl p-4 transition-all duration-200 hover:bg-surface-container-highest cursor-pointer border-l-4 border-primary">
+<div class="flex items-center gap-4">
+<div class="relative flex-shrink-0">
+<div class="w-14 h-14 rounded-full overflow-hidden border-2 border-primary/20">
+<img alt="Aria Thorne" class="w-full h-full object-cover" data-alt="editorial portrait of a woman with neon-rimmed glasses in a cyber-chic setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgF-OOIETM7L7awYSwG7HOYmWPlOoZFU8wbs-9dEHXHVv0xgw7BHgitdeKk4eLLcmFNkusjp4fs6ZrdooSga5NHbSUqfzdbEDQRz7XWlvD8978IGzpLPENIs6NT9AmwDNwwXsPrRMBRh5a8pEp_DIAsbrjbC__Kk9iWhvnZ8m3yo2Ol8GEFFTXPfMYrcVsn-QgK_skIwZmhI7iijFgoxAD-EAFZk3DswpHTU2LXcf70f0MMECH659bZV9_oJRMnTRYt5betnieq387"/>
+</div>
+</div>
+<div class="flex-grow min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<h3 class="font-headline font-bold text-on-surface truncate">Aria Thorne</h3>
+<span class="font-mono text-[10px] text-primary">OCT 22</span>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-on-surface font-medium text-sm truncate pr-4">The bridge connection is unstable. Switch to backup frequency.</p>
+<div class="flex-shrink-0 w-5 h-5 bg-primary text-on-primary-fixed rounded-full flex items-center justify-center text-[10px] font-black shadow-[0_0_12px_rgba(159,167,255,0.4)]">1</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Chat Item: Read -->
+<div class="group relative bg-surface-container-low rounded-2xl p-4 transition-all duration-200 hover:bg-surface-container-high cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="relative flex-shrink-0">
+<div class="w-14 h-14 rounded-full overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-300">
+<img alt="Devon Lane" class="w-full h-full object-cover" data-alt="portrait of a focused developer in a dim workspace with code reflection on face" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCK64Sh1UMc-9F4PFeJGBLeRJVI0JsE529WleIfCwv-XIg50snbv-DHCICGZMGIbT1dJ5uzbYMOfmhokZw1sey4OBI0x-3fen8Tlifkm-HLYzNt-oK3Q4cFflx6imeMNYuECM90yY01oqnaTP13y2ddClmLUh7P4Xkbwa9rguXy0wncihUKbRurzZtih87QHMJLmeXmLKagCcRr9756VXA6UcHefIsC0OEN-ObU5CwBqPCltYhOZQqJL2RtgyTxlHHnLm-LqZiqEwr4"/>
+</div>
+</div>
+<div class="flex-grow min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<h3 class="font-headline font-medium text-on-surface-variant group-hover:text-on-surface truncate">Devon Lane</h3>
+<span class="font-mono text-[10px] text-outline">OCT 20</span>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-on-surface-variant text-sm truncate pr-4">System optimization complete. 14% gain in bandwidth efficiency.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe bg-[#091328]/80 backdrop-blur-2xl h-20 border-t border-[#40485d]/15 shadow-[0px_-20px_40px_rgba(159,167,255,0.06)]">
+<!-- Messages - Active -->
+<button class="flex flex-col items-center justify-center text-[#9fa7ff] font-bold scale-110 transition-all duration-200 active:translate-y-[-2px]">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter mt-1">Messages</span>
+</button>
+<!-- Contacts -->
+<button class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]">
+<span class="material-symbols-outlined text-[24px]">group</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter mt-1">Contacts</span>
+</button>
+<!-- Discovery -->
+<button class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]">
+<span class="material-symbols-outlined text-[24px]">explore</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter mt-1">Discovery</span>
+</button>
+<!-- Workshop -->
+<button class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]">
+<span class="material-symbols-outlined text-[24px]">psychology</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter mt-1">Workshop</span>
+</button>
+<!-- Settings -->
+<button class="flex flex-col items-center justify-center text-slate-500 opacity-60 hover:text-[#9fa7ff] transition-all duration-200 active:translate-y-[-2px]">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+<span class="font-mono text-[10px] uppercase tracking-tighter mt-1">Settings</span>
+</button>
+</nav>
+</body></html>

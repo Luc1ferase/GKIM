@@ -1,0 +1,42 @@
+.rich-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  color: #ffffff;
+  line-height: 1.7;
+}
+
+.rich-content h1,
+.rich-content h2,
+.rich-content h3 {
+  font-family: 'Space Grotesk', 'PingFang SC', sans-serif;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.rich-content p,
+.rich-content ul,
+.rich-content ol,
+.rich-content pre {
+  margin: 0;
+}
+
+.rich-content pre {
+  overflow: auto;
+  padding: 24rpx;
+  border-radius: 24rpx;
+  background: rgba(5, 11, 22, 0.92);
+}
+
+.rich-content code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24rpx;
+}
+
+.rich-note {
+  margin: 0;
+  padding: 20rpx 24rpx;
+  border-radius: 24rpx;
+  background: rgba(79, 70, 229, 0.22);
+  color: #dfe3ff;
+}

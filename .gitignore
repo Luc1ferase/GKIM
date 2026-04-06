@@ -1,0 +1,10 @@
+.ace-tool/
+.codex/
+node_modules/
+dist/
+.temp/
+.env.local
+.env.*.local
+coverage/
+.hbuilderx/
+ca.pem
