@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -183,7 +185,10 @@ private fun ChatScreen(
             modifier = Modifier.weight(1f, fill = false).testTag("chat-timeline"),
         ) {
             items(uiState.conversation?.messages.orEmpty(), key = { it.id }) { message ->
-                ChatMessageBubble(message)
+                ChatMessageRow(
+                    conversation = uiState.conversation,
+                    message = message,
+                )
             }
         }
 
@@ -336,24 +341,96 @@ private fun ChatTopBar(
 }
 
 @Composable
-private fun ChatMessageBubble(message: ChatMessage) {
+private fun ChatMessageRow(
+    conversation: Conversation?,
+    message: ChatMessage,
+) {
+    val authorName = when (message.direction) {
+        MessageDirection.Incoming -> conversation?.contactName ?: "Contact"
+        MessageDirection.Outgoing -> "You"
+        MessageDirection.System -> "Aether System"
+    }
+    val avatarText = when (message.direction) {
+        MessageDirection.Incoming -> conversation?.avatarText ?: "CT"
+        MessageDirection.Outgoing -> "ME"
+        MessageDirection.System -> "AI"
+    }
     val bubbleColor = when (message.direction) {
         MessageDirection.Outgoing -> AetherColors.PrimaryContainer
         MessageDirection.System -> AetherColors.SurfaceContainerHigh
         MessageDirection.Incoming -> AetherColors.SurfaceContainerLow
     }
-    Column(
+    val avatarBackground = when (message.direction) {
+        MessageDirection.Outgoing -> AetherColors.Primary.copy(alpha = 0.22f)
+        MessageDirection.System -> AetherColors.Tertiary.copy(alpha = 0.2f)
+        MessageDirection.Incoming -> AetherColors.Primary.copy(alpha = 0.14f)
+    }
+    val avatarForeground = when (message.direction) {
+        MessageDirection.Outgoing -> AetherColors.Primary
+        MessageDirection.System -> AetherColors.Tertiary
+        MessageDirection.Incoming -> AetherColors.Primary
+    }
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(bubbleColor, RoundedCornerShape(24.dp))
-            .padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .testTag("chat-message-row-${message.id}"),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.Top,
     ) {
-        Text(text = message.body, style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurface)
-        message.attachment?.let { attachment ->
-            AsyncImage(model = attachment.preview, contentDescription = null, modifier = Modifier.fillMaxWidth().height(180.dp))
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .background(avatarBackground, CircleShape)
+                .testTag("chat-message-avatar-${message.id}"),
+            contentAlignment = androidx.compose.ui.Alignment.Center,
+        ) {
+            Text(
+                text = avatarText,
+                color = avatarForeground,
+                style = MaterialTheme.typography.labelLarge,
+            )
         }
-        Text(text = formatChatTimestamp(message.createdAt), style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = authorName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = AetherColors.OnSurfaceVariant,
+                modifier = Modifier.testTag("chat-message-sender-${message.id}"),
+            )
+            Column(
+                modifier = Modifier
+                    .background(bubbleColor, RoundedCornerShape(24.dp))
+                    .padding(18.dp)
+                    .testTag("chat-message-bubble-${message.id}"),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = message.body,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = AetherColors.OnSurface,
+                    modifier = Modifier.testTag("chat-message-body-${message.id}"),
+                )
+                message.attachment?.let { attachment ->
+                    AsyncImage(
+                        model = attachment.preview,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .testTag("chat-message-attachment-${message.id}"),
+                    )
+                }
+                Text(
+                    text = formatChatTimestamp(message.createdAt),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                    modifier = Modifier.testTag("chat-message-time-${message.id}"),
+                )
+            }
+        }
     }
 }
 

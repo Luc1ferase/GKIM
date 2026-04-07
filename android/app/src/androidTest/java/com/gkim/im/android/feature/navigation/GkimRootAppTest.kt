@@ -2,6 +2,7 @@ package com.gkim.im.android.feature.navigation
 
 import androidx.activity.ComponentActivity
 import android.net.Uri
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -162,6 +163,56 @@ class GkimRootAppTest {
             latestTask?.mode == AigcMode.TextToImage && latestTask.input == null
         }
         composeRule.onNodeWithText("TextToImage · Turn this orbit frame into a cinematic cut.").fetchSemanticsNode()
+    }
+
+    @Test
+    fun chatTimelineUsesAvatarLedRowsForIncomingAndOutgoingMessages() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+
+        composeRule.onNodeWithTag("chat-message-avatar-m-1").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-message-sender-m-1").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-message-bubble-m-1").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-message-avatar-m-2").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-message-sender-m-2").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-message-bubble-m-2").fetchSemanticsNode()
+
+        composeRule.onNodeWithTag("chat-message-sender-m-1").assertTextContains("Leo Vance")
+        composeRule.onNodeWithTag("chat-message-sender-m-2").assertTextContains("You")
+
+        val incomingAvatar = composeRule.onNodeWithTag("chat-message-avatar-m-1").fetchSemanticsNode().boundsInRoot
+        val incomingSender = composeRule.onNodeWithTag("chat-message-sender-m-1").fetchSemanticsNode().boundsInRoot
+        val incomingBubble = composeRule.onNodeWithTag("chat-message-bubble-m-1").fetchSemanticsNode().boundsInRoot
+        val outgoingAvatar = composeRule.onNodeWithTag("chat-message-avatar-m-2").fetchSemanticsNode().boundsInRoot
+        val outgoingSender = composeRule.onNodeWithTag("chat-message-sender-m-2").fetchSemanticsNode().boundsInRoot
+        val outgoingBubble = composeRule.onNodeWithTag("chat-message-bubble-m-2").fetchSemanticsNode().boundsInRoot
+
+        assertTrue(incomingAvatar.right <= incomingBubble.left)
+        assertTrue(incomingSender.bottom <= incomingBubble.top)
+        assertTrue(outgoingAvatar.right <= outgoingBubble.left)
+        assertTrue(outgoingSender.bottom <= outgoingBubble.top)
+    }
+
+    @Test
+    fun chatTimelineKeepsAttachmentAndTimestampForSystemMessages() {
+        val container = UiTestAppContainer()
+        setApp(container, fakeMediaPickerControllerFactory())
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+        composeRule.onNodeWithTag("chat-composer-input").performTextReplacement("Render the orbit feed as a polished hero frame.")
+        composeRule.onNodeWithTag("chat-plus-button").performClick()
+        composeRule.onNodeWithTag("chat-action-text-to-image").performClick()
+
+        composeRule.waitUntil(5_000) { container.aigcRepository.history.value.isNotEmpty() }
+
+        val generatedMessageId = "aigc-${container.aigcRepository.history.value.first().id}"
+        composeRule.onNodeWithTag("chat-message-avatar-$generatedMessageId").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-message-sender-$generatedMessageId").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-message-bubble-$generatedMessageId").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-message-attachment-$generatedMessageId").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-message-time-$generatedMessageId").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-message-sender-$generatedMessageId").assertTextContains("Aether System")
     }
 
     @Test
