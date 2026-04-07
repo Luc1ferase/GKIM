@@ -37,7 +37,7 @@
 
 - [x] 2.1 Replace the current chat `PageHeader` usage with a compact top identity row that uses the `<` back affordance inline with the contact nickname and preserves access to workshop-related secondary actions, then verify the chat screen still opens and navigates back correctly.
 - [x] 2.2 Replace the full-width AIGC action panel with a messaging-first composer that provides a text input field plus right-aligned send action and a secondary `+` menu trigger, then verify the default composer path works without opening secondary actions.
-- [ ] 2.3 Move text-to-image, image-to-image, video-to-video, image picker, and video picker entry points into the secondary `+` menu while keeping their existing callbacks intact, then verify each exposed menu action still maps to the expected chat behavior.
+- [x] 2.3 Move text-to-image, image-to-image, video-to-video, image picker, and video picker entry points into the secondary `+` menu while keeping their existing callbacks intact, then verify each exposed menu action still maps to the expected chat behavior.
 
 ### Task 2.1: Replace the chat header with compact identity chrome
 
@@ -65,6 +65,22 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `bea5b0a`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.3: Move AIGC and media entry points into the secondary `+` menu
+
+- Verification:
+  - `cd android && .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#chatSecondaryMenuShowsAigcAndMediaActions,com.gkim.im.android.feature.navigation.GkimRootAppTest#chatSecondaryMenuActionsMapToExpectedChatBehavior"` - pass
+  - `cd android && .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest"` - pass
+  - `cd android && .\gradlew.bat testDebugUnitTest` - pass
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/core/media/MediaPickerController.kt android/app/src/main/java/com/gkim/im/android/feature/navigation/GkimRootApp.kt android/app/src/main/java/com/gkim/im/android/feature/chat/ChatRoute.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `0d1f6f2`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
