@@ -55,6 +55,18 @@ class GkimRootAppTest {
     }
 
     @Test
+    fun messagesScreenUsesCompactUnreadSummaryAboveConversationList() {
+        setApp(UiTestAppContainer())
+
+        val summaryBounds = composeRule.onNodeWithTag("messages-unread-summary").fetchSemanticsNode().boundsInRoot
+        val firstRowBounds = composeRule.onNodeWithTag("conversation-row-room-leo").fetchSemanticsNode().boundsInRoot
+
+        assertTrue(summaryBounds.height < firstRowBounds.height)
+        assertTrue(textNodeMissing("UNREAD PULSE"))
+        composeRule.onNodeWithTag("messages-list").fetchSemanticsNode()
+    }
+
+    @Test
     fun contactSortingChangesRenderedRowOrder() {
         setApp(UiTestAppContainer())
 
@@ -101,6 +113,11 @@ class GkimRootAppTest {
         composeRule.onNodeWithTag(tag).fetchSemanticsNode()
         true
     }.getOrDefault(false)
+
+    private fun textNodeMissing(text: String): Boolean = runCatching {
+        composeRule.onNodeWithText(text).fetchSemanticsNode()
+        false
+    }.getOrDefault(true)
 }
 
 private class UiTestAppContainer(

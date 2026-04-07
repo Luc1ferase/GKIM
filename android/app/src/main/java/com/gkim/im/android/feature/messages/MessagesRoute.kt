@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -75,6 +76,7 @@ private fun MessagesScreen(
 ) {
     Column(
         modifier = Modifier
+            .fillMaxSize()
             .background(AetherColors.Surface)
             .padding(horizontal = 24.dp, vertical = 24.dp)
             .testTag("messages-screen"),
@@ -88,12 +90,20 @@ private fun MessagesScreen(
             onAction = onOpenSettings,
         )
 
-        GlassCard {
-            Text(text = "UNREAD PULSE", style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "${uiState.totalUnread} unread signals", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
-                PillAction(label = "Workshop", onClick = onOpenWorkshop)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(AetherColors.SurfaceContainerHigh.copy(alpha = 0.72f), RoundedCornerShape(20.dp))
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .testTag("messages-unread-summary"),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(text = "Unread", style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
+                Text(text = "${uiState.totalUnread} signals", style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurface)
             }
+            PillAction(label = "Workshop", onClick = onOpenWorkshop)
         }
 
         if (uiState.conversations.isEmpty()) {
@@ -102,7 +112,16 @@ private fun MessagesScreen(
                 Text(text = "Seed data, websocket sync, or imported contacts will populate this lane once connected.", style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurfaceVariant)
             }
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.testTag("messages-list")) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "Recent conversations", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
+                Text(text = "${uiState.conversations.size} active", style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
+            }
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier
+                    .weight(1f, fill = true)
+                    .testTag("messages-list"),
+            ) {
                 items(uiState.conversations, key = { it.id }) { conversation ->
                     ConversationRow(conversation = conversation, onClick = { onOpenConversation(conversation.id) })
                 }
