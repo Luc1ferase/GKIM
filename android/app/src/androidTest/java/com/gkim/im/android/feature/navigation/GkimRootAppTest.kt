@@ -77,6 +77,22 @@ class GkimRootAppTest {
     }
 
     @Test
+    fun chatScreenUsesCompactHeaderAndBackNavigation() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+
+        composeRule.onNodeWithTag("chat-top-bar").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-back-button").fetchSemanticsNode()
+        composeRule.onNodeWithText("Leo Vance").fetchSemanticsNode()
+        assertTrue(textNodeMissing("Active Room"))
+        assertTrue(textNodeMissing("Back"))
+
+        composeRule.onNodeWithTag("chat-back-button").performClick()
+        composeRule.onNodeWithTag("messages-screen").fetchSemanticsNode()
+    }
+
+    @Test
     fun contactSortingChangesRenderedRowOrder() {
         setApp(UiTestAppContainer())
 

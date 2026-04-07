@@ -3,6 +3,7 @@ package com.gkim.im.android.feature.chat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,7 +34,7 @@ import coil.compose.AsyncImage
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
 import com.gkim.im.android.core.designsystem.GradientPrimaryButton
-import com.gkim.im.android.core.designsystem.PageHeader
+import com.gkim.im.android.core.designsystem.PillAction
 import com.gkim.im.android.core.media.rememberMediaPickerController
 import com.gkim.im.android.core.model.AigcMode
 import com.gkim.im.android.core.model.AigcProvider
@@ -143,14 +144,10 @@ private fun ChatScreen(
             .testTag("chat-screen"),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        PageHeader(
-            eyebrow = "Active Room",
-            title = uiState.conversation?.contactName ?: "Chat",
-            description = uiState.conversation?.contactTitle ?: "AIGC-enabled conversation surface.",
-            leadingLabel = "Back",
-            onLeading = onBack,
-            actionLabel = "Workshop",
-            onAction = onOpenWorkshop,
+        ChatTopBar(
+            conversation = uiState.conversation,
+            onBack = onBack,
+            onOpenWorkshop = onOpenWorkshop,
         )
 
         LazyColumn(
@@ -193,6 +190,49 @@ private fun ChatScreen(
                 Text(text = "${task.mode.name} · ${task.prompt}", style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
+    }
+}
+
+@Composable
+private fun ChatTopBar(
+    conversation: Conversation?,
+    onBack: () -> Unit,
+    onOpenWorkshop: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("chat-top-bar"),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(14.dp))
+                    .clickable(onClick = onBack)
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .testTag("chat-back-button"),
+                contentAlignment = androidx.compose.ui.Alignment.Center,
+            ) {
+                Text(text = "<", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+                Text(text = conversation?.contactName ?: "Chat", style = MaterialTheme.typography.headlineMedium, color = AetherColors.OnSurface)
+                Text(
+                    text = conversation?.contactTitle ?: "AIGC-enabled conversation surface.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        PillAction(label = "Workshop", onClick = onOpenWorkshop)
     }
 }
 
