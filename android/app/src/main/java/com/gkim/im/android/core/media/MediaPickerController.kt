@@ -13,6 +13,8 @@ class MediaPickerController(
     val pickVideo: () -> Unit,
 )
 
+typealias MediaPickerControllerFactory = @Composable ((MediaInput) -> Unit) -> MediaPickerController
+
 @Composable
 fun rememberMediaPickerController(onMediaSelected: (MediaInput) -> Unit): MediaPickerController {
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->

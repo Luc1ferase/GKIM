@@ -1,12 +1,18 @@
 package com.gkim.im.android.feature.navigation
 
 import androidx.activity.ComponentActivity
+import android.net.Uri
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.gkim.im.android.core.media.MediaPickerController
+import com.gkim.im.android.core.media.MediaPickerControllerFactory
+import com.gkim.im.android.core.model.AigcMode
+import com.gkim.im.android.core.model.AttachmentType
+import com.gkim.im.android.core.model.MediaInput
 import com.gkim.im.android.core.rendering.MarkdownDocumentParser
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
 import com.gkim.im.android.data.repository.AigcRepository
@@ -107,6 +113,58 @@ class GkimRootAppTest {
     }
 
     @Test
+    fun chatSecondaryMenuShowsAigcAndMediaActions() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+        composeRule.onNodeWithTag("chat-plus-button").performClick()
+
+        composeRule.onNodeWithTag("chat-secondary-menu").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-action-pick-image").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-action-pick-video").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-action-text-to-image").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-action-image-to-image").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-action-video-to-video").fetchSemanticsNode()
+    }
+
+    @Test
+    fun chatSecondaryMenuActionsMapToExpectedChatBehavior() {
+        val container = UiTestAppContainer()
+        setApp(container, fakeMediaPickerControllerFactory())
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+        composeRule.onNodeWithTag("chat-composer-input").performTextReplacement("Turn this orbit frame into a cinematic cut.")
+
+        composeRule.onNodeWithTag("chat-plus-button").performClick()
+        composeRule.onNodeWithTag("chat-action-pick-image").performClick()
+        composeRule.onNodeWithText("Image ready").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-action-image-to-image").performClick()
+        composeRule.waitUntil(5_000) {
+            val latestTask = container.aigcRepository.history.value.firstOrNull()
+            latestTask?.mode == AigcMode.ImageToImage && latestTask.input?.type == AttachmentType.Image
+        }
+        composeRule.onNodeWithText("ImageToImage · Turn this orbit frame into a cinematic cut.").fetchSemanticsNode()
+
+        composeRule.onNodeWithTag("chat-plus-button").performClick()
+        composeRule.onNodeWithTag("chat-action-pick-video").performClick()
+        composeRule.onNodeWithText("Video ready").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-action-video-to-video").performClick()
+        composeRule.waitUntil(5_000) {
+            val latestTask = container.aigcRepository.history.value.firstOrNull()
+            latestTask?.mode == AigcMode.VideoToVideo && latestTask.input?.type == AttachmentType.Video
+        }
+        composeRule.onNodeWithText("VideoToVideo · Turn this orbit frame into a cinematic cut.").fetchSemanticsNode()
+
+        composeRule.onNodeWithTag("chat-plus-button").performClick()
+        composeRule.onNodeWithTag("chat-action-text-to-image").performClick()
+        composeRule.waitUntil(5_000) {
+            val latestTask = container.aigcRepository.history.value.firstOrNull()
+            latestTask?.mode == AigcMode.TextToImage && latestTask.input == null
+        }
+        composeRule.onNodeWithText("TextToImage · Turn this orbit frame into a cinematic cut.").fetchSemanticsNode()
+    }
+
+    @Test
     fun contactSortingChangesRenderedRowOrder() {
         setApp(UiTestAppContainer())
 
@@ -143,10 +201,23 @@ class GkimRootAppTest {
         assertEquals("gpt-image-1", container.aigcRepository.customProvider.value.model)
     }
 
-    private fun setApp(container: UiTestAppContainer) {
+    private fun setApp(
+        container: UiTestAppContainer,
+        mediaPickerControllerFactory: MediaPickerControllerFactory? = null,
+    ) {
         composeRule.setContent {
-            GkimRootApp(container = container)
+            GkimRootApp(
+                container = container,
+                mediaPickerControllerFactory = mediaPickerControllerFactory,
+            )
         }
+    }
+
+    private fun fakeMediaPickerControllerFactory(): MediaPickerControllerFactory = { onMediaSelected ->
+        MediaPickerController(
+            pickImage = { onMediaSelected(MediaInput(AttachmentType.Image, Uri.parse("content://ui-test/fake-image"))) },
+            pickVideo = { onMediaSelected(MediaInput(AttachmentType.Video, Uri.parse("content://ui-test/fake-video"))) },
+        )
     }
 
     private fun nodeExists(tag: String): Boolean = runCatching {

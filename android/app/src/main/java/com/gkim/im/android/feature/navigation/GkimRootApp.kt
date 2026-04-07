@@ -24,6 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.gkim.im.android.GkimApplication
+import com.gkim.im.android.core.media.MediaPickerControllerFactory
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GkimTheme
 import com.gkim.im.android.data.repository.AppContainer
@@ -47,6 +48,7 @@ private val primaryDestinations = listOf(
 fun GkimRootApp(
     container: AppContainer? = null,
     navController: NavHostController? = null,
+    mediaPickerControllerFactory: MediaPickerControllerFactory? = null,
 ) {
     val resolvedContainer = container ?: (LocalContext.current.applicationContext as GkimApplication).container
     val resolvedNavController = navController ?: rememberNavController()
@@ -69,6 +71,7 @@ fun GkimRootApp(
                             navController = resolvedNavController,
                             container = resolvedContainer,
                             conversationId = backStackEntry.arguments?.getString("conversationId").orEmpty(),
+                            mediaPickerControllerFactory = mediaPickerControllerFactory,
                         )
                     }
                     composable("workshop") { WorkshopRoute(resolvedNavController, resolvedContainer) }

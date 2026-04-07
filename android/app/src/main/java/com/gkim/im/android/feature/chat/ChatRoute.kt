@@ -34,9 +34,12 @@ import coil.compose.AsyncImage
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
 import com.gkim.im.android.core.designsystem.PillAction
+import com.gkim.im.android.core.media.MediaPickerControllerFactory
+import com.gkim.im.android.core.media.rememberMediaPickerController
 import com.gkim.im.android.core.model.AigcMode
 import com.gkim.im.android.core.model.AigcProvider
 import com.gkim.im.android.core.model.AigcTask
+import com.gkim.im.android.core.model.AttachmentType
 import com.gkim.im.android.core.model.ChatMessage
 import com.gkim.im.android.core.model.Conversation
 import com.gkim.im.android.core.model.DraftAigcRequest
@@ -93,32 +96,56 @@ private class ChatViewModel(
 }
 
 @Composable
-fun ChatRoute(navController: NavHostController, container: AppContainer, conversationId: String) {
+fun ChatRoute(
+    navController: NavHostController,
+    container: AppContainer,
+    conversationId: String,
+    mediaPickerControllerFactory: MediaPickerControllerFactory? = null,
+) {
     val viewModel = viewModel<ChatViewModel>(factory = simpleViewModelFactory {
         ChatViewModel(conversationId, container.messagingRepository, container.aigcRepository)
     })
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var prompt by remember { mutableStateOf("") }
+    var selectedMedia by remember { mutableStateOf<MediaInput?>(null) }
     var isSecondaryMenuOpen by remember { mutableStateOf(false) }
+    val mediaPicker = mediaPickerControllerFactory?.invoke { selectedMedia = it } ?: rememberMediaPickerController { selectedMedia = it }
 
     LaunchedEffect(uiState.draftRequest.prompt) {
         if (uiState.draftRequest.prompt.isNotBlank()) {
             prompt = uiState.draftRequest.prompt
         }
     }
+    LaunchedEffect(uiState.draftRequest.mediaInput) {
+        uiState.draftRequest.mediaInput?.let { selectedMedia = it }
+    }
 
     ChatScreen(
         uiState = uiState,
         prompt = prompt,
+        selectedMedia = selectedMedia,
         isSecondaryMenuOpen = isSecondaryMenuOpen,
         onPromptChanged = { prompt = it },
         onBack = { navController.popBackStack() },
         onOpenWorkshop = { navController.navigate("workshop") },
         onToggleSecondaryMenu = { isSecondaryMenuOpen = !isSecondaryMenuOpen },
+        onPickImage = mediaPicker.pickImage,
+        onPickVideo = mediaPicker.pickVideo,
         onSendMessage = {
             if (prompt.isBlank()) return@ChatScreen
             viewModel.sendMessage(prompt)
             prompt = ""
+        },
+        onRunMode = { mode ->
+            if (prompt.isBlank()) return@ChatScreen
+            val mediaInput = when (mode) {
+                AigcMode.TextToImage -> null
+                AigcMode.ImageToImage,
+                AigcMode.VideoToVideo,
+                -> selectedMedia
+            }
+            viewModel.runAigc(mode, prompt, mediaInput)
+            isSecondaryMenuOpen = false
         },
     )
 }
@@ -127,12 +154,16 @@ fun ChatRoute(navController: NavHostController, container: AppContainer, convers
 private fun ChatScreen(
     uiState: ChatUiState,
     prompt: String,
+    selectedMedia: MediaInput?,
     isSecondaryMenuOpen: Boolean,
     onPromptChanged: (String) -> Unit,
     onBack: () -> Unit,
     onOpenWorkshop: () -> Unit,
     onToggleSecondaryMenu: () -> Unit,
+    onPickImage: () -> Unit,
+    onPickVideo: () -> Unit,
     onSendMessage: () -> Unit,
+    onRunMode: (AigcMode) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -164,7 +195,54 @@ private fun ChatScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = AetherColors.OnSurfaceVariant,
                 )
-                Text(text = "AIGC actions and media tools stay behind this menu.", style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
+                Text(
+                    text = "AIGC actions and media tools stay behind this menu.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                )
+                selectedMedia?.let { mediaInput ->
+                    val selectedLabel = if (mediaInput.type == AttachmentType.Image) "Image ready" else "Video ready"
+                    Text(
+                        text = selectedLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AetherColors.OnSurface,
+                        modifier = Modifier
+                            .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(999.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .testTag("chat-selected-media"),
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ActionChip(
+                        label = "Pick image",
+                        testTag = "chat-action-pick-image",
+                        modifier = Modifier.weight(1f),
+                        onClick = onPickImage,
+                    )
+                    ActionChip(
+                        label = "Pick video",
+                        testTag = "chat-action-pick-video",
+                        modifier = Modifier.weight(1f),
+                        onClick = onPickVideo,
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ActionChip(
+                        label = "Text to image",
+                        testTag = "chat-action-text-to-image",
+                        modifier = Modifier.weight(1f),
+                    ) { onRunMode(AigcMode.TextToImage) }
+                    ActionChip(
+                        label = "Image to image",
+                        testTag = "chat-action-image-to-image",
+                        modifier = Modifier.weight(1f),
+                    ) { onRunMode(AigcMode.ImageToImage) }
+                }
+                ActionChip(
+                    label = "Video to video",
+                    testTag = "chat-action-video-to-video",
+                    modifier = Modifier.fillMaxWidth(),
+                ) { onRunMode(AigcMode.VideoToVideo) }
             }
         }
 
@@ -280,16 +358,22 @@ private fun ChatMessageBubble(message: ChatMessage) {
 }
 
 @Composable
-private fun ActionChip(label: String, onClick: () -> Unit) {
+private fun ActionChip(
+    label: String,
+    testTag: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     Text(
         text = label,
         style = MaterialTheme.typography.bodyMedium,
         color = AetherColors.OnSurface,
         modifier = Modifier
+            .then(modifier)
             .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(999.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 10.dp)
-            .testTag("chat-action-${label.replace(" ", "-")}"),
+            .testTag(testTag),
     )
 }
 
