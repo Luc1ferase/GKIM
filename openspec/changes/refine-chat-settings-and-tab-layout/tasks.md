@@ -11,9 +11,9 @@
 
 ## 3. Primary-surface layout refinement
 
-- [ ] 3.1 Refactor chat message layout so incoming timestamps move into the lower-right bubble footer while incoming identity cues and outgoing adaptive-width behavior remain intact.
-- [ ] 3.2 Move the aggregate unread summary from Messages into Space and simplify the Messages screen chrome so the first non-empty heading begins at `Recent conversations`.
-- [ ] 3.3 Replace the Contacts horizontal sort chip row with a single bubble-aligned dropdown control that still supports all existing sort modes.
+- [x] 3.1 Refactor chat message layout so incoming timestamps move into the lower-right bubble footer while incoming identity cues and outgoing adaptive-width behavior remain intact.
+- [x] 3.2 Move the aggregate unread summary from Messages into Space and simplify the Messages screen chrome so the first non-empty heading begins at `Recent conversations`.
+- [x] 3.3 Replace the Contacts horizontal sort chip row with a single bubble-aligned dropdown control that still supports all existing sort modes.
 
 ## 4. Regression and delivery evidence
 
@@ -86,6 +86,45 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `5566c5b`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 3.1: Chat message footer layout implementation
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#incomingMetadataPinsTimestampInsideBubbleFooterWhileKeepingSenderAboveBubble,com.gkim.im.android.feature.navigation.GkimRootAppTest#chatTimelineKeepsIncomingAndSystemAttributionButDropsOutgoingSelfMarkers,com.gkim.im.android.feature.navigation.GkimRootAppTest#chatTimelinePinsOutgoingTimestampToBubbleFooterWithoutChangingFormat,com.gkim.im.android.feature.navigation.GkimRootAppTest#shortOutgoingTextBubbleHugsContentWidthInsteadOfRowWidth,com.gkim.im.android.feature.navigation.GkimRootAppTest#longOutgoingAndAttachmentRowsKeepReadableWidthAndStableFooter" --rerun-tasks` - pass on the current head, reconfirming incoming timestamps stay inside the bubble footer while outgoing adaptive-width and footer behavior remain stable
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `2ede2cd`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 3.2: Messages and Space layout implementation
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesScreenStartsAtRecentConversationsWithoutUnreadSummaryPanel,com.gkim.im.android.feature.navigation.GkimRootAppTest#spaceScreenShowsUnreadSummaryAsSupportingContext,com.gkim.im.android.feature.navigation.GkimRootAppTest#contactsScreenUsesSingleDropdownSortControl,com.gkim.im.android.feature.navigation.GkimRootAppTest#contactSortingChangesRenderedRowOrder" --rerun-tasks` - pass on the current head, confirming Messages starts directly at `Recent conversations` and Space carries the compact unread summary panel
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `71bb4b9`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 3.3: Contacts dropdown sort implementation
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesScreenStartsAtRecentConversationsWithoutUnreadSummaryPanel,com.gkim.im.android.feature.navigation.GkimRootAppTest#spaceScreenShowsUnreadSummaryAsSupportingContext,com.gkim.im.android.feature.navigation.GkimRootAppTest#contactsScreenUsesSingleDropdownSortControl,com.gkim.im.android.feature.navigation.GkimRootAppTest#contactSortingChangesRenderedRowOrder" --rerun-tasks` - pass on the current head, with the dropdown trigger and sort-order interaction both green
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `71bb4b9`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
