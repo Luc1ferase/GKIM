@@ -17,7 +17,7 @@
 
 ## 4. Regression and delivery evidence
 
-- [ ] 4.1 Run the relevant settings, chat, Messages, Space, and Contacts verification commands, update any affected geometry or persistence assertions, and capture the evidence required by `docs/DELIVERY_WORKFLOW.md`.
+- [x] 4.1 Run the relevant settings, chat, Messages, Space, and Contacts verification commands, update any affected geometry or persistence assertions, and capture the evidence required by `docs/DELIVERY_WORKFLOW.md`.
 
 ### Task 1.1: Incoming bubble-footer timestamp coverage
 
@@ -125,6 +125,21 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `71bb4b9`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 4.1: Final regression and delivery evidence
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat testDebugUnitTest` - pass
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest" --rerun-tasks` - pass, 20/20 instrumentation tests green across chat, settings, Messages, Space, and Contacts
+  - `git diff --check -- openspec/changes/refine-chat-settings-and-tab-layout/tasks.md` - pass
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `abbbe1c`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
