@@ -64,14 +64,17 @@ class GkimRootAppTest {
     }
 
     @Test
-    fun messagesScreenUsesCompactUnreadSummaryAboveConversationList() {
+    fun messagesScreenStartsAtRecentConversationsWithoutUnreadSummaryPanel() {
         setApp(UiTestAppContainer())
 
-        val summaryBounds = composeRule.onNodeWithTag("messages-unread-summary").fetchSemanticsNode().boundsInRoot
+        val headingBounds = composeRule.onNodeWithText("Recent conversations").fetchSemanticsNode().boundsInRoot
         val firstRowBounds = composeRule.onNodeWithTag("conversation-row-room-leo").fetchSemanticsNode().boundsInRoot
 
-        assertTrue(summaryBounds.height < firstRowBounds.height)
-        assertTrue(textNodeMissing("UNREAD PULSE"))
+        assertTrue("headingTop=${headingBounds.top}", headingBounds.top < 160f)
+        assertTrue(headingBounds.bottom <= firstRowBounds.top)
+        assertTrue(!nodeExists("messages-unread-summary"))
+        assertTrue(textNodeMissing("Signal Lattice"))
+        assertTrue(textNodeMissing("Recent conversations, unread momentum, and a direct path into AIGC-assisted chats."))
         composeRule.onNodeWithTag("messages-list").fetchSemanticsNode()
     }
 
@@ -83,6 +86,18 @@ class GkimRootAppTest {
         composeRule.onNodeWithTag("conversation-preview-room-leo", useUnmergedTree = true).fetchSemanticsNode()
         composeRule.onNodeWithTag("conversation-time-room-leo", useUnmergedTree = true).fetchSemanticsNode()
         composeRule.onNodeWithTag("conversation-unread-room-leo", useUnmergedTree = true).fetchSemanticsNode()
+    }
+
+    @Test
+    fun spaceScreenShowsUnreadSummaryAsSupportingContext() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithText("Space").performClick()
+
+        val summaryBounds = composeRule.onNodeWithTag("space-unread-summary").fetchSemanticsNode().boundsInRoot
+        val feedBounds = composeRule.onNodeWithTag("space-feed").fetchSemanticsNode().boundsInRoot
+
+        assertTrue(summaryBounds.bottom <= feedBounds.top)
     }
 
     @Test
@@ -339,11 +354,24 @@ class GkimRootAppTest {
     }
 
     @Test
+    fun contactsScreenUsesSingleDropdownSortControl() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithText("Contacts").performClick()
+
+        composeRule.onNodeWithTag("contact-sort-dropdown").fetchSemanticsNode()
+        assertTrue(!nodeExists("contact-sort-Nickname"))
+        assertTrue(!nodeExists("contact-sort-AddedAscending"))
+        assertTrue(!nodeExists("contact-sort-AddedDescending"))
+    }
+
+    @Test
     fun contactSortingChangesRenderedRowOrder() {
         setApp(UiTestAppContainer())
 
         composeRule.onNodeWithText("Contacts").performClick()
-        composeRule.onNodeWithTag("contact-sort-AddedDescending").performClick()
+        composeRule.onNodeWithTag("contact-sort-dropdown").performClick()
+        composeRule.onNodeWithTag("contact-sort-option-AddedDescending").performClick()
         composeRule.waitUntil(5_000) { nodeExists("contact-row-clara-wu") && nodeExists("contact-row-aria-thorne") }
 
         val claraTop = composeRule.onNodeWithTag("contact-row-clara-wu").fetchSemanticsNode().boundsInRoot.top

@@ -32,24 +32,36 @@ import com.gkim.im.android.core.rendering.RichContentRenderer
 import com.gkim.im.android.core.util.formatRelativeLabel
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.FeedRepository
+import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 private data class SpacePostUi(val post: FeedPost, val document: RichDocument)
-private data class SpaceUiState(val posts: List<SpacePostUi> = emptyList())
+private data class SpaceUiState(
+    val posts: List<SpacePostUi> = emptyList(),
+    val totalUnread: Int = 0,
+)
 
-private class SpaceViewModel(feedRepository: FeedRepository, parser: MarkdownDocumentParser) : ViewModel() {
-    val uiState = feedRepository.posts.map { posts ->
-        SpaceUiState(posts = posts.map { post -> SpacePostUi(post, parser.parse(post.body, mdxReady = true, cssHint = "architectural-glitch")) })
+private class SpaceViewModel(
+    feedRepository: FeedRepository,
+    messagingRepository: MessagingRepository,
+    parser: MarkdownDocumentParser,
+) : ViewModel() {
+    val uiState = combine(feedRepository.posts, messagingRepository.conversations) { posts, conversations ->
+        SpaceUiState(
+            posts = posts.map { post -> SpacePostUi(post, parser.parse(post.body, mdxReady = true, cssHint = "architectural-glitch")) },
+            totalUnread = conversations.sumOf { it.unreadCount },
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SpaceUiState())
 }
 
 @Composable
 fun SpaceRoute(navController: NavHostController, container: AppContainer) {
     val viewModel = viewModel<SpaceViewModel>(factory = simpleViewModelFactory {
-        SpaceViewModel(container.feedRepository, container.markdownParser)
+        SpaceViewModel(container.feedRepository, container.messagingRepository, container.markdownParser)
     })
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -72,6 +84,11 @@ private fun SpaceScreen(uiState: SpaceUiState, onOpenWorkshop: () -> Unit) {
             actionLabel = "Workshop",
             onAction = onOpenWorkshop,
         )
+
+        GlassCard(modifier = Modifier.testTag("space-unread-summary")) {
+            Text(text = "Unread signals", style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
+            Text(text = "${uiState.totalUnread} total across active conversations", style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurface)
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             listOf("For You", "Prompting", "AI Tools", "Motion").forEachIndexed { index, label ->

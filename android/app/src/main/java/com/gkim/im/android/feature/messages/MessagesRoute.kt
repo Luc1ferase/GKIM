@@ -29,7 +29,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
-import com.gkim.im.android.core.designsystem.PageHeader
 import com.gkim.im.android.core.designsystem.PillAction
 import com.gkim.im.android.core.model.Conversation
 import com.gkim.im.android.core.util.formatChatTimestamp
@@ -62,7 +61,6 @@ fun MessagesRoute(navController: NavHostController, container: AppContainer) {
     MessagesScreen(
         uiState = uiState,
         onOpenConversation = { navController.navigate("chat/$it") },
-        onOpenWorkshop = { navController.navigate("workshop") },
         onOpenSettings = { navController.navigate("settings") },
     )
 }
@@ -71,7 +69,6 @@ fun MessagesRoute(navController: NavHostController, container: AppContainer) {
 private fun MessagesScreen(
     uiState: MessagesUiState,
     onOpenConversation: (String) -> Unit,
-    onOpenWorkshop: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     Column(
@@ -82,28 +79,16 @@ private fun MessagesScreen(
             .testTag("messages-screen"),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        PageHeader(
-            eyebrow = "Signal Lattice",
-            title = "Messages",
-            description = "Recent conversations, unread momentum, and a direct path into AIGC-assisted chats.",
-            actionLabel = "Settings",
-            onAction = onOpenSettings,
-        )
-
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(AetherColors.SurfaceContainerHigh.copy(alpha = 0.72f), RoundedCornerShape(20.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .testTag("messages-unread-summary"),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(text = "Unread", style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
-                Text(text = "${uiState.totalUnread} signals", style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurface)
+            Text(text = "Recent conversations", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "${uiState.conversations.size} active", style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
+                PillAction(label = "Settings", onClick = onOpenSettings)
             }
-            PillAction(label = "Workshop", onClick = onOpenWorkshop)
         }
 
         if (uiState.conversations.isEmpty()) {
@@ -112,10 +97,6 @@ private fun MessagesScreen(
                 Text(text = "Seed data, websocket sync, or imported contacts will populate this lane once connected.", style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurfaceVariant)
             }
         } else {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Recent conversations", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
-                Text(text = "${uiState.conversations.size} active", style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
-            }
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier

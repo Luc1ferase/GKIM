@@ -13,9 +13,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -92,6 +97,8 @@ private fun ContactsScreen(
         ContactSortMode.AddedAscending to "Added earliest",
         ContactSortMode.AddedDescending to "Added latest",
     )
+    val selectedSortLabel = sortOptions.first { it.first == uiState.sortMode }.second
+    var isSortMenuExpanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -110,19 +117,41 @@ private fun ContactsScreen(
         )
 
         GlassCard {
-            Text(text = "SORT ORDER", style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                sortOptions.forEach { (mode, label) ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(text = "SORT ORDER", style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
+                    Text(text = "Choose one ordering for the contact lane.", style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
+                }
+                Box {
                     Text(
-                        text = label,
+                        text = "$selectedSortLabel  v",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (uiState.sortMode == mode) AetherColors.Surface else AetherColors.OnSurfaceVariant,
+                        color = AetherColors.OnSurface,
                         modifier = Modifier
-                            .testTag("contact-sort-${mode.name}")
-                            .background(if (uiState.sortMode == mode) AetherColors.Primary else AetherColors.SurfaceContainerHigh, CircleShape)
-                            .clickable { onSortModeSelected(mode) }
+                            .testTag("contact-sort-dropdown")
+                            .background(AetherColors.SurfaceContainerHigh, CircleShape)
+                            .clickable { isSortMenuExpanded = true }
                             .padding(horizontal = 14.dp, vertical = 10.dp),
                     )
+                    DropdownMenu(
+                        expanded = isSortMenuExpanded,
+                        onDismissRequest = { isSortMenuExpanded = false },
+                    ) {
+                        sortOptions.forEach { (mode, label) ->
+                            DropdownMenuItem(
+                                modifier = Modifier.testTag("contact-sort-option-${mode.name}"),
+                                text = { Text(text = label) },
+                                onClick = {
+                                    onSortModeSelected(mode)
+                                    isSortMenuExpanded = false
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
