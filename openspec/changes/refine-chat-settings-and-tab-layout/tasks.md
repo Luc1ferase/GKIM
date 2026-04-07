@@ -1,7 +1,7 @@
 ## 1. Coverage for the revised UX contract
 
 - [x] 1.1 Add or update targeted chat Compose UI coverage so incoming message timestamps assert in-bubble lower-right placement without regressing outgoing bubble footer behavior.
-- [ ] 1.2 Add or update surface-level Compose UI coverage so Messages starts at `Recent conversations`, Space exposes the unread summary card, and Contacts renders a single dropdown-style sort control instead of horizontal chips.
+- [x] 1.2 Add or update surface-level Compose UI coverage so Messages starts at `Recent conversations`, Space exposes the unread summary card, and Contacts renders a single dropdown-style sort control instead of horizontal chips.
 - [ ] 1.3 Add or update unit or integration coverage for persisted language and theme preferences so Settings changes can be verified independently of screen polish.
 
 ## 2. Shared settings preference infrastructure
@@ -29,6 +29,20 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `2ede2cd`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 1.2: Messages, Space, and Contacts surface coverage
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesScreenStartsAtRecentConversationsWithoutUnreadSummaryPanel,com.gkim.im.android.feature.navigation.GkimRootAppTest#spaceScreenShowsUnreadSummaryAsSupportingContext,com.gkim.im.android.feature.navigation.GkimRootAppTest#contactsScreenUsesSingleDropdownSortControl,com.gkim.im.android.feature.navigation.GkimRootAppTest#contactSortingChangesRenderedRowOrder" --rerun-tasks` - failed first with `headingTop=620.0` plus missing `space-unread-summary` and `contact-sort-dropdown`, then passed after simplifying Messages chrome, adding the Space unread summary card, and switching Contacts to a dropdown trigger
+  - `git diff --check -- android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt android/app/src/main/java/com/gkim/im/android/feature/messages/MessagesRoute.kt android/app/src/main/java/com/gkim/im/android/feature/space/SpaceRoute.kt android/app/src/main/java/com/gkim/im/android/feature/contacts/ContactsRoute.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `71bb4b9`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
