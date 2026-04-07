@@ -1,7 +1,7 @@
 ## 1. Messages hierarchy refinement
 
 - [x] 1.1 Refactor the Messages screen so the unread summary is a compact supporting element and the conversation list remains the dominant visual block, then verify the updated layout with targeted Compose UI coverage for the messages surface.
-- [ ] 1.2 Update the Messages screen interaction tests or previews to assert unread metadata still appears in conversation rows after the hierarchy change, then record the exact verification command and result in the task evidence.
+- [x] 1.2 Update the Messages screen interaction tests or previews to assert unread metadata still appears in conversation rows after the hierarchy change, then record the exact verification command and result in the task evidence.
 
 ### Task 1.1: Refactor the Messages screen unread hierarchy
 
@@ -14,6 +14,21 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `4180760`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 1.2: Assert unread metadata remains visible in conversation rows
+
+- Verification:
+  - `cd android && .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesConversationRowsStillExposeUnreadMetadata"` - pass
+  - `cd android && .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest"` - pass
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/feature/messages/MessagesRoute.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt openspec/changes/refine-chat-composer-and-message-layout/tasks.md` - pass with line-ending warnings only
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `caa351d`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
