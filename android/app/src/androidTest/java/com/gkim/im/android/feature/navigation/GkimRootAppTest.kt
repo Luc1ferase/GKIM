@@ -15,6 +15,7 @@ import com.gkim.im.android.core.model.AigcMode
 import com.gkim.im.android.core.model.AttachmentType
 import com.gkim.im.android.core.model.MediaInput
 import com.gkim.im.android.core.rendering.MarkdownDocumentParser
+import com.gkim.im.android.core.util.formatChatTimestamp
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
@@ -208,6 +209,27 @@ class GkimRootAppTest {
         composeRule.onNodeWithTag("chat-message-attachment-$generatedMessageId").fetchSemanticsNode()
         composeRule.onNodeWithTag("chat-message-time-$generatedMessageId").fetchSemanticsNode()
         composeRule.onNodeWithTag("chat-message-sender-$generatedMessageId").assertTextContains("Aether System")
+    }
+
+    @Test
+    fun chatTimelinePinsOutgoingTimestampToBubbleFooterWithoutChangingFormat() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+
+        val bubbleBounds = composeRule.onNodeWithTag("chat-message-bubble-m-2").fetchSemanticsNode().boundsInRoot
+        val bodyBounds = composeRule.onNodeWithTag("chat-message-body-m-2").fetchSemanticsNode().boundsInRoot
+        val timeNode = composeRule.onNodeWithTag("chat-message-time-m-2")
+        val timeBounds = timeNode.fetchSemanticsNode().boundsInRoot
+
+        timeNode.assertTextContains(formatChatTimestamp("2026-04-06T13:44:00Z"))
+        val footerGap = timeBounds.top - bodyBounds.bottom
+
+        assertTrue(timeBounds.top >= bodyBounds.bottom)
+        assertTrue(timeBounds.right <= bubbleBounds.right)
+        assertTrue(timeBounds.bottom <= bubbleBounds.bottom)
+        assertTrue(timeBounds.left > bodyBounds.left)
+        assertTrue("footerGap=$footerGap", footerGap <= 12f)
     }
 
     @Test

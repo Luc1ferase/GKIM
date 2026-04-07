@@ -377,6 +377,7 @@ private fun ChatMessageRow(
         MessageDirection.System -> AetherColors.Tertiary
         MessageDirection.Incoming -> AetherColors.Primary
     }
+    val bubbleSpacing = if (isOutgoing) 4.dp else 10.dp
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -419,7 +420,7 @@ private fun ChatMessageRow(
                     .background(bubbleColor, RoundedCornerShape(24.dp))
                     .padding(18.dp)
                     .testTag("chat-message-bubble-${message.id}"),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(bubbleSpacing),
                 horizontalAlignment = if (isOutgoing) Alignment.End else Alignment.Start,
             ) {
                 Text(
@@ -438,12 +439,25 @@ private fun ChatMessageRow(
                             .testTag("chat-message-attachment-${message.id}"),
                     )
                 }
-                Text(
-                    text = formatChatTimestamp(message.createdAt),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = AetherColors.OnSurfaceVariant,
-                    modifier = Modifier.testTag("chat-message-time-${message.id}"),
-                )
+                if (isOutgoing) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = formatChatTimestamp(message.createdAt),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AetherColors.OnSurfaceVariant,
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .testTag("chat-message-time-${message.id}"),
+                        )
+                    }
+                } else {
+                    Text(
+                        text = formatChatTimestamp(message.createdAt),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AetherColors.OnSurfaceVariant,
+                        modifier = Modifier.testTag("chat-message-time-${message.id}"),
+                    )
+                }
             }
         }
     }
