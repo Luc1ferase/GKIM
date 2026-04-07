@@ -33,9 +33,7 @@ import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
-import com.gkim.im.android.core.designsystem.GradientPrimaryButton
 import com.gkim.im.android.core.designsystem.PillAction
-import com.gkim.im.android.core.media.rememberMediaPickerController
 import com.gkim.im.android.core.model.AigcMode
 import com.gkim.im.android.core.model.AigcProvider
 import com.gkim.im.android.core.model.AigcTask
@@ -100,9 +98,8 @@ fun ChatRoute(navController: NavHostController, container: AppContainer, convers
         ChatViewModel(conversationId, container.messagingRepository, container.aigcRepository)
     })
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var prompt by remember { mutableStateOf("Create an editorial portrait with indigo rim light and polished glass surfaces.") }
-    var selectedMedia by remember { mutableStateOf<MediaInput?>(null) }
-    val mediaPicker = rememberMediaPickerController { selectedMedia = it }
+    var prompt by remember { mutableStateOf("") }
+    var isSecondaryMenuOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.draftRequest.prompt) {
         if (uiState.draftRequest.prompt.isNotBlank()) {
@@ -113,14 +110,16 @@ fun ChatRoute(navController: NavHostController, container: AppContainer, convers
     ChatScreen(
         uiState = uiState,
         prompt = prompt,
-        selectedMedia = selectedMedia,
+        isSecondaryMenuOpen = isSecondaryMenuOpen,
         onPromptChanged = { prompt = it },
         onBack = { navController.popBackStack() },
         onOpenWorkshop = { navController.navigate("workshop") },
-        onPickImage = mediaPicker.pickImage,
-        onPickVideo = mediaPicker.pickVideo,
-        onSendMessage = { viewModel.sendMessage(prompt) },
-        onRunMode = { mode -> viewModel.runAigc(mode, prompt, selectedMedia) },
+        onToggleSecondaryMenu = { isSecondaryMenuOpen = !isSecondaryMenuOpen },
+        onSendMessage = {
+            if (prompt.isBlank()) return@ChatScreen
+            viewModel.sendMessage(prompt)
+            prompt = ""
+        },
     )
 }
 
@@ -128,14 +127,12 @@ fun ChatRoute(navController: NavHostController, container: AppContainer, convers
 private fun ChatScreen(
     uiState: ChatUiState,
     prompt: String,
-    selectedMedia: MediaInput?,
+    isSecondaryMenuOpen: Boolean,
     onPromptChanged: (String) -> Unit,
     onBack: () -> Unit,
     onOpenWorkshop: () -> Unit,
-    onPickImage: () -> Unit,
-    onPickVideo: () -> Unit,
+    onToggleSecondaryMenu: () -> Unit,
     onSendMessage: () -> Unit,
-    onRunMode: (AigcMode) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -159,28 +156,52 @@ private fun ChatScreen(
             }
         }
 
-        GlassCard {
-            Text(text = "AIGC ACTIONS", style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
-            Text(text = "Use the same prompt across text, image, and video flows. Provider: ${uiState.activeProvider?.label ?: "Unknown"}", style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurfaceVariant)
+        if (isSecondaryMenuOpen) {
+            GlassCard(modifier = Modifier.testTag("chat-secondary-menu")) {
+                Text(text = "More tools", style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
+                Text(
+                    text = "Provider: ${uiState.activeProvider?.label ?: "Unknown"}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                )
+                Text(text = "AIGC actions and media tools stay behind this menu.", style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("chat-composer-row"),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(18.dp))
+                    .clickable(onClick = onToggleSecondaryMenu)
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                    .testTag("chat-plus-button"),
+                contentAlignment = androidx.compose.ui.Alignment.Center,
+            ) {
+                Text(text = "+", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
+            }
             OutlinedTextField(
                 value = prompt,
                 onValueChange = onPromptChanged,
-                modifier = Modifier.fillMaxWidth().testTag("chat-prompt-field"),
-                label = { Text("Prompt") },
+                modifier = Modifier.weight(1f).testTag("chat-composer-input"),
+                placeholder = { Text("Send a message") },
+                singleLine = true,
             )
-            if (selectedMedia != null) {
-                Text(text = "Selected media: ${selectedMedia.type.name}", style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
+            Box(
+                modifier = Modifier
+                    .background(AetherColors.PrimaryContainer, RoundedCornerShape(18.dp))
+                    .clickable(onClick = onSendMessage)
+                    .padding(horizontal = 18.dp, vertical = 14.dp)
+                    .testTag("chat-send-button"),
+                contentAlignment = androidx.compose.ui.Alignment.Center,
+            ) {
+                Text(text = "Send", style = MaterialTheme.typography.titleMedium, color = AetherColors.OnSurface)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ActionChip(label = "Pick image", onClick = onPickImage)
-                ActionChip(label = "Pick video", onClick = onPickVideo)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ActionChip(label = "Text to image") { onRunMode(AigcMode.TextToImage) }
-                ActionChip(label = "Image to image") { onRunMode(AigcMode.ImageToImage) }
-                ActionChip(label = "Video to video") { onRunMode(AigcMode.VideoToVideo) }
-            }
-            GradientPrimaryButton(label = "Send text", onClick = onSendMessage)
         }
 
         uiState.latestTask?.let { task ->

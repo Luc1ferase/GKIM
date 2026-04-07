@@ -93,6 +93,20 @@ class GkimRootAppTest {
     }
 
     @Test
+    fun chatScreenUsesComposerRowForDefaultSendFlow() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+
+        composeRule.onNodeWithTag("chat-plus-button").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-composer-input").performTextReplacement("Ship the revised orbit build.")
+        composeRule.onNodeWithTag("chat-send-button").performClick()
+
+        composeRule.onNodeWithText("Ship the revised orbit build.").fetchSemanticsNode()
+        assertTrue(textNodeMissing("AIGC ACTIONS"))
+    }
+
+    @Test
     fun contactSortingChangesRenderedRowOrder() {
         setApp(UiTestAppContainer())
 
