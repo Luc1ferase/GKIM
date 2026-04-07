@@ -326,7 +326,12 @@ private fun ChatTopBar(
                 Text(text = "<", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
-                Text(text = conversation?.contactName ?: "Chat", style = MaterialTheme.typography.headlineMedium, color = AetherColors.OnSurface)
+                Text(
+                    text = conversation?.contactName ?: "Chat",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = AetherColors.OnSurface,
+                    modifier = Modifier.testTag("chat-contact-name"),
+                )
                 Text(
                     text = conversation?.contactTitle ?: "AIGC-enabled conversation surface.",
                     style = MaterialTheme.typography.bodyMedium,

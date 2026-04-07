@@ -91,7 +91,7 @@ class GkimRootAppTest {
 
         composeRule.onNodeWithTag("chat-top-bar").fetchSemanticsNode()
         composeRule.onNodeWithTag("chat-back-button").fetchSemanticsNode()
-        composeRule.onNodeWithText("Leo Vance").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-contact-name").assertTextContains("Leo Vance")
         assertTrue(textNodeMissing("Active Room"))
         assertTrue(textNodeMissing("Back"))
 
