@@ -87,5 +87,20 @@
 
 ## 3. Message row attribution and regression coverage
 
-- [ ] 3.1 Refactor chat message rows so avatars appear before bubbles and sender labels render above the bubble content for incoming, outgoing, and system entries, then verify the timeline still renders attachments and timestamps cleanly.
+- [x] 3.1 Refactor chat message rows so avatars appear before bubbles and sender labels render above the bubble content for incoming, outgoing, and system entries, then verify the timeline still renders attachments and timestamps cleanly.
 - [ ] 3.2 Add or update automated coverage for the compact chat header, secondary action menu, and attributed message layout, then run the relevant Gradle or instrumentation checks and capture the verification evidence required by `docs/DELIVERY_WORKFLOW.md`.
+
+### Task 3.1: Refactor chat rows to show avatars and sender labels
+
+- Verification:
+  - `cd android && .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#chatTimelineUsesAvatarLedRowsForIncomingAndOutgoingMessages,com.gkim.im.android.feature.navigation.GkimRootAppTest#chatTimelineKeepsAttachmentAndTimestampForSystemMessages"` - pass
+  - `cd android && .\gradlew.bat testDebugUnitTest` - pass
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/feature/chat/ChatRoute.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `1472cee`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
