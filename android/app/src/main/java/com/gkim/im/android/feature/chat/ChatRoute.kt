@@ -420,7 +420,7 @@ private fun ChatMessageRow(
         MessageDirection.System -> AetherColors.Tertiary
         MessageDirection.Incoming -> AetherColors.Primary
     }
-    val bubbleSpacing = if (isOutgoing) 4.dp else 8.dp
+    val bubbleSpacing = 4.dp
     val bubblePadding = if (isOutgoing) 16.dp else 14.dp
     Row(
         modifier = Modifier
@@ -452,26 +452,12 @@ private fun ChatMessageRow(
             horizontalAlignment = if (isOutgoing) Alignment.End else Alignment.Start,
         ) {
             if (isIncomingOrSystem) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Text(
-                        text = authorName,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = AetherColors.OnSurfaceVariant,
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("chat-message-sender-${message.id}"),
-                    )
-                    Text(
-                        text = formatChatTimestamp(message.createdAt),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = AetherColors.OnSurfaceVariant,
-                        modifier = Modifier.testTag("chat-message-time-${message.id}"),
-                    )
-                }
+                Text(
+                    text = authorName,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                    modifier = Modifier.testTag("chat-message-sender-${message.id}"),
+                )
             }
             Column(
                 modifier = Modifier
@@ -506,7 +492,7 @@ private fun ChatMessageRow(
                         color = AetherColors.OnSurfaceVariant,
                         modifier = Modifier.testTag("chat-message-time-${message.id}"),
                     )
-                } else if (isOutgoing) {
+                } else {
                     Box(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = formatChatTimestamp(message.createdAt),
