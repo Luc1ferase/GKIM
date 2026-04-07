@@ -67,6 +67,16 @@ class GkimRootAppTest {
     }
 
     @Test
+    fun messagesConversationRowsStillExposeUnreadMetadata() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithTag("conversation-name-room-leo", useUnmergedTree = true).fetchSemanticsNode()
+        composeRule.onNodeWithTag("conversation-preview-room-leo", useUnmergedTree = true).fetchSemanticsNode()
+        composeRule.onNodeWithTag("conversation-time-room-leo", useUnmergedTree = true).fetchSemanticsNode()
+        composeRule.onNodeWithTag("conversation-unread-room-leo", useUnmergedTree = true).fetchSemanticsNode()
+    }
+
+    @Test
     fun contactSortingChangesRenderedRowOrder() {
         setApp(UiTestAppContainer())
 

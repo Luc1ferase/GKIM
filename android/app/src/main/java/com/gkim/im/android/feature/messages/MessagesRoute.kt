@@ -144,10 +144,27 @@ private fun ConversationRow(conversation: Conversation, onClick: () -> Unit) {
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(text = conversation.contactName, style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
-                    Text(text = formatChatTimestamp(conversation.lastTimestamp), style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
+                    Text(
+                        text = conversation.contactName,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = AetherColors.OnSurface,
+                        modifier = Modifier.testTag("conversation-name-${conversation.id}"),
+                    )
+                    Text(
+                        text = formatChatTimestamp(conversation.lastTimestamp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AetherColors.OnSurfaceVariant,
+                        modifier = Modifier.testTag("conversation-time-${conversation.id}"),
+                    )
                 }
-                Text(text = conversation.lastMessage, style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    text = conversation.lastMessage,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = AetherColors.OnSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("conversation-preview-${conversation.id}"),
+                )
             }
             if (conversation.unreadCount > 0) {
                 Box(
@@ -156,7 +173,12 @@ private fun ConversationRow(conversation: Conversation, onClick: () -> Unit) {
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(text = conversation.unreadCount.toString(), color = AetherColors.OnSurface, style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        text = conversation.unreadCount.toString(),
+                        color = AetherColors.OnSurface,
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.testTag("conversation-unread-${conversation.id}"),
+                    )
                 }
             }
         }
