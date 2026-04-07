@@ -166,7 +166,7 @@ class GkimRootAppTest {
     }
 
     @Test
-    fun chatTimelineUsesAvatarLedRowsForIncomingAndOutgoingMessages() {
+    fun chatTimelineKeepsIncomingAndSystemAttributionButDropsOutgoingSelfMarkers() {
         setApp(UiTestAppContainer())
 
         composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
@@ -174,24 +174,19 @@ class GkimRootAppTest {
         composeRule.onNodeWithTag("chat-message-avatar-m-1").fetchSemanticsNode()
         composeRule.onNodeWithTag("chat-message-sender-m-1").fetchSemanticsNode()
         composeRule.onNodeWithTag("chat-message-bubble-m-1").fetchSemanticsNode()
-        composeRule.onNodeWithTag("chat-message-avatar-m-2").fetchSemanticsNode()
-        composeRule.onNodeWithTag("chat-message-sender-m-2").fetchSemanticsNode()
         composeRule.onNodeWithTag("chat-message-bubble-m-2").fetchSemanticsNode()
 
         composeRule.onNodeWithTag("chat-message-sender-m-1").assertTextContains("Leo Vance")
-        composeRule.onNodeWithTag("chat-message-sender-m-2").assertTextContains("You")
+        assertTrue(!nodeExists("chat-message-avatar-m-2"))
+        assertTrue(!nodeExists("chat-message-sender-m-2"))
+        assertTrue(textNodeMissing("You"))
 
         val incomingAvatar = composeRule.onNodeWithTag("chat-message-avatar-m-1").fetchSemanticsNode().boundsInRoot
         val incomingSender = composeRule.onNodeWithTag("chat-message-sender-m-1").fetchSemanticsNode().boundsInRoot
         val incomingBubble = composeRule.onNodeWithTag("chat-message-bubble-m-1").fetchSemanticsNode().boundsInRoot
-        val outgoingAvatar = composeRule.onNodeWithTag("chat-message-avatar-m-2").fetchSemanticsNode().boundsInRoot
-        val outgoingSender = composeRule.onNodeWithTag("chat-message-sender-m-2").fetchSemanticsNode().boundsInRoot
-        val outgoingBubble = composeRule.onNodeWithTag("chat-message-bubble-m-2").fetchSemanticsNode().boundsInRoot
 
         assertTrue(incomingAvatar.right <= incomingBubble.left)
         assertTrue(incomingSender.bottom <= incomingBubble.top)
-        assertTrue(outgoingAvatar.right <= outgoingBubble.left)
-        assertTrue(outgoingSender.bottom <= outgoingBubble.top)
     }
 
     @Test

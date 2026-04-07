@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -350,6 +351,7 @@ private fun ChatMessageRow(
     conversation: Conversation?,
     message: ChatMessage,
 ) {
+    val isOutgoing = message.direction == MessageDirection.Outgoing
     val authorName = when (message.direction) {
         MessageDirection.Incoming -> conversation?.contactName ?: "Contact"
         MessageDirection.Outgoing -> "You"
@@ -380,37 +382,45 @@ private fun ChatMessageRow(
             .fillMaxWidth()
             .testTag("chat-message-row-${message.id}"),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.Top,
+        verticalAlignment = Alignment.Top,
     ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .background(avatarBackground, CircleShape)
-                .testTag("chat-message-avatar-${message.id}"),
-            contentAlignment = androidx.compose.ui.Alignment.Center,
-        ) {
-            Text(
-                text = avatarText,
-                color = avatarForeground,
-                style = MaterialTheme.typography.labelLarge,
-            )
+        if (isOutgoing) {
+            Box(modifier = Modifier.weight(1f))
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(avatarBackground, CircleShape)
+                    .testTag("chat-message-avatar-${message.id}"),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = avatarText,
+                    color = avatarForeground,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
         }
         Column(
-            modifier = Modifier.weight(1f),
+            modifier = if (isOutgoing) Modifier else Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalAlignment = if (isOutgoing) Alignment.End else Alignment.Start,
         ) {
-            Text(
-                text = authorName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = AetherColors.OnSurfaceVariant,
-                modifier = Modifier.testTag("chat-message-sender-${message.id}"),
-            )
+            if (!isOutgoing) {
+                Text(
+                    text = authorName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                    modifier = Modifier.testTag("chat-message-sender-${message.id}"),
+                )
+            }
             Column(
                 modifier = Modifier
                     .background(bubbleColor, RoundedCornerShape(24.dp))
                     .padding(18.dp)
                     .testTag("chat-message-bubble-${message.id}"),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = if (isOutgoing) Alignment.End else Alignment.Start,
             ) {
                 Text(
                     text = message.body,
