@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -164,6 +165,54 @@ class GkimRootAppTest {
             latestTask?.mode == AigcMode.TextToImage && latestTask.input == null
         }
         composeRule.onNodeWithText("TextToImage · Turn this orbit frame into a cinematic cut.").fetchSemanticsNode()
+    }
+
+    @Test
+    fun chatComposerStaysAnchoredToBottomWhenLatestGenerationAppears() {
+        val container = UiTestAppContainer()
+        setApp(container, fakeMediaPickerControllerFactory())
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+        composeRule.onNodeWithTag("chat-composer-input").performTextReplacement("Anchor the composer and render the latest frame.")
+        composeRule.onNodeWithTag("chat-plus-button").performClick()
+        composeRule.onNodeWithTag("chat-action-text-to-image").performClick()
+
+        composeRule.waitUntil(5_000) { container.aigcRepository.history.value.isNotEmpty() }
+        composeRule.onNodeWithText("LATEST GENERATION").fetchSemanticsNode()
+
+        val rootBounds = composeRule.onRoot().fetchSemanticsNode().boundsInRoot
+        val composerBounds = composeRule.onNodeWithTag("chat-composer-row").fetchSemanticsNode().boundsInRoot
+        val latestGenerationBounds = composeRule.onNodeWithText("LATEST GENERATION").fetchSemanticsNode().boundsInRoot
+        val bottomGap = rootBounds.bottom - composerBounds.bottom
+
+        assertTrue("bottomGap=$bottomGap", bottomGap <= 64f)
+        assertTrue(
+            "latestGenerationTop=${latestGenerationBounds.top} composerTop=${composerBounds.top}",
+            latestGenerationBounds.top < composerBounds.top,
+        )
+    }
+
+    @Test
+    fun incomingMetadataUsesCompactHeaderWithRightAlignedTimestamp() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+
+        val avatarBounds = composeRule.onNodeWithTag("chat-message-avatar-m-1").fetchSemanticsNode().boundsInRoot
+        val senderBounds = composeRule.onNodeWithTag("chat-message-sender-m-1").fetchSemanticsNode().boundsInRoot
+        val timeNode = composeRule.onNodeWithTag("chat-message-time-m-1")
+        val timeBounds = timeNode.fetchSemanticsNode().boundsInRoot
+        val bubbleBounds = composeRule.onNodeWithTag("chat-message-bubble-m-1").fetchSemanticsNode().boundsInRoot
+        val headerGap = bubbleBounds.top - maxOf(senderBounds.bottom, timeBounds.bottom)
+        val topDelta = kotlin.math.abs(avatarBounds.top - timeBounds.top)
+
+        timeNode.assertTextContains(formatChatTimestamp("2026-04-06T13:42:00Z"))
+
+        assertTrue("topDelta=$topDelta", topDelta <= 18f)
+        assertTrue("headerGap=$headerGap", headerGap <= 56f)
+        assertTrue(timeBounds.left >= senderBounds.right + 8f)
+        assertTrue("bubbleRight=${bubbleBounds.right} timeRight=${timeBounds.right}", bubbleBounds.right - timeBounds.right <= 20f)
+        assertTrue(timeBounds.bottom <= bubbleBounds.top)
     }
 
     @Test

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -169,12 +171,22 @@ private fun ChatScreen(
     onSendMessage: () -> Unit,
     onRunMode: (AigcMode) -> Unit,
 ) {
+    val timelineMessages = uiState.conversation?.messages.orEmpty()
+    val timelineState = rememberLazyListState()
+
+    LaunchedEffect(timelineMessages.size, uiState.latestTask?.id) {
+        val totalItems = timelineMessages.size + if (uiState.latestTask != null) 1 else 0
+        if (totalItems > 0) {
+            timelineState.scrollToItem(totalItems - 1)
+        }
+    }
+
     Column(
         modifier = Modifier
+            .fillMaxSize()
             .background(AetherColors.Surface)
-            .padding(horizontal = 24.dp, vertical = 24.dp)
+            .padding(horizontal = 24.dp, vertical = 20.dp)
             .testTag("chat-screen"),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         ChatTopBar(
             conversation = uiState.conversation,
@@ -182,120 +194,147 @@ private fun ChatScreen(
             onOpenWorkshop = onOpenWorkshop,
         )
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.weight(1f, fill = false).testTag("chat-timeline"),
-        ) {
-            items(uiState.conversation?.messages.orEmpty(), key = { it.id }) { message ->
-                ChatMessageRow(
-                    conversation = uiState.conversation,
-                    message = message,
-                )
-            }
-        }
-
-        if (isSecondaryMenuOpen) {
-            GlassCard(modifier = Modifier.testTag("chat-secondary-menu")) {
-                Text(text = "More tools", style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
-                Text(
-                    text = "Provider: ${uiState.activeProvider?.label ?: "Unknown"}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = AetherColors.OnSurfaceVariant,
-                )
-                Text(
-                    text = "AIGC actions and media tools stay behind this menu.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = AetherColors.OnSurfaceVariant,
-                )
-                selectedMedia?.let { mediaInput ->
-                    val selectedLabel = if (mediaInput.type == AttachmentType.Image) "Image ready" else "Video ready"
-                    Text(
-                        text = selectedLabel,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = AetherColors.OnSurface,
-                        modifier = Modifier
-                            .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(999.dp))
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                            .testTag("chat-selected-media"),
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ActionChip(
-                        label = "Pick image",
-                        testTag = "chat-action-pick-image",
-                        modifier = Modifier.weight(1f),
-                        onClick = onPickImage,
-                    )
-                    ActionChip(
-                        label = "Pick video",
-                        testTag = "chat-action-pick-video",
-                        modifier = Modifier.weight(1f),
-                        onClick = onPickVideo,
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ActionChip(
-                        label = "Text to image",
-                        testTag = "chat-action-text-to-image",
-                        modifier = Modifier.weight(1f),
-                    ) { onRunMode(AigcMode.TextToImage) }
-                    ActionChip(
-                        label = "Image to image",
-                        testTag = "chat-action-image-to-image",
-                        modifier = Modifier.weight(1f),
-                    ) { onRunMode(AigcMode.ImageToImage) }
-                }
-                ActionChip(
-                    label = "Video to video",
-                    testTag = "chat-action-video-to-video",
-                    modifier = Modifier.fillMaxWidth(),
-                ) { onRunMode(AigcMode.VideoToVideo) }
-            }
-        }
-
-        Row(
+        Box(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
-                .testTag("chat-composer-row"),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                .padding(top = 16.dp, bottom = 12.dp),
         ) {
-            Box(
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier
-                    .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(18.dp))
-                    .clickable(onClick = onToggleSecondaryMenu)
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
-                    .testTag("chat-plus-button"),
-                contentAlignment = androidx.compose.ui.Alignment.Center,
+                    .fillMaxSize()
+                    .testTag("chat-timeline"),
+                state = timelineState,
             ) {
-                Text(text = "+", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
-            }
-            OutlinedTextField(
-                value = prompt,
-                onValueChange = onPromptChanged,
-                modifier = Modifier.weight(1f).testTag("chat-composer-input"),
-                placeholder = { Text("Send a message") },
-                singleLine = true,
-            )
-            Box(
-                modifier = Modifier
-                    .background(AetherColors.PrimaryContainer, RoundedCornerShape(18.dp))
-                    .clickable(onClick = onSendMessage)
-                    .padding(horizontal = 18.dp, vertical = 14.dp)
-                    .testTag("chat-send-button"),
-                contentAlignment = androidx.compose.ui.Alignment.Center,
-            ) {
-                Text(text = "Send", style = MaterialTheme.typography.titleMedium, color = AetherColors.OnSurface)
+                items(timelineMessages, key = { it.id }) { message ->
+                    ChatMessageRow(
+                        conversation = uiState.conversation,
+                        message = message,
+                    )
+                }
+                uiState.latestTask?.let { task ->
+                    item(key = "latest-task-${task.id}") {
+                        LatestGenerationCard(task = task)
+                    }
+                }
             }
         }
 
-        uiState.latestTask?.let { task ->
-            GlassCard {
-                Text(text = "LATEST GENERATION", style = MaterialTheme.typography.labelLarge, color = AetherColors.Tertiary)
-                AsyncImage(model = task.outputPreview, contentDescription = null, modifier = Modifier.fillMaxWidth().height(220.dp))
-                Text(text = "${task.mode.name} · ${task.prompt}", style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (isSecondaryMenuOpen) {
+                GlassCard(modifier = Modifier.testTag("chat-secondary-menu")) {
+                    Text(text = "More tools", style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
+                    Text(
+                        text = "Provider: ${uiState.activeProvider?.label ?: "Unknown"}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AetherColors.OnSurfaceVariant,
+                    )
+                    Text(
+                        text = "AIGC actions and media tools stay behind this menu.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AetherColors.OnSurfaceVariant,
+                    )
+                    selectedMedia?.let { mediaInput ->
+                        val selectedLabel = if (mediaInput.type == AttachmentType.Image) "Image ready" else "Video ready"
+                        Text(
+                            text = selectedLabel,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AetherColors.OnSurface,
+                            modifier = Modifier
+                                .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(999.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .testTag("chat-selected-media"),
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ActionChip(
+                            label = "Pick image",
+                            testTag = "chat-action-pick-image",
+                            modifier = Modifier.weight(1f),
+                            onClick = onPickImage,
+                        )
+                        ActionChip(
+                            label = "Pick video",
+                            testTag = "chat-action-pick-video",
+                            modifier = Modifier.weight(1f),
+                            onClick = onPickVideo,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ActionChip(
+                            label = "Text to image",
+                            testTag = "chat-action-text-to-image",
+                            modifier = Modifier.weight(1f),
+                        ) { onRunMode(AigcMode.TextToImage) }
+                        ActionChip(
+                            label = "Image to image",
+                            testTag = "chat-action-image-to-image",
+                            modifier = Modifier.weight(1f),
+                        ) { onRunMode(AigcMode.ImageToImage) }
+                    }
+                    ActionChip(
+                        label = "Video to video",
+                        testTag = "chat-action-video-to-video",
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { onRunMode(AigcMode.VideoToVideo) }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("chat-composer-row"),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(18.dp))
+                        .clickable(onClick = onToggleSecondaryMenu)
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .testTag("chat-plus-button"),
+                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                ) {
+                    Text(text = "+", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
+                }
+                OutlinedTextField(
+                    value = prompt,
+                    onValueChange = onPromptChanged,
+                    modifier = Modifier.weight(1f).testTag("chat-composer-input"),
+                    placeholder = { Text("Send a message") },
+                    singleLine = true,
+                )
+                Box(
+                    modifier = Modifier
+                        .background(AetherColors.PrimaryContainer, RoundedCornerShape(18.dp))
+                        .clickable(onClick = onSendMessage)
+                        .padding(horizontal = 18.dp, vertical = 14.dp)
+                        .testTag("chat-send-button"),
+                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                ) {
+                    Text(text = "Send", style = MaterialTheme.typography.titleMedium, color = AetherColors.OnSurface)
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun LatestGenerationCard(task: AigcTask) {
+    GlassCard(modifier = Modifier.testTag("chat-latest-generation-card")) {
+        Text(text = "LATEST GENERATION", style = MaterialTheme.typography.labelLarge, color = AetherColors.Tertiary)
+        AsyncImage(model = task.outputPreview, contentDescription = null, modifier = Modifier.fillMaxWidth().height(220.dp))
+        Text(
+            text = "${task.mode.name} · ${task.prompt}",
+            style = MaterialTheme.typography.bodyLarge,
+            color = AetherColors.OnSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -355,6 +394,7 @@ private fun ChatMessageRow(
     val isOutgoing = message.direction == MessageDirection.Outgoing
     val hasAttachment = message.attachment != null
     val isOutgoingTextOnly = isOutgoing && !hasAttachment
+    val isIncomingOrSystem = !isOutgoing
     val authorName = when (message.direction) {
         MessageDirection.Incoming -> conversation?.contactName ?: "Contact"
         MessageDirection.Outgoing -> "You"
@@ -380,12 +420,13 @@ private fun ChatMessageRow(
         MessageDirection.System -> AetherColors.Tertiary
         MessageDirection.Incoming -> AetherColors.Primary
     }
-    val bubbleSpacing = if (isOutgoing) 4.dp else 10.dp
+    val bubbleSpacing = if (isOutgoing) 4.dp else 8.dp
+    val bubblePadding = if (isOutgoing) 16.dp else 14.dp
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("chat-message-row-${message.id}"),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.Top,
     ) {
         if (isOutgoing) {
@@ -393,7 +434,7 @@ private fun ChatMessageRow(
         } else {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(40.dp)
                     .background(avatarBackground, CircleShape)
                     .testTag("chat-message-avatar-${message.id}"),
                 contentAlignment = Alignment.Center,
@@ -406,23 +447,38 @@ private fun ChatMessageRow(
             }
         }
         Column(
-            modifier = if (isOutgoing) Modifier else Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = if (isOutgoing) Modifier else Modifier.fillMaxWidth(fraction = 0.8f),
+            verticalArrangement = Arrangement.spacedBy(if (isIncomingOrSystem) 4.dp else 6.dp),
             horizontalAlignment = if (isOutgoing) Alignment.End else Alignment.Start,
         ) {
-            if (!isOutgoing) {
-                Text(
-                    text = authorName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = AetherColors.OnSurfaceVariant,
-                    modifier = Modifier.testTag("chat-message-sender-${message.id}"),
-                )
+            if (isIncomingOrSystem) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Text(
+                        text = authorName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = AetherColors.OnSurfaceVariant,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("chat-message-sender-${message.id}"),
+                    )
+                    Text(
+                        text = formatChatTimestamp(message.createdAt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = AetherColors.OnSurfaceVariant,
+                        modifier = Modifier.testTag("chat-message-time-${message.id}"),
+                    )
+                }
             }
             Column(
                 modifier = Modifier
+                    .then(if (isIncomingOrSystem) Modifier.fillMaxWidth() else Modifier)
                     .then(if (isOutgoingTextOnly) Modifier.widthIn(max = 320.dp) else Modifier)
                     .background(bubbleColor, RoundedCornerShape(24.dp))
-                    .padding(18.dp)
+                    .padding(horizontal = bubblePadding, vertical = bubblePadding)
                     .testTag("chat-message-bubble-${message.id}"),
                 verticalArrangement = Arrangement.spacedBy(bubbleSpacing),
                 horizontalAlignment = if (isOutgoing) Alignment.End else Alignment.Start,
@@ -446,7 +502,7 @@ private fun ChatMessageRow(
                 if (isOutgoingTextOnly) {
                     Text(
                         text = formatChatTimestamp(message.createdAt),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         color = AetherColors.OnSurfaceVariant,
                         modifier = Modifier.testTag("chat-message-time-${message.id}"),
                     )
@@ -454,20 +510,13 @@ private fun ChatMessageRow(
                     Box(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = formatChatTimestamp(message.createdAt),
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.labelSmall,
                             color = AetherColors.OnSurfaceVariant,
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .testTag("chat-message-time-${message.id}"),
                         )
                     }
-                } else {
-                    Text(
-                        text = formatChatTimestamp(message.createdAt),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = AetherColors.OnSurfaceVariant,
-                        modifier = Modifier.testTag("chat-message-time-${message.id}"),
-                    )
                 }
             }
         }
