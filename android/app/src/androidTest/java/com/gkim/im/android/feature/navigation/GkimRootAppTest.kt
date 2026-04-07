@@ -233,6 +233,61 @@ class GkimRootAppTest {
     }
 
     @Test
+    fun shortOutgoingTextBubbleHugsContentWidthInsteadOfRowWidth() {
+        setApp(UiTestAppContainer(conversations = adaptiveWidthConversations()))
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+
+        val rowBounds = composeRule.onNodeWithTag("chat-message-row-m-short").fetchSemanticsNode().boundsInRoot
+        val bubbleBounds = composeRule.onNodeWithTag("chat-message-bubble-m-short").fetchSemanticsNode().boundsInRoot
+        val bodyBounds = composeRule.onNodeWithTag("chat-message-body-m-short").fetchSemanticsNode().boundsInRoot
+        val timeNode = composeRule.onNodeWithTag("chat-message-time-m-short")
+
+        timeNode.assertTextContains(formatChatTimestamp("2026-04-06T13:45:00Z"))
+
+        val availableWidth = rowBounds.right - rowBounds.left
+        val bubbleWidth = bubbleBounds.right - bubbleBounds.left
+        val bodyWidth = bodyBounds.right - bodyBounds.left
+
+        assertTrue("bubbleWidth=$bubbleWidth availableWidth=$availableWidth", bubbleWidth < availableWidth * 0.55f)
+        assertTrue("bubbleWidth=$bubbleWidth bodyWidth=$bodyWidth", bubbleWidth < bodyWidth + 140f)
+    }
+
+    @Test
+    fun longOutgoingAndAttachmentRowsKeepReadableWidthAndStableFooter() {
+        setApp(UiTestAppContainer(conversations = adaptiveWidthConversations()))
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+
+        val shortBubbleBounds = composeRule.onNodeWithTag("chat-message-bubble-m-short").fetchSemanticsNode().boundsInRoot
+        val longRowBounds = composeRule.onNodeWithTag("chat-message-row-m-long").fetchSemanticsNode().boundsInRoot
+        val longBubbleBounds = composeRule.onNodeWithTag("chat-message-bubble-m-long").fetchSemanticsNode().boundsInRoot
+        val longBodyBounds = composeRule.onNodeWithTag("chat-message-body-m-long").fetchSemanticsNode().boundsInRoot
+        val longTimeBounds = composeRule.onNodeWithTag("chat-message-time-m-long").fetchSemanticsNode().boundsInRoot
+        val attachmentBubbleBounds = composeRule.onNodeWithTag("chat-message-bubble-m-attachment").fetchSemanticsNode().boundsInRoot
+        val attachmentBounds = composeRule.onNodeWithTag("chat-message-attachment-m-attachment").fetchSemanticsNode().boundsInRoot
+        val attachmentTimeBounds = composeRule.onNodeWithTag("chat-message-time-m-attachment").fetchSemanticsNode().boundsInRoot
+
+        val shortBubbleWidth = shortBubbleBounds.right - shortBubbleBounds.left
+        val longBubbleWidth = longBubbleBounds.right - longBubbleBounds.left
+        val longAvailableWidth = longRowBounds.right - longRowBounds.left
+        val attachmentBubbleWidth = attachmentBubbleBounds.right - attachmentBubbleBounds.left
+        val attachmentWidth = attachmentBounds.right - attachmentBounds.left
+
+        assertTrue("shortBubbleWidth=$shortBubbleWidth longBubbleWidth=$longBubbleWidth", longBubbleWidth > shortBubbleWidth + 120f)
+        assertTrue("longBubbleWidth=$longBubbleWidth longAvailableWidth=$longAvailableWidth", longBubbleWidth < longAvailableWidth * 0.9f)
+        assertTrue(longTimeBounds.top >= longBodyBounds.bottom)
+        assertTrue(longTimeBounds.right <= longBubbleBounds.right)
+        assertTrue(longTimeBounds.bottom <= longBubbleBounds.bottom)
+
+        assertTrue("attachmentBubbleWidth=$attachmentBubbleWidth shortBubbleWidth=$shortBubbleWidth", attachmentBubbleWidth > shortBubbleWidth + 120f)
+        assertTrue("attachmentWidth=$attachmentWidth", attachmentWidth > 220f)
+        assertTrue(attachmentBounds.right <= attachmentBubbleBounds.right)
+        assertTrue(attachmentTimeBounds.right <= attachmentBubbleBounds.right)
+        assertTrue(attachmentTimeBounds.bottom <= attachmentBubbleBounds.bottom)
+    }
+
+    @Test
     fun contactSortingChangesRenderedRowOrder() {
         setApp(UiTestAppContainer())
 
@@ -298,6 +353,52 @@ class GkimRootAppTest {
         false
     }.getOrDefault(true)
 }
+
+private fun adaptiveWidthConversations(): List<com.gkim.im.android.core.model.Conversation> =
+    seedConversations.map { conversation ->
+        if (conversation.id != "room-leo") {
+            conversation
+        } else {
+            conversation.copy(
+                lastMessage = "OK",
+                lastTimestamp = "2026-04-06T13:47:00Z",
+                messages = listOf(
+                    com.gkim.im.android.core.model.ChatMessage(
+                        id = "m-1",
+                        direction = com.gkim.im.android.core.model.MessageDirection.Incoming,
+                        kind = com.gkim.im.android.core.model.MessageKind.Text,
+                        body = "The orbital thread is stable. Ready for review.",
+                        createdAt = "2026-04-06T13:42:00Z",
+                    ),
+                    com.gkim.im.android.core.model.ChatMessage(
+                        id = "m-short",
+                        direction = com.gkim.im.android.core.model.MessageDirection.Outgoing,
+                        kind = com.gkim.im.android.core.model.MessageKind.Text,
+                        body = "OK",
+                        createdAt = "2026-04-06T13:45:00Z",
+                    ),
+                    com.gkim.im.android.core.model.ChatMessage(
+                        id = "m-long",
+                        direction = com.gkim.im.android.core.model.MessageDirection.Outgoing,
+                        kind = com.gkim.im.android.core.model.MessageKind.Text,
+                        body = "Push the AIGC moodboard into the workshop, sync the feed, and leave the notes inline so the next review pass has full context.",
+                        createdAt = "2026-04-06T13:46:00Z",
+                    ),
+                    com.gkim.im.android.core.model.ChatMessage(
+                        id = "m-attachment",
+                        direction = com.gkim.im.android.core.model.MessageDirection.Outgoing,
+                        kind = com.gkim.im.android.core.model.MessageKind.Aigc,
+                        body = "Here is the render reference.",
+                        createdAt = "2026-04-06T13:47:00Z",
+                        attachment = com.gkim.im.android.core.model.MessageAttachment(
+                            type = com.gkim.im.android.core.model.AttachmentType.Image,
+                            preview = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80",
+                        ),
+                    ),
+                ),
+            )
+        }
+    }
 
 private class UiTestAppContainer(
     conversations: List<com.gkim.im.android.core.model.Conversation> = seedConversations,

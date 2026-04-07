@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -352,6 +353,8 @@ private fun ChatMessageRow(
     message: ChatMessage,
 ) {
     val isOutgoing = message.direction == MessageDirection.Outgoing
+    val hasAttachment = message.attachment != null
+    val isOutgoingTextOnly = isOutgoing && !hasAttachment
     val authorName = when (message.direction) {
         MessageDirection.Incoming -> conversation?.contactName ?: "Contact"
         MessageDirection.Outgoing -> "You"
@@ -417,6 +420,7 @@ private fun ChatMessageRow(
             }
             Column(
                 modifier = Modifier
+                    .then(if (isOutgoingTextOnly) Modifier.widthIn(max = 320.dp) else Modifier)
                     .background(bubbleColor, RoundedCornerShape(24.dp))
                     .padding(18.dp)
                     .testTag("chat-message-bubble-${message.id}"),
@@ -439,7 +443,14 @@ private fun ChatMessageRow(
                             .testTag("chat-message-attachment-${message.id}"),
                     )
                 }
-                if (isOutgoing) {
+                if (isOutgoingTextOnly) {
+                    Text(
+                        text = formatChatTimestamp(message.createdAt),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AetherColors.OnSurfaceVariant,
+                        modifier = Modifier.testTag("chat-message-time-${message.id}"),
+                    )
+                } else if (isOutgoing) {
                     Box(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = formatChatTimestamp(message.createdAt),
