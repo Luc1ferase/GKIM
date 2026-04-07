@@ -6,8 +6,8 @@
 
 ## 2. Shared settings preference infrastructure
 
-- [ ] 2.1 Extend the shared preference layer and app-root state so language and theme preferences persist and can be observed across the Android shell.
-- [ ] 2.2 Refine the Settings screen to expose Chinese/English language selection and light/dark theme switching while preserving the existing provider and custom endpoint controls.
+- [x] 2.1 Extend the shared preference layer and app-root state so language and theme preferences persist and can be observed across the Android shell.
+- [x] 2.2 Refine the Settings screen to expose Chinese/English language selection and light/dark theme switching while preserving the existing provider and custom endpoint controls.
 
 ## 3. Primary-surface layout refinement
 
@@ -57,6 +57,35 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `e18170b`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.1: Shared preference and shell observation plumbing
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat testDebugUnitTest --tests com.gkim.im.android.feature.settings.SettingsViewModelTest` - pass, confirms persisted language/theme preferences flow through SettingsViewModel and remain mutable alongside provider settings
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsInteractionsUpdateProviderConfiguration,com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsScreenAppliesLanguageAndThemePreferencesAcrossShell,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesScreenStartsAtRecentConversationsWithoutUnreadSummaryPanel,com.gkim.im.android.feature.navigation.GkimRootAppTest#spaceScreenShowsUnreadSummaryAsSupportingContext,com.gkim.im.android.feature.navigation.GkimRootAppTest#contactsScreenUsesSingleDropdownSortControl,com.gkim.im.android.feature.navigation.GkimRootAppTest#contactSortingChangesRenderedRowOrder" --rerun-tasks` - pass, confirms the app shell observes language/theme preference changes and re-renders the affected surfaces without regressing Messages/Space/Contacts
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/core/designsystem/AppLanguageSupport.kt android/app/src/main/java/com/gkim/im/android/core/designsystem/AetherTheme.kt android/app/src/main/java/com/gkim/im/android/feature/shared/AppScaffold.kt android/app/src/main/java/com/gkim/im/android/feature/navigation/GkimRootApp.kt android/app/src/main/java/com/gkim/im/android/feature/messages/MessagesRoute.kt android/app/src/main/java/com/gkim/im/android/feature/space/SpaceRoute.kt android/app/src/main/java/com/gkim/im/android/feature/contacts/ContactsRoute.kt android/app/src/main/java/com/gkim/im/android/feature/settings/SettingsRoute.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/UiTestFakes.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `5566c5b`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.2: Settings controls for language and theme
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsInteractionsUpdateProviderConfiguration,com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsScreenAppliesLanguageAndThemePreferencesAcrossShell" --rerun-tasks` - failed first on missing `settings-language-chinese`, then passed after adding explicit Chinese/English and dark/light selection pills while preserving provider and custom endpoint behavior
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/feature/settings/SettingsRoute.kt android/app/src/main/java/com/gkim/im/android/feature/navigation/GkimRootApp.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/UiTestFakes.kt android/app/src/main/java/com/gkim/im/android/core/designsystem/AppLanguageSupport.kt android/app/src/main/java/com/gkim/im/android/core/designsystem/AetherTheme.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `5566c5b`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
