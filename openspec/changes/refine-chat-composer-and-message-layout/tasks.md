@@ -35,9 +35,24 @@
 
 ## 2. Chat header and composer restructuring
 
-- [ ] 2.1 Replace the current chat `PageHeader` usage with a compact top identity row that uses the `<` back affordance inline with the contact nickname and preserves access to workshop-related secondary actions, then verify the chat screen still opens and navigates back correctly.
+- [x] 2.1 Replace the current chat `PageHeader` usage with a compact top identity row that uses the `<` back affordance inline with the contact nickname and preserves access to workshop-related secondary actions, then verify the chat screen still opens and navigates back correctly.
 - [ ] 2.2 Replace the full-width AIGC action panel with a messaging-first composer that provides a text input field plus right-aligned send action and a secondary `+` menu trigger, then verify the default composer path works without opening secondary actions.
 - [ ] 2.3 Move text-to-image, image-to-image, video-to-video, image picker, and video picker entry points into the secondary `+` menu while keeping their existing callbacks intact, then verify each exposed menu action still maps to the expected chat behavior.
+
+### Task 2.1: Replace the chat header with compact identity chrome
+
+- Verification:
+  - `cd android && .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#chatScreenUsesCompactHeaderAndBackNavigation"` - pass
+  - `cd android && .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest"` - pass
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/feature/chat/ChatRoute.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `7874bea`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
 
 ## 3. Message row attribution and regression coverage
 
