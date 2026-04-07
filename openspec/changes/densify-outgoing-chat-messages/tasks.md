@@ -70,4 +70,19 @@
 
 ## 3. Regression and delivery evidence
 
-- [ ] 3.1 Run the relevant chat instrumentation and unit checks, update any selector or geometry assertions affected by the denser outgoing layout, and capture the verification/review/upload evidence required by `docs/DELIVERY_WORKFLOW.md`.
+- [x] 3.1 Run the relevant chat instrumentation and unit checks, update any selector or geometry assertions affected by the denser outgoing layout, and capture the verification/review/upload evidence required by `docs/DELIVERY_WORKFLOW.md`.
+
+### Task 3.1: Regression and delivery evidence
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat testDebugUnitTest` - pass
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest"` - pass, 13/13 instrumentation tests green
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/feature/chat/ChatRoute.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt` - pass
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `fc8eed0`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
