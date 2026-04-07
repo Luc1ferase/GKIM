@@ -1,5 +1,7 @@
 package com.gkim.im.android.testing
 
+import com.gkim.im.android.core.model.AppLanguage
+import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.core.model.ContactSortMode
 import com.gkim.im.android.core.security.SecureKeyValueStore
 import com.gkim.im.android.data.local.PreferencesStore
@@ -12,16 +14,22 @@ class FakePreferencesStore(
     initialProviderId: String = "hunyuan",
     initialBaseUrl: String = "https://api.example.com/v1",
     initialModel: String = "gpt-image-1",
+    initialLanguage: AppLanguage = AppLanguage.English,
+    initialThemeMode: AppThemeMode = AppThemeMode.Dark,
 ) : PreferencesStore {
     private val contactSortModeState = MutableStateFlow(initialSortMode)
     private val activeProviderIdState = MutableStateFlow(initialProviderId)
     private val customBaseUrlState = MutableStateFlow(initialBaseUrl)
     private val customModelState = MutableStateFlow(initialModel)
+    private val appLanguageState = MutableStateFlow(initialLanguage)
+    private val appThemeModeState = MutableStateFlow(initialThemeMode)
 
     override val contactSortMode: Flow<ContactSortMode> = contactSortModeState.asStateFlow()
     override val activeProviderId: Flow<String> = activeProviderIdState.asStateFlow()
     override val customBaseUrl: Flow<String> = customBaseUrlState.asStateFlow()
     override val customModel: Flow<String> = customModelState.asStateFlow()
+    override val appLanguage: Flow<AppLanguage> = appLanguageState.asStateFlow()
+    override val appThemeMode: Flow<AppThemeMode> = appThemeModeState.asStateFlow()
 
     val currentSortMode: ContactSortMode
         get() = contactSortModeState.value
@@ -34,6 +42,12 @@ class FakePreferencesStore(
 
     val currentModel: String
         get() = customModelState.value
+
+    val currentLanguage: AppLanguage
+        get() = appLanguageState.value
+
+    val currentThemeMode: AppThemeMode
+        get() = appThemeModeState.value
 
     override suspend fun setContactSortMode(mode: ContactSortMode) {
         contactSortModeState.value = mode
@@ -49,6 +63,14 @@ class FakePreferencesStore(
 
     override suspend fun setCustomModel(value: String) {
         customModelState.value = value
+    }
+
+    override suspend fun setAppLanguage(value: AppLanguage) {
+        appLanguageState.value = value
+    }
+
+    override suspend fun setAppThemeMode(value: AppThemeMode) {
+        appThemeModeState.value = value
     }
 }
 

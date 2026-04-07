@@ -28,24 +28,45 @@ import androidx.navigation.NavHostController
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
 import com.gkim.im.android.core.designsystem.PageHeader
+import com.gkim.im.android.core.model.AppLanguage
+import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.core.model.AigcProvider
 import com.gkim.im.android.core.model.CustomProviderConfig
+import com.gkim.im.android.data.local.PreferencesStore
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 internal data class SettingsUiState(
     val providers: List<AigcProvider> = emptyList(),
     val activeProviderId: String = "",
     val customProvider: CustomProviderConfig = CustomProviderConfig("", "", ""),
+    val appLanguage: AppLanguage = AppLanguage.English,
+    val themeMode: AppThemeMode = AppThemeMode.Dark,
 )
 
-internal class SettingsViewModel(private val repository: AigcRepository) : ViewModel() {
-    val uiState = combine(repository.providers, repository.activeProviderId, repository.customProvider) { providers, activeProviderId, customProvider ->
-        SettingsUiState(providers = providers, activeProviderId = activeProviderId, customProvider = customProvider)
+internal class SettingsViewModel(
+    private val repository: AigcRepository,
+    private val preferencesStore: PreferencesStore,
+) : ViewModel() {
+    val uiState = combine(
+        repository.providers,
+        repository.activeProviderId,
+        repository.customProvider,
+        preferencesStore.appLanguage,
+        preferencesStore.appThemeMode,
+    ) { providers, activeProviderId, customProvider, appLanguage, themeMode ->
+        SettingsUiState(
+            providers = providers,
+            activeProviderId = activeProviderId,
+            customProvider = customProvider,
+            appLanguage = appLanguage,
+            themeMode = themeMode,
+        )
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -53,16 +74,26 @@ internal class SettingsViewModel(private val repository: AigcRepository) : ViewM
             providers = repository.providers.value,
             activeProviderId = repository.activeProviderId.value,
             customProvider = repository.customProvider.value,
+            appLanguage = AppLanguage.English,
+            themeMode = AppThemeMode.Dark,
         ),
     )
 
     fun setActiveProvider(id: String) = repository.setActiveProvider(id)
     fun updateCustom(baseUrl: String? = null, model: String? = null, apiKey: String? = null) = repository.updateCustomProvider(baseUrl, model, apiKey)
+    fun setAppLanguage(value: AppLanguage) {
+        viewModelScope.launch { preferencesStore.setAppLanguage(value) }
+    }
+    fun setThemeMode(value: AppThemeMode) {
+        viewModelScope.launch { preferencesStore.setAppThemeMode(value) }
+    }
 }
 
 @Composable
 fun SettingsRoute(navController: NavHostController, container: AppContainer) {
-    val viewModel = viewModel<SettingsViewModel>(factory = simpleViewModelFactory { SettingsViewModel(container.aigcRepository) })
+    val viewModel = viewModel<SettingsViewModel>(factory = simpleViewModelFactory {
+        SettingsViewModel(container.aigcRepository, container.preferencesStore)
+    })
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var baseUrl by remember(uiState.customProvider.baseUrl) { mutableStateOf(uiState.customProvider.baseUrl) }
     var model by remember(uiState.customProvider.model) { mutableStateOf(uiState.customProvider.model) }

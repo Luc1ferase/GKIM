@@ -1,5 +1,7 @@
 package com.gkim.im.android.feature.navigation
 
+import com.gkim.im.android.core.model.AppLanguage
+import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.core.model.ContactSortMode
 import com.gkim.im.android.core.security.SecureKeyValueStore
 import com.gkim.im.android.data.local.PreferencesStore
@@ -12,11 +14,15 @@ internal class UiTestPreferencesStore : PreferencesStore {
     private val activeProviderIdState = MutableStateFlow("hunyuan")
     private val customBaseUrlState = MutableStateFlow("https://api.example.com/v1")
     private val customModelState = MutableStateFlow("gpt-image-1")
+    private val appLanguageState = MutableStateFlow(AppLanguage.English)
+    private val appThemeModeState = MutableStateFlow(AppThemeMode.Dark)
 
     override val contactSortMode: Flow<ContactSortMode> = contactSortModeState.asStateFlow()
     override val activeProviderId: Flow<String> = activeProviderIdState.asStateFlow()
     override val customBaseUrl: Flow<String> = customBaseUrlState.asStateFlow()
     override val customModel: Flow<String> = customModelState.asStateFlow()
+    override val appLanguage: Flow<AppLanguage> = appLanguageState.asStateFlow()
+    override val appThemeMode: Flow<AppThemeMode> = appThemeModeState.asStateFlow()
 
     override suspend fun setContactSortMode(mode: ContactSortMode) {
         contactSortModeState.value = mode
@@ -32,6 +38,14 @@ internal class UiTestPreferencesStore : PreferencesStore {
 
     override suspend fun setCustomModel(value: String) {
         customModelState.value = value
+    }
+
+    override suspend fun setAppLanguage(value: AppLanguage) {
+        appLanguageState.value = value
+    }
+
+    override suspend fun setAppThemeMode(value: AppThemeMode) {
+        appThemeModeState.value = value
     }
 }
 

@@ -6,6 +6,16 @@ enum class ContactSortMode {
     AddedDescending,
 }
 
+enum class AppLanguage {
+    English,
+    Chinese,
+}
+
+enum class AppThemeMode {
+    Dark,
+    Light,
+}
+
 enum class PromptCategory {
     All,
     Portrait,

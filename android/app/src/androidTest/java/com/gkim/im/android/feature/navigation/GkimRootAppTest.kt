@@ -489,7 +489,7 @@ private fun adaptiveWidthConversations(): List<com.gkim.im.android.core.model.Co
 private class UiTestAppContainer(
     conversations: List<com.gkim.im.android.core.model.Conversation> = seedConversations,
 ) : AppContainer {
-    private val preferencesStore = UiTestPreferencesStore()
+    override val preferencesStore = UiTestPreferencesStore()
     private val secureStore = UiInMemorySecureStore()
 
     override val messagingRepository: MessagingRepository = InMemoryMessagingRepository(conversations)
