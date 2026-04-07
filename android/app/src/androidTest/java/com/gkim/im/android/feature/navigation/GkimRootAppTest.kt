@@ -1,0 +1,118 @@
+package com.gkim.im.android.feature.navigation
+
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.gkim.im.android.core.rendering.MarkdownDocumentParser
+import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
+import com.gkim.im.android.data.repository.AigcRepository
+import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.repository.ContactsRepository
+import com.gkim.im.android.data.repository.DefaultAigcRepository
+import com.gkim.im.android.data.repository.DefaultContactsRepository
+import com.gkim.im.android.data.repository.DefaultFeedRepository
+import com.gkim.im.android.data.repository.FeedRepository
+import com.gkim.im.android.data.repository.InMemoryMessagingRepository
+import com.gkim.im.android.data.repository.MessagingRepository
+import com.gkim.im.android.data.repository.presetProviders
+import com.gkim.im.android.data.repository.seedContacts
+import com.gkim.im.android.data.repository.seedConversations
+import com.gkim.im.android.data.repository.seedPosts
+import com.gkim.im.android.data.repository.seedPrompts
+import kotlinx.coroutines.Dispatchers
+import okhttp3.OkHttpClient
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class GkimRootAppTest {
+    @get:Rule
+    val composeRule = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun bottomNavigationSwitchesAcrossPrimaryTabs() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithTag("bottom-nav").fetchSemanticsNode()
+        composeRule.onNodeWithText("Contacts").performClick()
+        composeRule.onNodeWithTag("contacts-screen").fetchSemanticsNode()
+        composeRule.onNodeWithText("Space").performClick()
+        composeRule.onNodeWithTag("space-screen").fetchSemanticsNode()
+    }
+
+    @Test
+    fun messagesScreenShowsEmptyStateWhenNoConversationsExist() {
+        setApp(UiTestAppContainer(conversations = emptyList()))
+
+        composeRule.onNodeWithTag("messages-empty").fetchSemanticsNode()
+    }
+
+    @Test
+    fun contactSortingChangesRenderedRowOrder() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithText("Contacts").performClick()
+        composeRule.onNodeWithTag("contact-sort-AddedDescending").performClick()
+        composeRule.waitUntil(5_000) { nodeExists("contact-row-clara-wu") && nodeExists("contact-row-aria-thorne") }
+
+        val claraTop = composeRule.onNodeWithTag("contact-row-clara-wu").fetchSemanticsNode().boundsInRoot.top
+        val ariaTop = composeRule.onNodeWithTag("contact-row-aria-thorne").fetchSemanticsNode().boundsInRoot.top
+
+        assertTrue(claraTop < ariaTop)
+    }
+
+    @Test
+    fun settingsInteractionsUpdateProviderConfiguration() {
+        val container = UiTestAppContainer()
+        setApp(container)
+
+        composeRule.onNodeWithText("Settings").performClick()
+        composeRule.onNodeWithTag("settings-screen").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-provider-custom").performClick()
+        composeRule.waitUntil(5_000) { container.aigcRepository.activeProviderId.value == "custom" }
+
+        composeRule.onNodeWithTag("settings-base-url").performTextReplacement("https://gateway.example.com/v1")
+        composeRule.onNodeWithTag("settings-model").performTextReplacement("gpt-image-1")
+        composeRule.onNodeWithTag("settings-api-key").performTextReplacement("secret-token")
+        composeRule.waitUntil(5_000) {
+            container.aigcRepository.customProvider.value.baseUrl == "https://gateway.example.com/v1" &&
+                container.aigcRepository.customProvider.value.model == "gpt-image-1"
+        }
+
+        assertEquals("custom", container.aigcRepository.activeProviderId.value)
+        assertEquals("https://gateway.example.com/v1", container.aigcRepository.customProvider.value.baseUrl)
+        assertEquals("gpt-image-1", container.aigcRepository.customProvider.value.model)
+    }
+
+    private fun setApp(container: UiTestAppContainer) {
+        composeRule.setContent {
+            GkimRootApp(container = container)
+        }
+    }
+
+    private fun nodeExists(tag: String): Boolean = runCatching {
+        composeRule.onNodeWithTag(tag).fetchSemanticsNode()
+        true
+    }.getOrDefault(false)
+}
+
+private class UiTestAppContainer(
+    conversations: List<com.gkim.im.android.core.model.Conversation> = seedConversations,
+) : AppContainer {
+    private val preferencesStore = UiTestPreferencesStore()
+    private val secureStore = UiInMemorySecureStore()
+
+    override val messagingRepository: MessagingRepository = InMemoryMessagingRepository(conversations)
+    override val contactsRepository: ContactsRepository = DefaultContactsRepository(seedContacts, preferencesStore, Dispatchers.Main)
+    override val feedRepository: FeedRepository = DefaultFeedRepository(seedPosts, seedPrompts, Dispatchers.Main)
+    override val aigcRepository: AigcRepository = DefaultAigcRepository(presetProviders, preferencesStore, secureStore, Dispatchers.Main)
+    override val markdownParser: MarkdownDocumentParser = MarkdownDocumentParser()
+    override val realtimeChatClient: RealtimeChatClient = RealtimeChatClient(OkHttpClient.Builder().build(), "wss://example.com/realtime")
+}

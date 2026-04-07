@@ -1,15 +1,26 @@
 ## ADDED Requirements
 
-### Requirement: UniAPP scaffold follows the repository harness
-The system SHALL initialize a UniAPP x application scaffold that uses Vue 3, TypeScript, Pinia, Pinia persisted state, and UnoCSS, and it MUST organize source files according to the repository harness layers for pages, components, composables, stores, api, utils, styles, and types.
+### Requirement: Android scaffold follows the repository harness
+The system SHALL initialize an Android application scaffold implemented with Kotlin and Jetpack Compose, and it MUST organize client responsibilities into Android-native UI, state, repository, remote, local, rendering, and model layers that preserve the repository harness intent.
 
-#### Scenario: Scaffolded project structure is created
+#### Scenario: Scaffolded Android project structure is created
 - **WHEN** the change is applied to initialize the project
-- **THEN** the repository contains the mandated frontend configuration and source directories for the UniAPP application shell
+- **THEN** the repository contains the mandated Android application configuration, package structure, and shared design system foundation for the IM app
 
-#### Scenario: Page logic is delegated to composables and stores
-- **WHEN** a page needs chat, contact, feed, or AIGC behavior
-- **THEN** the implementation uses stores and composables instead of placing direct API calls or complex business logic in the page file
+#### Scenario: Screen logic is delegated to state and data layers
+- **WHEN** a screen needs chat, contact, feed, workshop, or AIGC behavior
+- **THEN** the implementation uses ViewModels, repositories, and shared services instead of direct API calls or complex business logic in Compose screen functions
+
+### Requirement: Android client accesses protected infrastructure through service boundaries
+The system SHALL access IM, feed, and AIGC backend capabilities through HTTPS and WebSocket service endpoints, and it MUST NOT embed direct PostgreSQL credentials or CA certificate material in the Android client runtime.
+
+#### Scenario: Android app initializes remote connectivity
+- **WHEN** the app configures its connected services
+- **THEN** it uses API base URLs and WebSocket endpoints instead of a direct PostgreSQL DSN
+
+#### Scenario: Protected infrastructure material stays outside the APK
+- **WHEN** database credentials or database CA trust material are required
+- **THEN** they are held by backend infrastructure and are not packaged into the Android app
 
 ### Requirement: Application shell provides three primary mobile tabs
 The system SHALL provide a fixed bottom navigation bar with Messages, Contacts, and Space as the three primary destinations, and it MUST visually indicate the active tab using the design-system token set.
