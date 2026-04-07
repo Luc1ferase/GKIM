@@ -29,7 +29,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
+import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.core.designsystem.PillAction
+import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.Conversation
 import com.gkim.im.android.core.util.formatChatTimestamp
 import com.gkim.im.android.data.repository.AppContainer
@@ -71,6 +73,7 @@ private fun MessagesScreen(
     onOpenConversation: (String) -> Unit,
     onOpenSettings: () -> Unit,
 ) {
+    val appLanguage = LocalAppLanguage.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -84,17 +87,40 @@ private fun MessagesScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = "Recent conversations", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
+            Text(
+                text = appLanguage.pick("Recent conversations", "最近对话"),
+                style = MaterialTheme.typography.titleLarge,
+                color = AetherColors.OnSurface,
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "${uiState.conversations.size} active", style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
-                PillAction(label = "Settings", onClick = onOpenSettings)
+                Text(
+                    text = if (appLanguage == com.gkim.im.android.core.model.AppLanguage.Chinese) {
+                        "${uiState.conversations.size} 个活跃会话"
+                    } else {
+                        "${uiState.conversations.size} active"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                )
+                PillAction(label = appLanguage.pick("Settings", "设置"), onClick = onOpenSettings)
             }
         }
 
         if (uiState.conversations.isEmpty()) {
             GlassCard(modifier = Modifier.testTag("messages-empty")) {
-                Text(text = "No active rooms yet", style = MaterialTheme.typography.headlineMedium, color = AetherColors.OnSurface)
-                Text(text = "Seed data, websocket sync, or imported contacts will populate this lane once connected.", style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurfaceVariant)
+                Text(
+                    text = appLanguage.pick("No active rooms yet", "还没有活跃会话"),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = AetherColors.OnSurface,
+                )
+                Text(
+                    text = appLanguage.pick(
+                        "Seed data, websocket sync, or imported contacts will populate this lane once connected.",
+                        "接入种子数据、WebSocket 同步或导入联系人后，这里会出现会话内容。",
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = AetherColors.OnSurfaceVariant,
+                )
             }
         } else {
             LazyColumn(

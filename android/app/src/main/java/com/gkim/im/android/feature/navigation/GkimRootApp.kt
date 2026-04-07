@@ -13,6 +13,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -23,10 +24,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gkim.im.android.GkimApplication
 import com.gkim.im.android.core.media.MediaPickerControllerFactory
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GkimTheme
+import com.gkim.im.android.core.designsystem.LocalAppLanguage
+import com.gkim.im.android.core.designsystem.pick
+import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.feature.chat.ChatRoute
 import com.gkim.im.android.feature.contacts.ContactsRoute
@@ -38,12 +43,6 @@ import com.gkim.im.android.feature.workshop.WorkshopRoute
 
 private data class RootDestination(val route: String, val label: String, val icon: @Composable () -> Unit)
 
-private val primaryDestinations = listOf(
-    RootDestination("messages", "Messages") { Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null) },
-    RootDestination("contacts", "Contacts") { Icon(Icons.Outlined.PeopleAlt, contentDescription = null) },
-    RootDestination("space", "Space") { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
-)
-
 @Composable
 fun GkimRootApp(
     container: AppContainer? = null,
@@ -52,30 +51,35 @@ fun GkimRootApp(
 ) {
     val resolvedContainer = container ?: (LocalContext.current.applicationContext as GkimApplication).container
     val resolvedNavController = navController ?: rememberNavController()
+    val appLanguage by resolvedContainer.preferencesStore.appLanguage.collectAsStateWithLifecycle(initialValue = com.gkim.im.android.core.model.AppLanguage.English)
+    val appThemeMode by resolvedContainer.preferencesStore.appThemeMode.collectAsStateWithLifecycle(initialValue = AppThemeMode.Dark)
 
-    GkimTheme {
-        AppScaffold(
-            bottomBar = { RootBottomBar(resolvedNavController) },
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-            ) {
-                NavHost(navController = resolvedNavController, startDestination = "messages") {
-                    composable("messages") { MessagesRoute(resolvedNavController, resolvedContainer) }
-                    composable("contacts") { ContactsRoute(resolvedNavController, resolvedContainer) }
-                    composable("space") { SpaceRoute(resolvedNavController, resolvedContainer) }
-                    composable("chat/{conversationId}") { backStackEntry ->
-                        ChatRoute(
-                            navController = resolvedNavController,
-                            container = resolvedContainer,
-                            conversationId = backStackEntry.arguments?.getString("conversationId").orEmpty(),
-                            mediaPickerControllerFactory = mediaPickerControllerFactory,
-                        )
+    GkimTheme(darkTheme = appThemeMode != AppThemeMode.Light) {
+        CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
+            AppScaffold(
+                modifier = Modifier.testTag("gkim-theme-${appThemeMode.name}"),
+                bottomBar = { RootBottomBar(resolvedNavController) },
+            ) { paddingValues ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                ) {
+                    NavHost(navController = resolvedNavController, startDestination = "messages") {
+                        composable("messages") { MessagesRoute(resolvedNavController, resolvedContainer) }
+                        composable("contacts") { ContactsRoute(resolvedNavController, resolvedContainer) }
+                        composable("space") { SpaceRoute(resolvedNavController, resolvedContainer) }
+                        composable("chat/{conversationId}") { backStackEntry ->
+                            ChatRoute(
+                                navController = resolvedNavController,
+                                container = resolvedContainer,
+                                conversationId = backStackEntry.arguments?.getString("conversationId").orEmpty(),
+                                mediaPickerControllerFactory = mediaPickerControllerFactory,
+                            )
+                        }
+                        composable("workshop") { WorkshopRoute(resolvedNavController, resolvedContainer) }
+                        composable("settings") { SettingsRoute(resolvedNavController, resolvedContainer) }
                     }
-                    composable("workshop") { WorkshopRoute(resolvedNavController, resolvedContainer) }
-                    composable("settings") { SettingsRoute(resolvedNavController, resolvedContainer) }
                 }
             }
         }
@@ -84,8 +88,14 @@ fun GkimRootApp(
 
 @Composable
 private fun RootBottomBar(navController: NavHostController) {
+    val appLanguage = LocalAppLanguage.current
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    val primaryDestinations = listOf(
+        RootDestination("messages", appLanguage.pick("Messages", "消息")) { Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null) },
+        RootDestination("contacts", appLanguage.pick("Contacts", "联系人")) { Icon(Icons.Outlined.PeopleAlt, contentDescription = null) },
+        RootDestination("space", appLanguage.pick("Space", "空间")) { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
+    )
     val showBottomBar = primaryDestinations.any { it.route == currentRoute }
     if (!showBottomBar) return
 

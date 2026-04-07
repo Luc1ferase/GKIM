@@ -403,6 +403,27 @@ class GkimRootAppTest {
         assertEquals("gpt-image-1", container.aigcRepository.customProvider.value.model)
     }
 
+    @Test
+    fun settingsScreenAppliesLanguageAndThemePreferencesAcrossShell() {
+        val container = UiTestAppContainer()
+        setApp(container)
+
+        composeRule.onNodeWithText("Settings").performClick()
+        composeRule.onNodeWithTag("settings-language-chinese").performClick()
+        composeRule.onNodeWithTag("settings-theme-light").performClick()
+        composeRule.waitUntil(5_000) {
+            container.preferencesStore.currentLanguage == com.gkim.im.android.core.model.AppLanguage.Chinese &&
+                container.preferencesStore.currentThemeMode == com.gkim.im.android.core.model.AppThemeMode.Light
+        }
+
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.onBackPressedDispatcher.onBackPressed()
+        }
+
+        composeRule.onNodeWithTag("gkim-theme-Light").fetchSemanticsNode()
+        composeRule.onNodeWithText("消息").fetchSemanticsNode()
+    }
+
     private fun setApp(
         container: UiTestAppContainer,
         mediaPickerControllerFactory: MediaPickerControllerFactory? = null,

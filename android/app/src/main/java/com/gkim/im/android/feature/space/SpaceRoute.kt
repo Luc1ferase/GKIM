@@ -23,7 +23,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
+import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.core.designsystem.PageHeader
+import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.AccentTone
 import com.gkim.im.android.core.model.FeedPost
 import com.gkim.im.android.core.model.RichDocument
@@ -70,6 +72,7 @@ fun SpaceRoute(navController: NavHostController, container: AppContainer) {
 
 @Composable
 private fun SpaceScreen(uiState: SpaceUiState, onOpenWorkshop: () -> Unit) {
+    val appLanguage = LocalAppLanguage.current
     Column(
         modifier = Modifier
             .background(AetherColors.Surface)
@@ -78,20 +81,41 @@ private fun SpaceScreen(uiState: SpaceUiState, onOpenWorkshop: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         PageHeader(
-            eyebrow = "Builder Feed",
-            title = "Space",
-            description = "Developer-first posts, prompt breakdowns, and community knowledge rendered through the shared Markdown pipeline.",
-            actionLabel = "Workshop",
+            eyebrow = appLanguage.pick("Builder Feed", "创作者动态"),
+            title = appLanguage.pick("Space", "空间"),
+            description = appLanguage.pick(
+                "Developer-first posts, prompt breakdowns, and community knowledge rendered through the shared Markdown pipeline.",
+                "这里展示以开发者为中心的帖子、提示词拆解与社区知识，并统一走 Markdown 内容渲染链路。",
+            ),
+            actionLabel = appLanguage.pick("Workshop", "工作台"),
             onAction = onOpenWorkshop,
         )
 
         GlassCard(modifier = Modifier.testTag("space-unread-summary")) {
-            Text(text = "Unread signals", style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
-            Text(text = "${uiState.totalUnread} total across active conversations", style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurface)
+            Text(
+                text = appLanguage.pick("Unread signals", "未读信号"),
+                style = MaterialTheme.typography.labelLarge,
+                color = AetherColors.Primary,
+            )
+            Text(
+                text = if (appLanguage == com.gkim.im.android.core.model.AppLanguage.Chinese) {
+                    "活跃会话中共有 ${uiState.totalUnread} 条未读"
+                } else {
+                    "${uiState.totalUnread} total across active conversations"
+                },
+                style = MaterialTheme.typography.bodyLarge,
+                color = AetherColors.OnSurface,
+            )
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            listOf("For You", "Prompting", "AI Tools", "Motion").forEachIndexed { index, label ->
+            val filters = listOf(
+                appLanguage.pick("For You", "为你推荐"),
+                appLanguage.pick("Prompting", "提示工程"),
+                appLanguage.pick("AI Tools", "AI 工具"),
+                appLanguage.pick("Motion", "动态"),
+            )
+            filters.forEachIndexed { index, label ->
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodyMedium,

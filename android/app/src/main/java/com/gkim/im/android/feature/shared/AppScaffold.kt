@@ -7,16 +7,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import com.gkim.im.android.core.designsystem.AetherColors
 
 @Composable
 fun AppScaffold(
+    modifier: Modifier = Modifier,
     bottomBar: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         containerColor = AetherColors.Surface,
         bottomBar = bottomBar,
         content = content,

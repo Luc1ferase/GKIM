@@ -32,7 +32,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
+import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.core.designsystem.PageHeader
+import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.Contact
 import com.gkim.im.android.core.model.ContactSortMode
 import com.gkim.im.android.data.repository.AppContainer
@@ -92,10 +94,11 @@ private fun ContactsScreen(
     onOpenContact: (Contact) -> Unit,
     onOpenSettings: () -> Unit,
 ) {
+    val appLanguage = LocalAppLanguage.current
     val sortOptions = listOf(
-        ContactSortMode.Nickname to "Nickname A-Z",
-        ContactSortMode.AddedAscending to "Added earliest",
-        ContactSortMode.AddedDescending to "Added latest",
+        ContactSortMode.Nickname to appLanguage.pick("Nickname A-Z", "昵称 A-Z"),
+        ContactSortMode.AddedAscending to appLanguage.pick("Added earliest", "最早添加"),
+        ContactSortMode.AddedDescending to appLanguage.pick("Added latest", "最近添加"),
     )
     val selectedSortLabel = sortOptions.first { it.first == uiState.sortMode }.second
     var isSortMenuExpanded by remember { mutableStateOf(false) }
@@ -109,10 +112,13 @@ private fun ContactsScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         PageHeader(
-            eyebrow = "Address Mesh",
-            title = "Contacts",
-            description = "Sort by name or onboarding time, then jump straight into the corresponding message room.",
-            actionLabel = "Settings",
+            eyebrow = appLanguage.pick("Address Mesh", "联系人网络"),
+            title = appLanguage.pick("Contacts", "联系人"),
+            description = appLanguage.pick(
+                "Sort by name or onboarding time, then jump straight into the corresponding message room.",
+                "按昵称或加入时间排序联系人，然后直接进入对应会话。",
+            ),
+            actionLabel = appLanguage.pick("Settings", "设置"),
             onAction = onOpenSettings,
         )
 
@@ -123,8 +129,12 @@ private fun ContactsScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(text = "SORT ORDER", style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
-                    Text(text = "Choose one ordering for the contact lane.", style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
+                    Text(text = appLanguage.pick("SORT ORDER", "排序方式"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
+                    Text(
+                        text = appLanguage.pick("Choose one ordering for the contact lane.", "为联系人列表选择一种排序方式。"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AetherColors.OnSurfaceVariant,
+                    )
                 }
                 Box {
                     Text(

@@ -24,6 +24,12 @@ internal class UiTestPreferencesStore : PreferencesStore {
     override val appLanguage: Flow<AppLanguage> = appLanguageState.asStateFlow()
     override val appThemeMode: Flow<AppThemeMode> = appThemeModeState.asStateFlow()
 
+    val currentLanguage: AppLanguage
+        get() = appLanguageState.value
+
+    val currentThemeMode: AppThemeMode
+        get() = appThemeModeState.value
+
     override suspend fun setContactSortMode(mode: ContactSortMode) {
         contactSortModeState.value = mode
     }

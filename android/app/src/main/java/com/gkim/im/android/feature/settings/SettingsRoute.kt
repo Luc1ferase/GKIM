@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -27,7 +29,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
+import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.core.designsystem.PageHeader
+import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.core.model.AigcProvider
@@ -117,6 +121,8 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
             viewModel.updateCustom(apiKey = it)
         },
         onSelectProvider = viewModel::setActiveProvider,
+        onSelectLanguage = viewModel::setAppLanguage,
+        onSelectThemeMode = viewModel::setThemeMode,
         onBack = { navController.popBackStack() },
     )
 }
@@ -131,8 +137,11 @@ private fun SettingsScreen(
     onModelChanged: (String) -> Unit,
     onApiKeyChanged: (String) -> Unit,
     onSelectProvider: (String) -> Unit,
+    onSelectLanguage: (AppLanguage) -> Unit,
+    onSelectThemeMode: (AppThemeMode) -> Unit,
     onBack: () -> Unit,
 ) {
+    val appLanguage = LocalAppLanguage.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -143,12 +152,47 @@ private fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         PageHeader(
-            eyebrow = "Infrastructure",
-            title = "AI Settings",
-            description = "Switch between preset AI providers or wire a custom OpenAI-compatible gateway for AIGC requests.",
-            leadingLabel = "Back",
+            eyebrow = appLanguage.pick("Infrastructure", "基础设施"),
+            title = appLanguage.pick("AI Settings", "AI 设置"),
+            description = appLanguage.pick(
+                "Switch between preset AI providers or wire a custom OpenAI-compatible gateway for AIGC requests.",
+                "可以切换预设 AI 提供商，或接入兼容 OpenAI 的自定义网关来执行 AIGC 请求。",
+            ),
+            leadingLabel = appLanguage.pick("Back", "返回"),
             onLeading = onBack,
         )
+
+        GlassCard {
+            Text(text = appLanguage.pick("LANGUAGE", "语言"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SettingsOptionPill(
+                    label = "English",
+                    selected = uiState.appLanguage == AppLanguage.English,
+                    testTag = "settings-language-english",
+                ) { onSelectLanguage(AppLanguage.English) }
+                SettingsOptionPill(
+                    label = "中文",
+                    selected = uiState.appLanguage == AppLanguage.Chinese,
+                    testTag = "settings-language-chinese",
+                ) { onSelectLanguage(AppLanguage.Chinese) }
+            }
+        }
+
+        GlassCard {
+            Text(text = appLanguage.pick("APPEARANCE", "外观"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SettingsOptionPill(
+                    label = appLanguage.pick("Dark", "深色"),
+                    selected = uiState.themeMode == AppThemeMode.Dark,
+                    testTag = "settings-theme-dark",
+                ) { onSelectThemeMode(AppThemeMode.Dark) }
+                SettingsOptionPill(
+                    label = appLanguage.pick("Light", "浅色"),
+                    selected = uiState.themeMode == AppThemeMode.Light,
+                    testTag = "settings-theme-light",
+                ) { onSelectThemeMode(AppThemeMode.Light) }
+            }
+        }
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             uiState.providers.forEach { provider ->
@@ -157,21 +201,66 @@ private fun SettingsScreen(
                     Text(text = provider.vendor.uppercase(), style = MaterialTheme.typography.labelLarge, color = if (selected) AetherColors.Primary else AetherColors.OnSurfaceVariant)
                     Text(text = provider.label, style = MaterialTheme.typography.headlineMedium, color = AetherColors.OnSurface)
                     Text(text = provider.description, style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurfaceVariant)
-                    Text(text = "Model · ${provider.model}", style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
+                    Text(
+                        text = appLanguage.pick("Model", "模型") + " · ${provider.model}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AetherColors.OnSurfaceVariant,
+                    )
                 }
             }
         }
 
         GlassCard {
-            Text(text = "CUSTOM ENDPOINT", style = MaterialTheme.typography.labelLarge, color = AetherColors.Tertiary)
-            OutlinedTextField(value = baseUrl, onValueChange = onBaseUrlChanged, modifier = Modifier.fillMaxWidth().testTag("settings-base-url"), label = { Text("Base URL") })
-            OutlinedTextField(value = model, onValueChange = onModelChanged, modifier = Modifier.fillMaxWidth().testTag("settings-model"), label = { Text("Model") })
-            OutlinedTextField(value = apiKey, onValueChange = onApiKeyChanged, modifier = Modifier.fillMaxWidth().testTag("settings-api-key"), label = { Text("API Key") })
+            Text(text = appLanguage.pick("CUSTOM ENDPOINT", "自定义端点"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Tertiary)
+            OutlinedTextField(
+                value = baseUrl,
+                onValueChange = onBaseUrlChanged,
+                modifier = Modifier.fillMaxWidth().testTag("settings-base-url"),
+                label = { Text(appLanguage.pick("Base URL", "基础 URL")) },
+            )
+            OutlinedTextField(
+                value = model,
+                onValueChange = onModelChanged,
+                modifier = Modifier.fillMaxWidth().testTag("settings-model"),
+                label = { Text(appLanguage.pick("Model", "模型")) },
+            )
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = onApiKeyChanged,
+                modifier = Modifier.fillMaxWidth().testTag("settings-api-key"),
+                label = { Text(appLanguage.pick("API Key", "API 密钥")) },
+            )
         }
 
         GlassCard {
-            Text(text = "BACKEND-ONLY DATABASE NOTE", style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
-            Text(text = "The Postgres DSN and CA certificate belong to backend infrastructure and are not packaged into the Android client. Future server-side trust material should live under infra/certs/.", style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurfaceVariant)
+            Text(text = appLanguage.pick("BACKEND-ONLY DATABASE NOTE", "仅后端数据库说明"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
+            Text(
+                text = appLanguage.pick(
+                    "The Postgres DSN and CA certificate belong to backend infrastructure and are not packaged into the Android client. Future server-side trust material should live under infra/certs/.",
+                    "Postgres DSN 与 CA 证书属于后端基础设施，不会打包进 Android 客户端。后续服务端证书材料应存放在 infra/certs/ 下。",
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+                color = AetherColors.OnSurfaceVariant,
+            )
         }
     }
+}
+
+@Composable
+private fun SettingsOptionPill(
+    label: String,
+    selected: Boolean,
+    testTag: String,
+    onClick: () -> Unit,
+) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.bodyMedium,
+        color = if (selected) AetherColors.Surface else AetherColors.OnSurface,
+        modifier = Modifier
+            .testTag(testTag)
+            .background(if (selected) AetherColors.Primary else AetherColors.SurfaceContainerHigh, RoundedCornerShape(999.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+    )
 }
