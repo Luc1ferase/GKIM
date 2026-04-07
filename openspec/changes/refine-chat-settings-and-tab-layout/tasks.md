@@ -2,7 +2,7 @@
 
 - [x] 1.1 Add or update targeted chat Compose UI coverage so incoming message timestamps assert in-bubble lower-right placement without regressing outgoing bubble footer behavior.
 - [x] 1.2 Add or update surface-level Compose UI coverage so Messages starts at `Recent conversations`, Space exposes the unread summary card, and Contacts renders a single dropdown-style sort control instead of horizontal chips.
-- [ ] 1.3 Add or update unit or integration coverage for persisted language and theme preferences so Settings changes can be verified independently of screen polish.
+- [x] 1.3 Add or update unit or integration coverage for persisted language and theme preferences so Settings changes can be verified independently of screen polish.
 
 ## 2. Shared settings preference infrastructure
 
@@ -43,6 +43,20 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `71bb4b9`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 1.3: Persisted language and theme preference coverage
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat testDebugUnitTest --tests com.gkim.im.android.feature.settings.SettingsViewModelTest` - failed first with unresolved language/theme preference symbols and missing SettingsViewModel hooks, then passed after adding persisted app language/theme preferences plus a SettingsViewModel unit test that asserts initial values and updates
+  - `git diff --check -- android/app/src/test/java/com/gkim/im/android/feature/settings/SettingsViewModelTest.kt android/app/src/main/java/com/gkim/im/android/core/model/SocialModels.kt android/app/src/main/java/com/gkim/im/android/data/local/AppPreferencesStore.kt android/app/src/main/java/com/gkim/im/android/data/repository/AppContainer.kt android/app/src/test/java/com/gkim/im/android/testing/TestFakes.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/UiTestFakes.kt android/app/src/main/java/com/gkim/im/android/feature/settings/SettingsRoute.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `95/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `e18170b`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
