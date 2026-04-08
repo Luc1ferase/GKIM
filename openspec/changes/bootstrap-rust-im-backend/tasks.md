@@ -17,7 +17,7 @@
 ## 4. Verification and server-side delivery evidence
 
 - [x] 4.1 Add automated verification for config loading, SQLx-backed bootstrap/history behavior, session auth, and WebSocket messaging semantics.
-- [ ] 4.2 Deploy accepted backend slices to `124.222.15.128`, run remote smoke tests and latency-focused message-flow checks there, and capture the required evidence in `docs/DELIVERY_WORKFLOW.md`.
+- [x] 4.2 Deploy accepted backend slices to `124.222.15.128`, run remote smoke tests and latency-focused message-flow checks there, and capture the required evidence in `docs/DELIVERY_WORKFLOW.md`.
 
 ## Task Evidence
 
@@ -147,6 +147,22 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `5761224`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 4.2: Deploy accepted backend slices to `124.222.15.128`, run remote smoke tests and latency-focused message-flow checks there, and capture the required evidence in `docs/DELIVERY_WORKFLOW.md`.
+
+- Verification:
+  - `python (paramiko) -> systemctl is-active gkim-im-backend` - pass (`active`)
+  - `python (paramiko) -> systemctl show -p ActiveEnterTimestamp,ExecMainPID gkim-im-backend` - pass (`ExecMainPID=92922`, `ActiveEnterTimestamp=Wed 2026-04-08 17:42:40 CST`)
+  - `python (paramiko) -> curl -fsS http://127.0.0.1:18080/health` - pass (`{"service":"gkim-im-backend","status":"ok"}`)
+  - `python (paramiko tunnel + requests/websockets)` - pass (`/api/session/dev` + `/api/bootstrap` succeeded, `5` remote message rounds completed with receive avg/max `82.99/101.56 ms`, delivery avg/max `164.52/182.16 ms`, read-ack avg/max `144.61/157.77 ms`, and `/api/conversations/{id}/messages?limit=5` returned the latest message with both `deliveredAt` and `readAt`)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `9c5a234`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
