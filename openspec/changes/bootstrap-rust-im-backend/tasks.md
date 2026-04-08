@@ -11,7 +11,7 @@
 
 ## 3. Low-latency realtime messaging path
 
-- [ ] 3.1 Implement the authenticated WebSocket gateway with connection tracking, heartbeat or presence updates, and user-scoped session registration on the single-node deployment.
+- [x] 3.1 Implement the authenticated WebSocket gateway with connection tracking, heartbeat or presence updates, and user-scoped session registration on the single-node deployment.
 - [ ] 3.2 Implement persist-then-fanout direct-message send flow, delivery/read event emission, and offline unread recovery so online users receive pushed updates without polling.
 
 ## 4. Verification and server-side delivery evidence
@@ -114,7 +114,7 @@
   - Score: `97/100`
   - Findings: `No findings`
 - Upload:
-  - Commit: `not created`
+  - Commit: `fd6323b`
   - Branch: `master`
-  - Push: `pending`
-- Result: `blocked`
+  - Push: `origin/master`
+- Result: `accepted`
