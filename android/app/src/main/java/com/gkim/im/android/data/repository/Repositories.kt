@@ -21,9 +21,11 @@ import com.gkim.im.android.core.model.WorkshopPrompt
 import com.gkim.im.android.core.security.SecureKeyValueStore
 import com.gkim.im.android.core.util.sortContacts
 import com.gkim.im.android.data.local.PreferencesStore
+import com.gkim.im.android.data.remote.im.ImBackendClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
@@ -37,18 +39,39 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
 
+enum class MessagingIntegrationPhase {
+    Idle,
+    Authenticating,
+    Bootstrapping,
+    RealtimeConnecting,
+    Ready,
+    Error,
+}
+
+data class MessagingIntegrationState(
+    val phase: MessagingIntegrationPhase = MessagingIntegrationPhase.Idle,
+    val activeUserExternalId: String? = null,
+    val message: String? = null,
+)
+
 interface MessagingRepository {
     val conversations: StateFlow<List<Conversation>>
+    val integrationState: StateFlow<MessagingIntegrationState>
     fun conversation(conversationId: String): Flow<Conversation?>
     fun ensureConversation(contact: Contact): Conversation
     fun ensureStudioRoom(): Conversation
     fun sendMessage(conversationId: String, body: String)
     fun appendAigcResult(conversationId: String, task: AigcTask)
+    fun loadConversationHistory(conversationId: String)
 }
 
 class InMemoryMessagingRepository(seed: List<Conversation>) : MessagingRepository {
     private val conversationState = MutableStateFlow(seed)
+    private val integrationStateValue = MutableStateFlow(
+        MessagingIntegrationState(phase = MessagingIntegrationPhase.Ready)
+    )
     override val conversations: StateFlow<List<Conversation>> = conversationState
+    override val integrationState: StateFlow<MessagingIntegrationState> = integrationStateValue
 
     override fun conversation(conversationId: String): Flow<Conversation?> = conversationState.map { items ->
         items.firstOrNull { it.id == conversationId }
@@ -127,6 +150,8 @@ class InMemoryMessagingRepository(seed: List<Conversation>) : MessagingRepositor
             )
         }
     }
+
+    override fun loadConversationHistory(conversationId: String) = Unit
 }
 
 interface ContactsRepository {
@@ -288,6 +313,279 @@ class DefaultAigcRepository(
         history.value = listOf(task) + history.value
         draftRequest.value = DraftAigcRequest(mode = mode, prompt = prompt, mediaInput = mediaInput)
         return task
+    }
+}
+
+class LiveMessagingRepository(
+    private val backendClient: ImBackendClient,
+    private val realtimeGateway: com.gkim.im.android.data.remote.realtime.RealtimeGateway,
+    private val preferencesStore: PreferencesStore,
+    private val fallbackRepository: MessagingRepository,
+    dispatcher: CoroutineDispatcher = Dispatchers.Default,
+) : MessagingRepository {
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+    private val conversationState = MutableStateFlow<List<Conversation>>(emptyList())
+    private val integrationStateValue = MutableStateFlow(MessagingIntegrationState())
+    private val loadedConversationIds = mutableSetOf<String>()
+
+    private var activeToken: String? = null
+    private var activeUserExternalId: String? = null
+    private var activeHttpBaseUrl: String? = null
+    private var activeWebSocketUrl: String? = null
+
+    override val conversations: StateFlow<List<Conversation>> = conversationState
+    override val integrationState: StateFlow<MessagingIntegrationState> = integrationStateValue
+
+    init {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            combine(
+                preferencesStore.imHttpBaseUrl,
+                preferencesStore.imWebSocketUrl,
+                preferencesStore.imDevUserExternalId,
+            ) { httpBaseUrl, webSocketUrl, devUserExternalId ->
+                Triple(httpBaseUrl, webSocketUrl, devUserExternalId)
+            }.collect { (httpBaseUrl, webSocketUrl, devUserExternalId) ->
+                if (httpBaseUrl.isBlank() || webSocketUrl.isBlank() || devUserExternalId.isBlank()) {
+                    integrationStateValue.value = MessagingIntegrationState(
+                        phase = MessagingIntegrationPhase.Error,
+                        activeUserExternalId = activeUserExternalId,
+                        message = "IM validation config is incomplete or invalid.",
+                    )
+                } else {
+                    try {
+                        bootstrap(httpBaseUrl, webSocketUrl, devUserExternalId)
+                    } catch (error: Throwable) {
+                        if (error is CancellationException) throw error
+                        reportError(error.message ?: "Failed to bootstrap live IM.")
+                    }
+                }
+            }
+        }
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            realtimeGateway.events.collect { handleRealtimeEvent(it) }
+        }
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            realtimeGateway.lastFailure.collect { failure ->
+                if (failure != null) {
+                    integrationStateValue.value = integrationStateValue.value.copy(
+                        phase = MessagingIntegrationPhase.Error,
+                        message = failure,
+                    )
+                }
+            }
+        }
+    }
+
+    override fun conversation(conversationId: String): Flow<Conversation?> = conversationState.map { conversations ->
+        conversations.firstOrNull { it.id == conversationId }
+    }
+
+    override fun ensureConversation(contact: Contact): Conversation {
+        val existing = conversationState.value.firstOrNull { it.contactId == contact.id }
+        if (existing != null) return existing
+
+        val fallbackConversation = fallbackRepository.ensureConversation(contact)
+        conversationState.value = listOf(fallbackConversation) + conversationState.value
+        return fallbackConversation
+    }
+
+    override fun ensureStudioRoom(): Conversation {
+        val existing = conversationState.value.firstOrNull { it.contactId == "studio" }
+        if (existing != null) return existing
+
+        val fallbackConversation = fallbackRepository.ensureStudioRoom()
+        conversationState.value = listOf(fallbackConversation) + conversationState.value
+        return fallbackConversation
+    }
+
+    override fun sendMessage(conversationId: String, body: String) {
+        if (body.isBlank()) return
+        val conversation = conversationState.value.firstOrNull { it.id == conversationId } ?: return
+        val clientMessageId = "client-${System.currentTimeMillis()}"
+        val sent = realtimeGateway.sendMessage(
+            recipientExternalId = conversation.contactId,
+            clientMessageId = clientMessageId,
+            body = body,
+        )
+        if (!sent) {
+            integrationStateValue.value = integrationStateValue.value.copy(
+                phase = MessagingIntegrationPhase.Error,
+                message = "Failed to send realtime message.",
+            )
+        }
+    }
+
+    override fun appendAigcResult(conversationId: String, task: AigcTask) {
+        fallbackRepository.appendAigcResult(conversationId, task)
+        val fallbackConversation = fallbackRepository.conversations.value.firstOrNull { it.id == conversationId } ?: return
+        conversationState.value = conversationState.value.map { conversation ->
+            if (conversation.id == conversationId) fallbackConversation else conversation
+        }
+    }
+
+    override fun loadConversationHistory(conversationId: String) {
+        if (loadedConversationIds.contains(conversationId)) return
+        val token = activeToken ?: return
+        val baseUrl = activeHttpBaseUrl ?: return
+
+        scope.launch {
+            try {
+                val history = backendClient.loadHistory(
+                    baseUrl = baseUrl,
+                    token = token,
+                    conversationId = conversationId,
+                )
+                loadedConversationIds.add(conversationId)
+                val mappedMessages = history.toChatMessages(activeUserExternalId = activeUserExternalId.orEmpty())
+                conversationState.value = conversationState.value.map { conversation ->
+                    if (conversation.id != conversationId) {
+                        conversation
+                    } else {
+                        val latest = mappedMessages.lastOrNull()
+                        conversation.copy(
+                            messages = mappedMessages,
+                            lastMessage = latest?.body ?: conversation.lastMessage,
+                            lastTimestamp = latest?.createdAt ?: conversation.lastTimestamp,
+                        )
+                    }
+                }
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                reportError(error.message ?: "Failed to load conversation history.")
+            }
+        }
+    }
+
+    private suspend fun bootstrap(
+        httpBaseUrl: String,
+        webSocketUrl: String,
+        devUserExternalId: String,
+    ) {
+        realtimeGateway.disconnect()
+        loadedConversationIds.clear()
+        integrationStateValue.value = MessagingIntegrationState(
+            phase = MessagingIntegrationPhase.Authenticating,
+            activeUserExternalId = devUserExternalId,
+        )
+        val session = backendClient.issueDevSession(httpBaseUrl, devUserExternalId)
+        activeToken = session.token
+        activeUserExternalId = session.user.externalId
+        activeHttpBaseUrl = httpBaseUrl
+        activeWebSocketUrl = webSocketUrl
+
+        integrationStateValue.value = MessagingIntegrationState(
+            phase = MessagingIntegrationPhase.Bootstrapping,
+            activeUserExternalId = session.user.externalId,
+        )
+        val bootstrap = backendClient.loadBootstrap(httpBaseUrl, session.token)
+        conversationState.value = bootstrap.toBootstrapState(activeUserExternalId = session.user.externalId).conversations
+
+        integrationStateValue.value = MessagingIntegrationState(
+            phase = MessagingIntegrationPhase.RealtimeConnecting,
+            activeUserExternalId = session.user.externalId,
+        )
+        realtimeGateway.connect(token = session.token, endpointOverride = webSocketUrl)
+    }
+
+    private fun handleRealtimeEvent(event: com.gkim.im.android.data.remote.im.ImGatewayEvent) {
+        when (event) {
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.SessionRegistered -> {
+                integrationStateValue.value = integrationStateValue.value.copy(
+                    phase = MessagingIntegrationPhase.Ready,
+                    activeUserExternalId = event.user.externalId,
+                    message = null,
+                )
+            }
+
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.MessageSent -> {
+                upsertMessage(
+                    conversationId = event.conversationId,
+                    message = event.message.toChatMessage(activeUserExternalId.orEmpty()),
+                    unreadCount = null,
+                )
+            }
+
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.MessageReceived -> {
+                upsertMessage(
+                    conversationId = event.conversationId,
+                    message = event.message.toChatMessage(activeUserExternalId.orEmpty()),
+                    unreadCount = event.unreadCount,
+                )
+            }
+
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.MessageDelivered -> {
+                conversationState.value = conversationState.value.map { conversation ->
+                    if (conversation.id != event.conversationId) {
+                        conversation
+                    } else {
+                        conversation.copy(
+                            messages = conversation.messages.map { message ->
+                                if (message.id == event.messageId) {
+                                    message.copy(deliveredAt = event.deliveredAt)
+                                } else {
+                                    message
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.MessageRead -> {
+                conversationState.value = conversationState.value.map { conversation ->
+                    if (conversation.id != event.conversationId) {
+                        conversation
+                    } else {
+                        conversation.copy(
+                            unreadCount = event.unreadCount,
+                            messages = conversation.messages.map { message ->
+                                if (message.id == event.messageId) {
+                                    message.copy(readAt = event.readAt)
+                                } else {
+                                    message
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.Error -> {
+                integrationStateValue.value = integrationStateValue.value.copy(
+                    phase = MessagingIntegrationPhase.Error,
+                    message = event.message,
+                )
+            }
+
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.Pong -> Unit
+        }
+    }
+
+    private fun reportError(message: String) {
+        integrationStateValue.value = integrationStateValue.value.copy(
+            phase = MessagingIntegrationPhase.Error,
+            message = message,
+        )
+    }
+
+    private fun upsertMessage(
+        conversationId: String,
+        message: ChatMessage,
+        unreadCount: Int?,
+    ) {
+        conversationState.value = conversationState.value.map { conversation ->
+            if (conversation.id != conversationId) {
+                conversation
+            } else {
+                val messages = conversation.messages.filterNot { it.id == message.id } + message
+                conversation.copy(
+                    unreadCount = unreadCount ?: conversation.unreadCount,
+                    lastMessage = message.body,
+                    lastTimestamp = message.createdAt,
+                    messages = messages.sortedBy { it.createdAt },
+                )
+            }
+        }
     }
 }
 
