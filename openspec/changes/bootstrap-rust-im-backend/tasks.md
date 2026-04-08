@@ -36,3 +36,22 @@
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
+
+### Task 1.2: Add backend environment templates plus Ubuntu deployment/debug assets for `124.222.15.128`, including SSH-safe scripts or service-unit scaffolding that keep SSH and PostgreSQL passwords outside the repository.
+
+- Verification:
+  - `cd backend && cargo test` - pass (`3` unit tests)
+  - `cd backend && cargo check` - pass
+  - `git -c safe.directory=X:/Repos/GKIM check-ignore -v backend/.env.local backend/.env.server.local` - pass (`.env.local` and `.env.server.local` are ignored)
+  - `rg -n "PGHOST=124\\.222\\.15\\.128|PGPASSWORD=<set in untracked \\.env\\.local or deployment secret>|PGSSLROOTCERT=" backend/.env.example` - pass
+  - `rg -n "EnvironmentFile=/etc/gkim-im-backend/gkim-im-backend.env|ExecStart=/opt/gkim-im/backend/target/release/gkim-im-backend|User=ubuntu" backend/systemd/gkim-im-backend.service` - pass
+  - `rg --quiet "mb8TggtXiA9B6mWV|Fezr8tg-_qfvqGHy!P38" backend` - pass (no live secrets found)
+  - `C:\\Program Files\\Git\\bin\\bash.exe -n backend/scripts/bootstrap-ubuntu.sh backend/scripts/debug-service.sh backend/scripts/smoke-health.sh` - pass
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `pending`
+- Result: `blocked`
