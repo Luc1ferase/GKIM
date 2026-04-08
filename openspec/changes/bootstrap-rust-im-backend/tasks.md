@@ -16,7 +16,7 @@
 
 ## 4. Verification and server-side delivery evidence
 
-- [ ] 4.1 Add automated verification for config loading, SQLx-backed bootstrap/history behavior, session auth, and WebSocket messaging semantics.
+- [x] 4.1 Add automated verification for config loading, SQLx-backed bootstrap/history behavior, session auth, and WebSocket messaging semantics.
 - [ ] 4.2 Deploy accepted backend slices to `124.222.15.128`, run remote smoke tests and latency-focused message-flow checks there, and capture the required evidence in `docs/DELIVERY_WORKFLOW.md`.
 
 ## Task Evidence
@@ -131,6 +131,22 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `faa573e`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 4.1: Add automated verification for config loading, SQLx-backed bootstrap/history behavior, session auth, and WebSocket messaging semantics.
+
+- Verification:
+  - `cd backend && cargo fmt --check` - pass
+  - `cd backend && cargo test` - pass (`13` tests)
+  - `cd backend && cargo check` - pass
+  - `cd backend && GKIM_TEST_DATABASE_URL=<redacted> cargo test --test http_im_api --test im_service_pg --test ws_gateway` - pass (`7` PostgreSQL integration tests across HTTP, service, and WebSocket layers)
+- Review:
+  - Score: `98/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `5761224`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
