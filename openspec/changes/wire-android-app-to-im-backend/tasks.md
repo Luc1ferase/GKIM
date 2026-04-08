@@ -12,7 +12,7 @@
 
 - [x] 3.1 Implement a backend-backed live messaging repository that authenticates, bootstraps conversation summaries, loads selected conversation history, and exposes explicit integration state without removing the seed repository fallback seam.
 - [x] 3.2 Reconcile live WebSocket message, delivery, read, and failure events into the existing Messages and Chat UI models so visible conversation state is backend-driven instead of locally appended.
-- [ ] 3.3 Switch `AppContainer`, Messages, Chat, and any required view-model integration points onto the live messaging repository path while keeping current non-IM surfaces unchanged.
+- [x] 3.3 Switch `AppContainer`, Messages, Chat, and any required view-model integration points onto the live messaging repository path while keeping current non-IM surfaces unchanged.
 
 ## 4. Regression and handoff
 
@@ -99,6 +99,21 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `3117f06`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 3.3: Switch `AppContainer`, Messages, Chat, and any required view-model integration points onto the live messaging repository path while keeping current non-IM surfaces unchanged.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.LiveMessagingRepositoryTest --tests com.gkim.im.android.feature.messages.MessagesViewModelTest --rerun-tasks` - failed first on missing Messages integration-state wiring and on fallback-only rooms incorrectly attempting backend history, then passed after switching the app shell to `LiveMessagingRepository`, surfacing live IM status in Messages, triggering chat history hydration on open, and limiting history fetches to bootstrap-backed conversations
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#openingConversationRequestsLiveHistoryLoad" --rerun-tasks` - failed first because opening a chat did not request repository history, then passed after `ChatViewModel` began hydrating the selected conversation on entry
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/data/repository/Repositories.kt android/app/src/test/java/com/gkim/im/android/data/repository/LiveMessagingRepositoryTest.kt android/app/src/main/java/com/gkim/im/android/data/repository/AppContainer.kt android/app/src/main/java/com/gkim/im/android/feature/messages/MessagesRoute.kt android/app/src/main/java/com/gkim/im/android/feature/chat/ChatRoute.kt android/app/src/test/java/com/gkim/im/android/feature/messages/MessagesViewModelTest.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `bfacbd0`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
