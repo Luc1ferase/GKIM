@@ -10,8 +10,8 @@
 
 ## 3. Repository and UI handoff
 
-- [ ] 3.1 Implement a backend-backed live messaging repository that authenticates, bootstraps conversation summaries, loads selected conversation history, and exposes explicit integration state without removing the seed repository fallback seam.
-- [ ] 3.2 Reconcile live WebSocket message, delivery, read, and failure events into the existing Messages and Chat UI models so visible conversation state is backend-driven instead of locally appended.
+- [x] 3.1 Implement a backend-backed live messaging repository that authenticates, bootstraps conversation summaries, loads selected conversation history, and exposes explicit integration state without removing the seed repository fallback seam.
+- [x] 3.2 Reconcile live WebSocket message, delivery, read, and failure events into the existing Messages and Chat UI models so visible conversation state is backend-driven instead of locally appended.
 - [ ] 3.3 Switch `AppContainer`, Messages, Chat, and any required view-model integration points onto the live messaging repository path while keeping current non-IM surfaces unchanged.
 
 ## 4. Regression and handoff
@@ -71,6 +71,34 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `35d5972`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 3.1: Implement a backend-backed live messaging repository that authenticates, bootstraps conversation summaries, loads selected conversation history, and exposes explicit integration state without removing the seed repository fallback seam.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.LiveMessagingRepositoryTest` - failed first with missing bootstrap/history error-state handling, then passed after adding `LiveMessagingRepository`, repository-owned integration phases, backend bootstrap/history hydration, and explicit error transitions for invalid config plus transport failures
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/data/repository/Repositories.kt android/app/src/test/java/com/gkim/im/android/data/repository/LiveMessagingRepositoryTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `3117f06`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 3.2: Reconcile live WebSocket message, delivery, read, and failure events into the existing Messages and Chat UI models so visible conversation state is backend-driven instead of locally appended.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendHttpClientTest --tests com.gkim.im.android.data.remote.realtime.RealtimeChatClientTest --tests com.gkim.im.android.data.repository.LiveMessagingRepositoryTest` - pass, confirming the repository now merges live HTTP bootstrap/history with realtime sent/received/delivered/read/error flows without regressing transport coverage
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/data/repository/Repositories.kt android/app/src/test/java/com/gkim/im/android/data/repository/LiveMessagingRepositoryTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `3117f06`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
