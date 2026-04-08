@@ -70,3 +70,60 @@ $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emu
 .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsScreenExposesImBackendValidationControlsAndStatus" --rerun-tasks
 .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#openingConversationRequestsLiveHistoryLoad" --rerun-tasks
 ```
+
+## Emulator IM Validation Workflow
+
+This is now the primary validation path for the Android IM app. The backend runs locally in Docker, and the existing Android emulator exercises the live API suite through host port `18080`.
+
+### 1. Start the local backend container
+
+From `backend/`:
+
+```powershell
+Copy-Item .env.example .env.local
+# Fill .env.local with the real backend-only PostgreSQL values before continuing.
+docker build -t gkim-im-backend:local .
+docker run --rm -d `
+  --name gkim-im-backend-local `
+  --env-file .env.local `
+  -e APP_BIND_ADDR=0.0.0.0:8080 `
+  -p 18080:8080 `
+  gkim-im-backend:local
+Invoke-WebRequest http://127.0.0.1:18080/health | Select-Object -ExpandProperty Content
+```
+
+### 2. Point the emulator at the host backend
+
+The app defaults already target `http://127.0.0.1:18080/` and `ws://127.0.0.1:18080/ws`, so the shortest path is to reverse the host port into the emulator:
+
+```powershell
+& 'D:\Android\Sdk\platform-tools\adb.exe' devices -l
+& 'D:\Android\Sdk\platform-tools\adb.exe' reverse tcp:18080 tcp:18080
+& 'D:\Android\Sdk\platform-tools\adb.exe' reverse --list
+```
+
+If you prefer not to use `adb reverse`, you can instead enter `http://10.0.2.2:18080/` and `ws://10.0.2.2:18080/ws` manually in the app's `IM VALIDATION` settings.
+
+### 3. Capture emulator-facing evidence
+
+Use these commands while running the validation flow:
+
+```powershell
+& 'D:\Android\Sdk\platform-tools\adb.exe' logcat -c
+& 'D:\Android\Sdk\platform-tools\adb.exe' shell am start -n com.gkim.im.android/.MainActivity
+```
+
+After the validation run:
+
+```powershell
+& 'D:\Android\Sdk\platform-tools\adb.exe' logcat -d > android\emulator-im-validation.log
+& 'D:\Android\Sdk\platform-tools\adb.exe' exec-out screencap -p > android\emulator-im-validation.png
+docker logs gkim-im-backend-local > backend\docker-im-validation.log
+```
+
+### 4. Expected validation surface
+
+- `Messages` should bootstrap real conversation rows instead of seed-only rows.
+- Opening a chat should load backend history.
+- Sending a message should surface live status updates or explicit integration failures.
+- Reconnect/relaunch should recover from backend bootstrap/history instead of resetting to placeholder-only success.
