@@ -6,7 +6,7 @@
 ## 2. Messages and Space information architecture
 
 - [x] 2.1 Remove unread-count bubble badges from the message shell surfaces and update the affected Messages UI/state tests so incoming messages no longer render badge bubbles.
-- [ ] 2.2 Merge Workshop discovery into the Space filter row, normalize post and prompt/workshop cards into one waterfall-style feed model, and remove the separate Workshop navigation entry with updated UI coverage.
+- [x] 2.2 Merge Workshop discovery into the Space filter row, normalize post and prompt/workshop cards into one waterfall-style feed model, and remove the separate Workshop navigation entry with updated UI coverage.
 
 ## 3. Welcome and Android auth shell
 
@@ -68,6 +68,21 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `da41db0`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.2: Merge Workshop discovery into the Space filter row, normalize post and prompt/workshop cards into one waterfall-style feed model, and remove the separate Workshop navigation entry with updated UI coverage.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#spaceScreenShowsUnreadSummaryAsSupportingContext,com.gkim.im.android.feature.navigation.GkimRootAppTest#spaceScreenMergesWorkshopDiscoveryIntoUnifiedFeed,com.gkim.im.android.feature.navigation.GkimRootAppTest#spacePromptCardsApplyTemplatesIntoStudioChat,com.gkim.im.android.feature.navigation.GkimRootAppTest#chatScreenUsesCompactHeaderAndBackNavigation" --rerun-tasks` - pass, confirming Space keeps its unread supporting summary, merges prompt discovery into the same feed/filter surface, applies prompt templates directly into `chat/studio`, and removes the independent Workshop shortcut from chat chrome
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:compileDebugKotlin` - pass, confirming the Space/chat/navigation refactor and Workshop route removal compile cleanly
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/feature/space/SpaceRoute.kt android/app/src/main/java/com/gkim/im/android/feature/chat/ChatRoute.kt android/app/src/main/java/com/gkim/im/android/feature/navigation/GkimRootApp.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt android/app/src/main/java/com/gkim/im/android/feature/workshop/WorkshopRoute.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `347b6e0`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
