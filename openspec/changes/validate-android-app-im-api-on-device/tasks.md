@@ -25,7 +25,7 @@
   - Score: `96/100`
   - Findings: `No findings`
 - Upload:
-  - Commit: `not created`
+  - Commit: `3c8a034`
   - Branch: `master`
-  - Push: `not pushed`
+  - Push: `origin/master`
 - Result: `accepted`
