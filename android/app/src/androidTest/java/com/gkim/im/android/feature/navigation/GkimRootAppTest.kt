@@ -53,6 +53,27 @@ class GkimRootAppTest {
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
+    fun launchShowsWelcomeOnboardingBeforeMainShell() {
+        setApp(UiTestAppContainer(), initialAuthStart = RootAuthStart.Unauthenticated)
+
+        composeRule.onNodeWithTag("welcome-screen").fetchSemanticsNode()
+        composeRule.onNodeWithTag("welcome-video").fetchSemanticsNode()
+        composeRule.onNodeWithTag("welcome-login-button").fetchSemanticsNode()
+        composeRule.onNodeWithTag("welcome-register-button").fetchSemanticsNode()
+        assertTrue(!nodeExists("bottom-nav"))
+    }
+
+    @Test
+    fun welcomeLoginActionEntersAuthenticatedShellPreview() {
+        setApp(UiTestAppContainer(), initialAuthStart = RootAuthStart.Unauthenticated)
+
+        composeRule.onNodeWithTag("welcome-login-button").performClick()
+
+        composeRule.onNodeWithTag("bottom-nav").fetchSemanticsNode()
+        composeRule.onNodeWithText("消息").fetchSemanticsNode()
+    }
+
+    @Test
     fun rootShellDefaultsToChineseAndLightThemeOnFirstRun() {
         setApp(UiTestAppContainer())
 
@@ -552,12 +573,20 @@ class GkimRootAppTest {
     private fun setApp(
         container: UiTestAppContainer,
         mediaPickerControllerFactory: MediaPickerControllerFactory? = null,
+        initialAuthStart: RootAuthStart = RootAuthStart.Authenticated,
     ) {
         composeRule.setContent {
             GkimRootApp(
                 container = container,
                 mediaPickerControllerFactory = mediaPickerControllerFactory,
+                initialAuthStart = initialAuthStart,
             )
+        }
+        composeRule.waitUntil(5_000) {
+            when (initialAuthStart) {
+                RootAuthStart.Authenticated -> nodeExists("bottom-nav")
+                RootAuthStart.Unauthenticated -> nodeExists("welcome-screen")
+            }
         }
     }
 

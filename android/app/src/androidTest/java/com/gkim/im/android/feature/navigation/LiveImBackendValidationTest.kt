@@ -135,7 +135,10 @@ class LiveImBackendValidationTest {
                 }
 
                 key(container) {
-                    GkimRootApp(container = container)
+                    GkimRootApp(
+                        container = container,
+                        initialAuthStart = RootAuthStart.Authenticated,
+                    )
                 }
             }
             composeRule.waitForIdle()
