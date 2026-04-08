@@ -83,4 +83,52 @@ class SettingsViewModelTest {
 
         collector.cancel()
     }
+
+    @Test
+    fun `settings view model exposes and updates IM backend validation inputs`() = runTest(mainDispatcherRule.dispatcher) {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val preferencesStore = FakePreferencesStore(
+            initialImHttpBaseUrl = "http://127.0.0.1:18080/",
+            initialImWebSocketUrl = "ws://127.0.0.1:18080/ws",
+            initialImDevUserExternalId = "nox-dev",
+        )
+        val secureStore = InMemorySecureKeyValueStore()
+        val repository = DefaultAigcRepository(presetProviders, preferencesStore, secureStore, dispatcher)
+        val viewModel = SettingsViewModel(repository, preferencesStore)
+        val collector = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect { }
+        }
+
+        advanceUntilIdle()
+
+        assertEquals("http://127.0.0.1:18080/", viewModel.uiState.value.imHttpBaseUrl)
+        assertEquals("ws://127.0.0.1:18080/ws", viewModel.uiState.value.imWebSocketUrl)
+        assertEquals("nox-dev", viewModel.uiState.value.imDevUserExternalId)
+        assertEquals(null, viewModel.uiState.value.imValidationError)
+
+        viewModel.updateImValidationConfig(
+            httpBaseUrl = "https://forward.example.com/",
+            webSocketUrl = "wss://forward.example.com/ws",
+            devUserExternalId = "leo-vance",
+        )
+        advanceUntilIdle()
+
+        assertEquals("https://forward.example.com/", viewModel.uiState.value.imHttpBaseUrl)
+        assertEquals("wss://forward.example.com/ws", viewModel.uiState.value.imWebSocketUrl)
+        assertEquals("leo-vance", viewModel.uiState.value.imDevUserExternalId)
+        assertEquals("https://forward.example.com/", preferencesStore.currentImHttpBaseUrl)
+        assertEquals("wss://forward.example.com/ws", preferencesStore.currentImWebSocketUrl)
+        assertEquals("leo-vance", preferencesStore.currentImDevUserExternalId)
+
+        viewModel.updateImValidationConfig(
+            httpBaseUrl = "forward.example.com",
+            webSocketUrl = "https://forward.example.com/ws",
+            devUserExternalId = "",
+        )
+        advanceUntilIdle()
+
+        assertEquals("IM validation config is incomplete or invalid.", viewModel.uiState.value.imValidationError)
+
+        collector.cancel()
+    }
 }

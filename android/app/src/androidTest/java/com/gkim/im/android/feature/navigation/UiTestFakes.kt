@@ -14,6 +14,9 @@ internal class UiTestPreferencesStore : PreferencesStore {
     private val activeProviderIdState = MutableStateFlow("hunyuan")
     private val customBaseUrlState = MutableStateFlow("https://api.example.com/v1")
     private val customModelState = MutableStateFlow("gpt-image-1")
+    private val imHttpBaseUrlState = MutableStateFlow("http://127.0.0.1:18080/")
+    private val imWebSocketUrlState = MutableStateFlow("ws://127.0.0.1:18080/ws")
+    private val imDevUserExternalIdState = MutableStateFlow("nox-dev")
     private val appLanguageState = MutableStateFlow(AppLanguage.English)
     private val appThemeModeState = MutableStateFlow(AppThemeMode.Dark)
 
@@ -21,6 +24,9 @@ internal class UiTestPreferencesStore : PreferencesStore {
     override val activeProviderId: Flow<String> = activeProviderIdState.asStateFlow()
     override val customBaseUrl: Flow<String> = customBaseUrlState.asStateFlow()
     override val customModel: Flow<String> = customModelState.asStateFlow()
+    override val imHttpBaseUrl: Flow<String> = imHttpBaseUrlState.asStateFlow()
+    override val imWebSocketUrl: Flow<String> = imWebSocketUrlState.asStateFlow()
+    override val imDevUserExternalId: Flow<String> = imDevUserExternalIdState.asStateFlow()
     override val appLanguage: Flow<AppLanguage> = appLanguageState.asStateFlow()
     override val appThemeMode: Flow<AppThemeMode> = appThemeModeState.asStateFlow()
 
@@ -29,6 +35,15 @@ internal class UiTestPreferencesStore : PreferencesStore {
 
     val currentThemeMode: AppThemeMode
         get() = appThemeModeState.value
+
+    val currentImHttpBaseUrl: String
+        get() = imHttpBaseUrlState.value
+
+    val currentImWebSocketUrl: String
+        get() = imWebSocketUrlState.value
+
+    val currentImDevUserExternalId: String
+        get() = imDevUserExternalIdState.value
 
     override suspend fun setContactSortMode(mode: ContactSortMode) {
         contactSortModeState.value = mode
@@ -44,6 +59,18 @@ internal class UiTestPreferencesStore : PreferencesStore {
 
     override suspend fun setCustomModel(value: String) {
         customModelState.value = value
+    }
+
+    override suspend fun setImHttpBaseUrl(value: String) {
+        imHttpBaseUrlState.value = value
+    }
+
+    override suspend fun setImWebSocketUrl(value: String) {
+        imWebSocketUrlState.value = value
+    }
+
+    override suspend fun setImDevUserExternalId(value: String) {
+        imDevUserExternalIdState.value = value
     }
 
     override suspend fun setAppLanguage(value: AppLanguage) {

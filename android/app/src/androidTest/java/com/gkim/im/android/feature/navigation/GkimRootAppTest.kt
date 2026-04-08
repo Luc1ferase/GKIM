@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.gkim.im.android.core.media.MediaPickerController
@@ -422,6 +423,30 @@ class GkimRootAppTest {
 
         composeRule.onNodeWithTag("gkim-theme-Light").fetchSemanticsNode()
         composeRule.onNodeWithText("消息").fetchSemanticsNode()
+    }
+
+    @Test
+    fun settingsScreenExposesImBackendValidationControlsAndStatus() {
+        val container = UiTestAppContainer()
+        setApp(container)
+
+        composeRule.onNodeWithText("Settings").performClick()
+        composeRule.onNodeWithTag("settings-im-http-base-url").performTextReplacement("https://forward.example.com/")
+        composeRule.onNodeWithTag("settings-im-websocket-url").performTextReplacement("wss://forward.example.com/ws")
+        composeRule.onNodeWithTag("settings-im-dev-user").performTextReplacement("leo-vance")
+        composeRule.waitUntil(5_000) {
+            container.preferencesStore.currentImHttpBaseUrl == "https://forward.example.com/" &&
+                container.preferencesStore.currentImWebSocketUrl == "wss://forward.example.com/ws" &&
+                container.preferencesStore.currentImDevUserExternalId == "leo-vance"
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Ready for IM validation").fetchSemanticsNode()
+
+        composeRule.onNodeWithTag("settings-im-dev-user").performTextClearance()
+        composeRule.waitUntil(5_000) { container.preferencesStore.currentImDevUserExternalId.isEmpty() }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("IM validation config is incomplete or invalid.").fetchSemanticsNode()
     }
 
     private fun setApp(

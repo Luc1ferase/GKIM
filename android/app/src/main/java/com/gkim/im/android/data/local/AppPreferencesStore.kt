@@ -17,6 +17,9 @@ interface PreferencesStore {
     val activeProviderId: Flow<String>
     val customBaseUrl: Flow<String>
     val customModel: Flow<String>
+    val imHttpBaseUrl: Flow<String>
+    val imWebSocketUrl: Flow<String>
+    val imDevUserExternalId: Flow<String>
     val appLanguage: Flow<AppLanguage>
     val appThemeMode: Flow<AppThemeMode>
 
@@ -24,6 +27,9 @@ interface PreferencesStore {
     suspend fun setActiveProviderId(value: String)
     suspend fun setCustomBaseUrl(value: String)
     suspend fun setCustomModel(value: String)
+    suspend fun setImHttpBaseUrl(value: String)
+    suspend fun setImWebSocketUrl(value: String)
+    suspend fun setImDevUserExternalId(value: String)
     suspend fun setAppLanguage(value: AppLanguage)
     suspend fun setAppThemeMode(value: AppThemeMode)
 }
@@ -33,6 +39,9 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
     private val providerKey = stringPreferencesKey("active_provider_id")
     private val customBaseUrlKey = stringPreferencesKey("custom_provider_base_url")
     private val customModelKey = stringPreferencesKey("custom_provider_model")
+    private val imHttpBaseUrlKey = stringPreferencesKey("im_http_base_url")
+    private val imWebSocketUrlKey = stringPreferencesKey("im_websocket_url")
+    private val imDevUserExternalIdKey = stringPreferencesKey("im_dev_user_external_id")
     private val appLanguageKey = stringPreferencesKey("app_language")
     private val appThemeModeKey = stringPreferencesKey("app_theme_mode")
 
@@ -50,6 +59,18 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
 
     override val customModel: Flow<String> = context.preferencesStore.data.map { prefs ->
         prefs[customModelKey] ?: "gpt-image-1"
+    }
+
+    override val imHttpBaseUrl: Flow<String> = context.preferencesStore.data.map { prefs ->
+        prefs[imHttpBaseUrlKey] ?: "http://127.0.0.1:18080/"
+    }
+
+    override val imWebSocketUrl: Flow<String> = context.preferencesStore.data.map { prefs ->
+        prefs[imWebSocketUrlKey] ?: "ws://127.0.0.1:18080/ws"
+    }
+
+    override val imDevUserExternalId: Flow<String> = context.preferencesStore.data.map { prefs ->
+        prefs[imDevUserExternalIdKey] ?: "nox-dev"
     }
 
     override val appLanguage: Flow<AppLanguage> = context.preferencesStore.data.map { prefs ->
@@ -74,6 +95,18 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
 
     override suspend fun setCustomModel(value: String) {
         context.preferencesStore.edit { it[customModelKey] = value }
+    }
+
+    override suspend fun setImHttpBaseUrl(value: String) {
+        context.preferencesStore.edit { it[imHttpBaseUrlKey] = value }
+    }
+
+    override suspend fun setImWebSocketUrl(value: String) {
+        context.preferencesStore.edit { it[imWebSocketUrlKey] = value }
+    }
+
+    override suspend fun setImDevUserExternalId(value: String) {
+        context.preferencesStore.edit { it[imDevUserExternalIdKey] = value }
     }
 
     override suspend fun setAppLanguage(value: AppLanguage) {

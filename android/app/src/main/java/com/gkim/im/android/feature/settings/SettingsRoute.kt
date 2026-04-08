@@ -49,6 +49,10 @@ internal data class SettingsUiState(
     val providers: List<AigcProvider> = emptyList(),
     val activeProviderId: String = "",
     val customProvider: CustomProviderConfig = CustomProviderConfig("", "", ""),
+    val imHttpBaseUrl: String = "",
+    val imWebSocketUrl: String = "",
+    val imDevUserExternalId: String = "",
+    val imValidationError: String? = null,
     val appLanguage: AppLanguage = AppLanguage.English,
     val themeMode: AppThemeMode = AppThemeMode.Dark,
 )
@@ -57,19 +61,50 @@ internal class SettingsViewModel(
     private val repository: AigcRepository,
     private val preferencesStore: PreferencesStore,
 ) : ViewModel() {
-    val uiState = combine(
+    private data class ProviderSettingsState(
+        val providers: List<AigcProvider>,
+        val activeProviderId: String,
+        val customProvider: CustomProviderConfig,
+        val appLanguage: AppLanguage,
+        val themeMode: AppThemeMode,
+    )
+
+    private val imValidationConfig = combine(
+        preferencesStore.imHttpBaseUrl,
+        preferencesStore.imWebSocketUrl,
+        preferencesStore.imDevUserExternalId,
+    ) { httpBaseUrl, webSocketUrl, devUserExternalId ->
+        Triple(httpBaseUrl, webSocketUrl, devUserExternalId)
+    }
+
+    private val providerSettings = combine(
         repository.providers,
         repository.activeProviderId,
         repository.customProvider,
         preferencesStore.appLanguage,
         preferencesStore.appThemeMode,
     ) { providers, activeProviderId, customProvider, appLanguage, themeMode ->
-        SettingsUiState(
+        ProviderSettingsState(
             providers = providers,
             activeProviderId = activeProviderId,
             customProvider = customProvider,
             appLanguage = appLanguage,
             themeMode = themeMode,
+        )
+    }
+
+    val uiState = combine(providerSettings, imValidationConfig) { providerSettings, validationConfig ->
+        val (imHttpBaseUrl, imWebSocketUrl, imDevUserExternalId) = validationConfig
+        SettingsUiState(
+            providers = providerSettings.providers,
+            activeProviderId = providerSettings.activeProviderId,
+            customProvider = providerSettings.customProvider,
+            imHttpBaseUrl = imHttpBaseUrl,
+            imWebSocketUrl = imWebSocketUrl,
+            imDevUserExternalId = imDevUserExternalId,
+            imValidationError = validationErrorFor(imHttpBaseUrl, imWebSocketUrl, imDevUserExternalId),
+            appLanguage = providerSettings.appLanguage,
+            themeMode = providerSettings.themeMode,
         )
     }.stateIn(
         viewModelScope,
@@ -78,6 +113,9 @@ internal class SettingsViewModel(
             providers = repository.providers.value,
             activeProviderId = repository.activeProviderId.value,
             customProvider = repository.customProvider.value,
+            imHttpBaseUrl = "http://127.0.0.1:18080/",
+            imWebSocketUrl = "ws://127.0.0.1:18080/ws",
+            imDevUserExternalId = "nox-dev",
             appLanguage = AppLanguage.English,
             themeMode = AppThemeMode.Dark,
         ),
@@ -85,11 +123,37 @@ internal class SettingsViewModel(
 
     fun setActiveProvider(id: String) = repository.setActiveProvider(id)
     fun updateCustom(baseUrl: String? = null, model: String? = null, apiKey: String? = null) = repository.updateCustomProvider(baseUrl, model, apiKey)
+    fun updateImValidationConfig(
+        httpBaseUrl: String? = null,
+        webSocketUrl: String? = null,
+        devUserExternalId: String? = null,
+    ) {
+        viewModelScope.launch {
+            httpBaseUrl?.let { preferencesStore.setImHttpBaseUrl(it) }
+            webSocketUrl?.let { preferencesStore.setImWebSocketUrl(it) }
+            devUserExternalId?.let { preferencesStore.setImDevUserExternalId(it) }
+        }
+    }
     fun setAppLanguage(value: AppLanguage) {
         viewModelScope.launch { preferencesStore.setAppLanguage(value) }
     }
     fun setThemeMode(value: AppThemeMode) {
         viewModelScope.launch { preferencesStore.setAppThemeMode(value) }
+    }
+
+    private fun validationErrorFor(
+        httpBaseUrl: String,
+        webSocketUrl: String,
+        devUserExternalId: String,
+    ): String? {
+        val httpValid = httpBaseUrl.startsWith("http://") || httpBaseUrl.startsWith("https://")
+        val webSocketValid = webSocketUrl.startsWith("ws://") || webSocketUrl.startsWith("wss://")
+        val userValid = devUserExternalId.isNotBlank()
+        return if (httpValid && webSocketValid && userValid) {
+            null
+        } else {
+            "IM validation config is incomplete or invalid."
+        }
     }
 }
 
@@ -102,12 +166,18 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
     var baseUrl by remember(uiState.customProvider.baseUrl) { mutableStateOf(uiState.customProvider.baseUrl) }
     var model by remember(uiState.customProvider.model) { mutableStateOf(uiState.customProvider.model) }
     var apiKey by remember(uiState.customProvider.apiKey) { mutableStateOf(uiState.customProvider.apiKey) }
+    var imHttpBaseUrl by remember(uiState.imHttpBaseUrl) { mutableStateOf(uiState.imHttpBaseUrl) }
+    var imWebSocketUrl by remember(uiState.imWebSocketUrl) { mutableStateOf(uiState.imWebSocketUrl) }
+    var imDevUserExternalId by remember(uiState.imDevUserExternalId) { mutableStateOf(uiState.imDevUserExternalId) }
 
     SettingsScreen(
         uiState = uiState,
         baseUrl = baseUrl,
         model = model,
         apiKey = apiKey,
+        imHttpBaseUrl = imHttpBaseUrl,
+        imWebSocketUrl = imWebSocketUrl,
+        imDevUserExternalId = imDevUserExternalId,
         onBaseUrlChanged = {
             baseUrl = it
             viewModel.updateCustom(baseUrl = it)
@@ -119,6 +189,18 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
         onApiKeyChanged = {
             apiKey = it
             viewModel.updateCustom(apiKey = it)
+        },
+        onImHttpBaseUrlChanged = {
+            imHttpBaseUrl = it
+            viewModel.updateImValidationConfig(httpBaseUrl = it)
+        },
+        onImWebSocketUrlChanged = {
+            imWebSocketUrl = it
+            viewModel.updateImValidationConfig(webSocketUrl = it)
+        },
+        onImDevUserExternalIdChanged = {
+            imDevUserExternalId = it
+            viewModel.updateImValidationConfig(devUserExternalId = it)
         },
         onSelectProvider = viewModel::setActiveProvider,
         onSelectLanguage = viewModel::setAppLanguage,
@@ -133,9 +215,15 @@ private fun SettingsScreen(
     baseUrl: String,
     model: String,
     apiKey: String,
+    imHttpBaseUrl: String,
+    imWebSocketUrl: String,
+    imDevUserExternalId: String,
     onBaseUrlChanged: (String) -> Unit,
     onModelChanged: (String) -> Unit,
     onApiKeyChanged: (String) -> Unit,
+    onImHttpBaseUrlChanged: (String) -> Unit,
+    onImWebSocketUrlChanged: (String) -> Unit,
+    onImDevUserExternalIdChanged: (String) -> Unit,
     onSelectProvider: (String) -> Unit,
     onSelectLanguage: (AppLanguage) -> Unit,
     onSelectThemeMode: (AppThemeMode) -> Unit,
@@ -229,6 +317,34 @@ private fun SettingsScreen(
                 onValueChange = onApiKeyChanged,
                 modifier = Modifier.fillMaxWidth().testTag("settings-api-key"),
                 label = { Text(appLanguage.pick("API Key", "API 密钥")) },
+            )
+        }
+
+        GlassCard {
+            Text(text = appLanguage.pick("IM VALIDATION", "IM 验证"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
+            OutlinedTextField(
+                value = imHttpBaseUrl,
+                onValueChange = onImHttpBaseUrlChanged,
+                modifier = Modifier.fillMaxWidth().testTag("settings-im-http-base-url"),
+                label = { Text(appLanguage.pick("HTTP Base URL", "HTTP 基础 URL")) },
+            )
+            OutlinedTextField(
+                value = imWebSocketUrl,
+                onValueChange = onImWebSocketUrlChanged,
+                modifier = Modifier.fillMaxWidth().testTag("settings-im-websocket-url"),
+                label = { Text(appLanguage.pick("WebSocket URL", "WebSocket URL")) },
+            )
+            OutlinedTextField(
+                value = imDevUserExternalId,
+                onValueChange = onImDevUserExternalIdChanged,
+                modifier = Modifier.fillMaxWidth().testTag("settings-im-dev-user"),
+                label = { Text(appLanguage.pick("Dev User", "开发用户")) },
+            )
+            Text(
+                text = uiState.imValidationError ?: appLanguage.pick("Ready for IM validation", "已准备好进行 IM 验证"),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (uiState.imValidationError == null) AetherColors.Primary else AetherColors.OnSurfaceVariant,
+                modifier = Modifier.testTag("settings-im-validation-status"),
             )
         }
 
