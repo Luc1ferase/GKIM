@@ -6,7 +6,7 @@
 ## 2. HTTP and WebSocket transport wiring
 
 - [x] 2.1 Implement the Android IM HTTP client layer for development session issuance, bootstrap hydration, and paginated message history retrieval using configurable backend endpoints.
-- [ ] 2.2 Upgrade `RealtimeChatClient` into an authenticated IM gateway adapter that parses typed backend events, exposes connection/error state, and supports send/read commands against the live WebSocket contract.
+- [x] 2.2 Upgrade `RealtimeChatClient` into an authenticated IM gateway adapter that parses typed backend events, exposes connection/error state, and supports send/read commands against the live WebSocket contract.
 
 ## 3. Repository and UI handoff
 
@@ -57,6 +57,20 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `59e5513`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.2: Upgrade `RealtimeChatClient` into an authenticated IM gateway adapter that parses typed backend events, exposes connection/error state, and supports send/read commands against the live WebSocket contract.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.realtime.RealtimeChatClientTest` - failed first with missing typed event flow, bearer-token connect path, send/read helpers, and error state, then passed after upgrading `RealtimeChatClient` into an authenticated IM gateway adapter with typed command helpers and parsed gateway events
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/data/remote/realtime/RealtimeChatClient.kt android/app/src/test/java/com/gkim/im/android/data/remote/realtime/RealtimeChatClientTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `35d5972`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
