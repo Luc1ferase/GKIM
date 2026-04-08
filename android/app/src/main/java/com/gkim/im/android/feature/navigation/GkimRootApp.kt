@@ -39,7 +39,6 @@ import com.gkim.im.android.feature.messages.MessagesRoute
 import com.gkim.im.android.feature.settings.SettingsRoute
 import com.gkim.im.android.feature.shared.AppScaffold
 import com.gkim.im.android.feature.space.SpaceRoute
-import com.gkim.im.android.feature.workshop.WorkshopRoute
 
 private data class RootDestination(val route: String, val label: String, val icon: @Composable () -> Unit)
 
@@ -77,7 +76,6 @@ fun GkimRootApp(
                                 mediaPickerControllerFactory = mediaPickerControllerFactory,
                             )
                         }
-                        composable("workshop") { WorkshopRoute(resolvedNavController, resolvedContainer) }
                         composable("settings") { SettingsRoute(resolvedNavController, resolvedContainer) }
                     }
                 }

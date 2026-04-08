@@ -137,7 +137,6 @@ fun ChatRoute(
         isSecondaryMenuOpen = isSecondaryMenuOpen,
         onPromptChanged = { prompt = it },
         onBack = { navController.popBackStack() },
-        onOpenWorkshop = { navController.navigate("workshop") },
         onToggleSecondaryMenu = { isSecondaryMenuOpen = !isSecondaryMenuOpen },
         onPickImage = mediaPicker.pickImage,
         onPickVideo = mediaPicker.pickVideo,
@@ -168,7 +167,6 @@ private fun ChatScreen(
     isSecondaryMenuOpen: Boolean,
     onPromptChanged: (String) -> Unit,
     onBack: () -> Unit,
-    onOpenWorkshop: () -> Unit,
     onToggleSecondaryMenu: () -> Unit,
     onPickImage: () -> Unit,
     onPickVideo: () -> Unit,
@@ -195,7 +193,6 @@ private fun ChatScreen(
         ChatTopBar(
             conversation = uiState.conversation,
             onBack = onBack,
-            onOpenWorkshop = onOpenWorkshop,
         )
 
         Box(
@@ -346,7 +343,6 @@ private fun LatestGenerationCard(task: AigcTask) {
 private fun ChatTopBar(
     conversation: Conversation?,
     onBack: () -> Unit,
-    onOpenWorkshop: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -386,7 +382,6 @@ private fun ChatTopBar(
                 )
             }
         }
-        PillAction(label = "Workshop", onClick = onOpenWorkshop)
     }
 }
 

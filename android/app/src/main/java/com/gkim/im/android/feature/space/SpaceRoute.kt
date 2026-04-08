@@ -1,6 +1,7 @@
 package com.gkim.im.android.feature.space
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,8 +28,10 @@ import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.core.designsystem.PageHeader
 import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.AccentTone
+import com.gkim.im.android.core.model.DraftAigcRequest
 import com.gkim.im.android.core.model.FeedPost
 import com.gkim.im.android.core.model.RichDocument
+import com.gkim.im.android.core.model.WorkshopPrompt
 import com.gkim.im.android.core.rendering.MarkdownDocumentParser
 import com.gkim.im.android.core.rendering.RichContentRenderer
 import com.gkim.im.android.core.util.formatRelativeLabel
@@ -37,13 +40,31 @@ import com.gkim.im.android.data.repository.FeedRepository
 import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 private data class SpacePostUi(val post: FeedPost, val document: RichDocument)
+private enum class SpaceDiscoveryFilter {
+    ForYou,
+    Prompting,
+}
+
+private sealed interface SpaceFeedItem {
+    val stableId: String
+
+    data class Post(val item: SpacePostUi) : SpaceFeedItem {
+        override val stableId: String = "post-${item.post.id}"
+    }
+
+    data class Prompt(val prompt: WorkshopPrompt) : SpaceFeedItem {
+        override val stableId: String = "prompt-${prompt.id}"
+    }
+}
+
 private data class SpaceUiState(
-    val posts: List<SpacePostUi> = emptyList(),
+    val selectedFilter: SpaceDiscoveryFilter = SpaceDiscoveryFilter.ForYou,
+    val items: List<SpaceFeedItem> = emptyList(),
     val totalUnread: Int = 0,
 )
 
@@ -52,12 +73,44 @@ private class SpaceViewModel(
     messagingRepository: MessagingRepository,
     parser: MarkdownDocumentParser,
 ) : ViewModel() {
-    val uiState = combine(feedRepository.posts, messagingRepository.conversations) { posts, conversations ->
+    private val selectedFilter = MutableStateFlow(SpaceDiscoveryFilter.ForYou)
+    private val promptingPrompts = combine(feedRepository.prompts, selectedFilter) { prompts, filter ->
+        when (filter) {
+            SpaceDiscoveryFilter.ForYou -> prompts
+            SpaceDiscoveryFilter.Prompting -> prompts
+        }
+    }
+
+    val uiState = combine(feedRepository.posts, promptingPrompts, messagingRepository.conversations, selectedFilter) { posts, prompts, conversations, filter ->
+        val parsedPosts = posts.map { post ->
+            SpacePostUi(post, parser.parse(post.body, mdxReady = true, cssHint = "architectural-glitch"))
+        }
         SpaceUiState(
-            posts = posts.map { post -> SpacePostUi(post, parser.parse(post.body, mdxReady = true, cssHint = "architectural-glitch")) },
+            selectedFilter = filter,
+            items = when (filter) {
+                SpaceDiscoveryFilter.ForYou -> mergeDiscoveryItems(parsedPosts, prompts)
+                SpaceDiscoveryFilter.Prompting -> prompts.map { prompt -> SpaceFeedItem.Prompt(prompt) }
+            },
             totalUnread = conversations.sumOf { it.unreadCount },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SpaceUiState())
+
+    fun selectFilter(filter: SpaceDiscoveryFilter) {
+        selectedFilter.value = filter
+    }
+
+    private fun mergeDiscoveryItems(
+        posts: List<SpacePostUi>,
+        prompts: List<WorkshopPrompt>,
+    ): List<SpaceFeedItem> {
+        val merged = mutableListOf<SpaceFeedItem>()
+        val maxCount = maxOf(posts.size, prompts.size)
+        repeat(maxCount) { index ->
+            posts.getOrNull(index)?.let { merged += SpaceFeedItem.Post(it) }
+            prompts.getOrNull(index)?.let { merged += SpaceFeedItem.Prompt(it) }
+        }
+        return merged
+    }
 }
 
 @Composable
@@ -67,11 +120,22 @@ fun SpaceRoute(navController: NavHostController, container: AppContainer) {
     })
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    SpaceScreen(uiState = uiState, onOpenWorkshop = { navController.navigate("workshop") })
+    SpaceScreen(
+        uiState = uiState,
+        onSelectFilter = viewModel::selectFilter,
+        onApplyPrompt = { prompt ->
+            container.aigcRepository.updateDraft(DraftAigcRequest(prompt = prompt.prompt))
+            navController.navigate("chat/studio")
+        },
+    )
 }
 
 @Composable
-private fun SpaceScreen(uiState: SpaceUiState, onOpenWorkshop: () -> Unit) {
+private fun SpaceScreen(
+    uiState: SpaceUiState,
+    onSelectFilter: (SpaceDiscoveryFilter) -> Unit,
+    onApplyPrompt: (WorkshopPrompt) -> Unit,
+) {
     val appLanguage = LocalAppLanguage.current
     Column(
         modifier = Modifier
@@ -84,11 +148,9 @@ private fun SpaceScreen(uiState: SpaceUiState, onOpenWorkshop: () -> Unit) {
             eyebrow = appLanguage.pick("Builder Feed", "创作者动态"),
             title = appLanguage.pick("Space", "空间"),
             description = appLanguage.pick(
-                "Developer-first posts, prompt breakdowns, and community knowledge rendered through the shared Markdown pipeline.",
-                "这里展示以开发者为中心的帖子、提示词拆解与社区知识，并统一走 Markdown 内容渲染链路。",
+                "Developer posts and prompt templates now live in one discovery surface with the same waterfall browsing rhythm.",
+                "开发者帖子与提示模板现在合并进同一个发现面，并统一使用同一种瀑布流浏览节奏。",
             ),
-            actionLabel = appLanguage.pick("Workshop", "工作台"),
-            onAction = onOpenWorkshop,
         )
 
         GlassCard(modifier = Modifier.testTag("space-unread-summary")) {
@@ -110,26 +172,38 @@ private fun SpaceScreen(uiState: SpaceUiState, onOpenWorkshop: () -> Unit) {
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             val filters = listOf(
-                appLanguage.pick("For You", "为你推荐"),
-                appLanguage.pick("Prompting", "提示工程"),
-                appLanguage.pick("AI Tools", "AI 工具"),
-                appLanguage.pick("Motion", "动态"),
+                Triple(
+                    SpaceDiscoveryFilter.ForYou,
+                    "space-filter-for-you",
+                    appLanguage.pick("For You", "为你推荐"),
+                ),
+                Triple(
+                    SpaceDiscoveryFilter.Prompting,
+                    "space-filter-prompting",
+                    appLanguage.pick("Prompting", "提示工程"),
+                ),
             )
-            filters.forEachIndexed { index, label ->
+            filters.forEach { (filter, testTag, label) ->
+                val selected = uiState.selectedFilter == filter
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (index == 0) AetherColors.Surface else AetherColors.OnSurfaceVariant,
+                    color = if (selected) AetherColors.Surface else AetherColors.OnSurfaceVariant,
                     modifier = Modifier
-                        .background(if (index == 0) AetherColors.Primary else AetherColors.SurfaceContainerHigh, CircleShape)
+                        .testTag(testTag)
+                        .background(if (selected) AetherColors.Primary else AetherColors.SurfaceContainerHigh, CircleShape)
+                        .clickable { onSelectFilter(filter) }
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                 )
             }
         }
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.testTag("space-feed")) {
-            items(uiState.posts, key = { it.post.id }) { post ->
-                FeedPostCard(post)
+            items(uiState.items, key = { it.stableId }) { item ->
+                when (item) {
+                    is SpaceFeedItem.Post -> FeedPostCard(item.item)
+                    is SpaceFeedItem.Prompt -> FeedPromptCard(item.prompt, onApplyPrompt)
+                }
             }
         }
     }
@@ -137,7 +211,7 @@ private fun SpaceScreen(uiState: SpaceUiState, onOpenWorkshop: () -> Unit) {
 
 @Composable
 private fun FeedPostCard(item: SpacePostUi) {
-    GlassCard {
+    GlassCard(modifier = Modifier.testTag("space-feed-item-post-${item.post.id}")) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
                 Text(
@@ -156,5 +230,63 @@ private fun FeedPostCard(item: SpacePostUi) {
         }
         RichContentRenderer(document = item.document)
     }
+}
+
+@Composable
+private fun FeedPromptCard(
+    prompt: WorkshopPrompt,
+    onApplyPrompt: (WorkshopPrompt) -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    GlassCard(modifier = Modifier.testTag("space-feed-item-prompt-${prompt.id}")) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
+                Text(
+                    text = appLanguage.pick("PROMPT TEMPLATE", "提示模板"),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = AetherColors.Tertiary,
+                )
+                Text(text = prompt.title, style = MaterialTheme.typography.headlineMedium, color = AetherColors.OnSurface)
+                Text(text = prompt.summary, style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurfaceVariant)
+            }
+            Text(
+                text = prompt.category.name.uppercase(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = AetherColors.OnSurfaceVariant,
+            )
+        }
+        Text(text = prompt.prompt, style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurface)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                text = appLanguage.pick("By ${prompt.author} · ${prompt.uses} uses", "作者 ${prompt.author} · ${prompt.uses} 次使用"),
+                style = MaterialTheme.typography.bodyMedium,
+                color = AetherColors.OnSurfaceVariant,
+            )
+            SpacePromptAction(
+                label = appLanguage.pick("Apply", "应用"),
+                testTag = "space-apply-prompt-${prompt.id}",
+            ) {
+                onApplyPrompt(prompt)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpacePromptAction(
+    label: String,
+    testTag: String,
+    onClick: () -> Unit,
+) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelLarge,
+        color = AetherColors.OnSurface,
+        modifier = Modifier
+            .testTag(testTag)
+            .background(AetherColors.SurfaceContainerHigh, CircleShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    )
 }
 

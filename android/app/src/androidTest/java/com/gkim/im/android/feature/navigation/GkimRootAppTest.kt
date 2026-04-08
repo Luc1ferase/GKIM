@@ -3,9 +3,11 @@ package com.gkim.im.android.feature.navigation
 import androidx.activity.ComponentActivity
 import android.net.Uri
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
@@ -120,6 +122,41 @@ class GkimRootAppTest {
     }
 
     @Test
+    fun spaceScreenMergesWorkshopDiscoveryIntoUnifiedFeed() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithText("空间").performClick()
+
+        composeRule.onNodeWithTag("space-filter-for-you").fetchSemanticsNode()
+        composeRule.onNodeWithTag("space-filter-prompting").fetchSemanticsNode()
+        assertTrue(textNodeMissing("工作台"))
+        composeRule.onNodeWithTag("space-feed-item-post-post-1").fetchSemanticsNode()
+        composeRule.onNodeWithTag("space-feed").performScrollToNode(hasTestTag("space-feed-item-prompt-prompt-1"))
+        composeRule.onNodeWithTag("space-feed-item-prompt-prompt-1").fetchSemanticsNode()
+
+        composeRule.onNodeWithTag("space-filter-prompting").performClick()
+
+        composeRule.onNodeWithTag("space-feed-item-prompt-prompt-1").fetchSemanticsNode()
+        assertTrue(!nodeExists("space-feed-item-post-post-1"))
+    }
+
+    @Test
+    fun spacePromptCardsApplyTemplatesIntoStudioChat() {
+        val container = UiTestAppContainer()
+        setApp(container)
+
+        composeRule.onNodeWithText("空间").performClick()
+        composeRule.onNodeWithTag("space-filter-prompting").performClick()
+        composeRule.onNodeWithTag("space-apply-prompt-prompt-1").performClick()
+        composeRule.waitUntil(5_000) {
+            container.aigcRepository.draftRequest.value.prompt.startsWith("Create an editorial portrait")
+        }
+
+        composeRule.onNodeWithTag("chat-screen").fetchSemanticsNode()
+        composeRule.onNodeWithText("Create an editorial portrait", substring = true).fetchSemanticsNode()
+    }
+
+    @Test
     fun chatScreenUsesCompactHeaderAndBackNavigation() {
         setApp(UiTestAppContainer())
 
@@ -130,6 +167,8 @@ class GkimRootAppTest {
         composeRule.onNodeWithTag("chat-contact-name").assertTextContains("Leo Vance")
         assertTrue(textNodeMissing("Active Room"))
         assertTrue(textNodeMissing("Back"))
+        assertTrue(textNodeMissing("Workshop"))
+        assertTrue(textNodeMissing("工作台"))
 
         composeRule.onNodeWithTag("chat-back-button").performClick()
         composeRule.onNodeWithTag("messages-screen").fetchSemanticsNode()
