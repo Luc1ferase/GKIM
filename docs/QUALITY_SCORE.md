@@ -1,18 +1,25 @@
-# Quality Score - 必须达到 95+ 分才能 Merge
+# Quality Score - 每个被接受的任务必须达到 95+ 分
+
+## 任务接受门槛
+- 每个实现任务或子任务都必须先完成验证，再进入 Review
+- 质量分数低于 95 时，任务保持未完成，必须修复后重新 Review
+- 只有达到 95+ 的任务才可以被接受、勾选完成并上传到 GitHub
+- 任务被接受后，必须先 commit + push 到当前工作分支；push 失败时，任务仍然视为未完成
+- 每个完成任务都必须记录验证命令、Review 分数、关键结论，以及 GitHub 上传结果；记录格式见 `docs/DELIVERY_WORKFLOW.md`
 
 ## 代码质量标准
-- TypeScript：strict 模式，无 any
-- ESLint + Prettier + @unocss/eslint-config 强制通过
-- 组件必须有 <script setup lang="ts"> + defineProps 完整类型
-- 所有 AIGC 调用必须有错误兜底 + loading 状态
-- 实时消息必须有本地缓存（Pinia + uni.setStorage）
-- 性能：列表使用 v-memo / uni-list，AIGC 请求限流
+- 实现必须保持当前技术栈下的严格类型约束，不能靠关闭类型检查或新增宽松逃逸来通过 Review
+- 代码风格、格式化和静态检查必须全部通过
+- 新增功能必须保留错误兜底、加载态和关键状态恢复能力
+- 状态持久化、缓存或同步逻辑不能引入明显的数据丢失风险
+- 性能敏感路径必须避免明显的阻塞、重复渲染或不受控请求
 
 ## 测试要求
-- 每个 composable 必须有 Vitest 测试
-- 关键流程（发消息、调用文生图、创意工坊保存）必须有端到端测试
-- 所有页面必须支持 uni-app 预览
+- 每个任务至少运行与改动直接相关的验证命令，并把结果写入任务完成记录
+- 关键流程改动必须补充或更新对应的自动化测试
+- 如果因环境限制无法运行预期验证，必须在任务记录中明确写出未验证项和风险
 
 ## 文档要求
-- 每次变更必须同步 openspec/spec
-- 复杂组件必须有 <!-- DESIGN: --> 注释指向 DESIGN_SYSTEM.md
+- 每次变更必须同步 openspec/spec 或对应 change artifact
+- 复杂或高风险改动必须在任务记录中附上 Review 结论
+- 任务勾选完成前，必须先补齐 `docs/DELIVERY_WORKFLOW.md` 规定的证据字段

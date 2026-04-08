@@ -1,5 +1,14 @@
 schema: spec-driven
 
+context: |
+  Every implementation task must pause for verification, review, scoring, evidence recording, and GitHub push before the next task begins.
+  Use docs/DELIVERY_WORKFLOW.md as the standard format for accepted-task evidence.
+
+rules:
+  tasks:
+    - Break tasks into chunks small enough to implement, review, score, and push in one focused session.
+    - Each task must have a clear verification outcome and an obvious completion point.
+
 # Project context (optional)
 # This is shown to AI when creating artifacts.
 # Add your tech stack, conventions, style guides, domain knowledge, etc.
