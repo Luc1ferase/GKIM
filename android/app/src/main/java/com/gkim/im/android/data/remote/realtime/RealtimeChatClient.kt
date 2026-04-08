@@ -35,19 +35,19 @@ private data class MarkReadCommand(
 class RealtimeChatClient(
     private val okHttpClient: OkHttpClient,
     private val endpoint: String,
-) {
+) : RealtimeGateway {
     private val json = Json { encodeDefaults = false }
     private val _isConnected = MutableStateFlow(false)
     private val _lastFailure = MutableStateFlow<String?>(null)
     private val _events = MutableSharedFlow<ImGatewayEvent>(extraBufferCapacity = 32)
 
-    val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
-    val lastFailure: StateFlow<String?> = _lastFailure.asStateFlow()
-    val events: SharedFlow<ImGatewayEvent> = _events.asSharedFlow()
+    override val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
+    override val lastFailure: StateFlow<String?> = _lastFailure.asStateFlow()
+    override val events: SharedFlow<ImGatewayEvent> = _events.asSharedFlow()
 
     private var socket: WebSocket? = null
 
-    fun connect(token: String? = null, endpointOverride: String? = null) {
+    override fun connect(token: String?, endpointOverride: String?) {
         if (socket != null) return
         val requestBuilder = Request.Builder().url(endpointOverride ?: endpoint)
         token?.let { requestBuilder.header("Authorization", "Bearer $it") }
@@ -79,9 +79,9 @@ class RealtimeChatClient(
         )
     }
 
-    fun send(payload: String): Boolean = socket?.send(payload) ?: false
+    override fun send(payload: String): Boolean = socket?.send(payload) ?: false
 
-    fun sendMessage(
+    override fun sendMessage(
         recipientExternalId: String,
         clientMessageId: String?,
         body: String,
@@ -96,7 +96,7 @@ class RealtimeChatClient(
         )
     )
 
-    fun markRead(
+    override fun markRead(
         conversationId: String,
         messageId: String,
     ): Boolean = send(
@@ -109,7 +109,7 @@ class RealtimeChatClient(
         )
     )
 
-    fun disconnect() {
+    override fun disconnect() {
         socket?.close(1000, "client_shutdown")
         socket = null
         _isConnected.value = false

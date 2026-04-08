@@ -33,19 +33,19 @@ private interface ImBackendService {
 
 class ImBackendHttpClient(
     private val okHttpClient: OkHttpClient,
-) {
-    suspend fun issueDevSession(baseUrl: String, externalId: String): DevSessionResponseDto =
+) : ImBackendClient {
+    override suspend fun issueDevSession(baseUrl: String, externalId: String): DevSessionResponseDto =
         serviceFor(baseUrl).issueDevSession(DevSessionRequestDto(externalId = externalId))
 
-    suspend fun loadBootstrap(baseUrl: String, token: String): BootstrapBundleDto =
+    override suspend fun loadBootstrap(baseUrl: String, token: String): BootstrapBundleDto =
         serviceFor(baseUrl).loadBootstrap(bearerToken(token))
 
-    suspend fun loadHistory(
+    override suspend fun loadHistory(
         baseUrl: String,
         token: String,
         conversationId: String,
-        limit: Int = 50,
-        before: String? = null,
+        limit: Int,
+        before: String?,
     ): MessageHistoryPageDto = serviceFor(baseUrl).loadHistory(
         authorization = bearerToken(token),
         conversationId = conversationId,
