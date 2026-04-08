@@ -1,0 +1,48 @@
+## 1. Transport contracts and runtime configuration
+
+- [x] 1.1 Add or update unit/contract coverage for IM session, bootstrap, history, and gateway-event parsing so Android transport code can be verified independently of repository wiring.
+- [x] 1.2 Add or update Android settings/runtime-configuration coverage for persisted IM HTTP endpoint, WebSocket endpoint, development user selection, and visible integration-status validation.
+
+## 2. HTTP and WebSocket transport wiring
+
+- [ ] 2.1 Implement the Android IM HTTP client layer for development session issuance, bootstrap hydration, and paginated message history retrieval using configurable backend endpoints.
+- [ ] 2.2 Upgrade `RealtimeChatClient` into an authenticated IM gateway adapter that parses typed backend events, exposes connection/error state, and supports send/read commands against the live WebSocket contract.
+
+## 3. Repository and UI handoff
+
+- [ ] 3.1 Implement a backend-backed live messaging repository that authenticates, bootstraps conversation summaries, loads selected conversation history, and exposes explicit integration state without removing the seed repository fallback seam.
+- [ ] 3.2 Reconcile live WebSocket message, delivery, read, and failure events into the existing Messages and Chat UI models so visible conversation state is backend-driven instead of locally appended.
+- [ ] 3.3 Switch `AppContainer`, Messages, Chat, and any required view-model integration points onto the live messaging repository path while keeping current non-IM surfaces unchanged.
+
+## 4. Regression and handoff
+
+- [ ] 4.1 Add the minimal operator/developer handoff notes for configuring live IM endpoints and known scope limits before full device validation, then run the layered regression commands required by `docs/DELIVERY_WORKFLOW.md` and capture the evidence for this wiring change.
+
+## Task Evidence
+
+### Task 1.1: Add or update unit/contract coverage for IM session, bootstrap, history, and gateway-event parsing so Android transport code can be verified independently of repository wiring.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendPayloadsTest` - pass on the current baseline, reconfirming backend payload DTOs, bootstrap/history mapping, gateway-event parsing, and message receipt fields remain green
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `3c8a034`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 1.2: Add or update Android settings/runtime-configuration coverage for persisted IM HTTP endpoint, WebSocket endpoint, development user selection, and visible integration-status validation.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.feature.settings.SettingsViewModelTest` - pass on the current baseline, reconfirming IM HTTP/WS/dev-user settings and validation status remain covered
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsScreenExposesImBackendValidationControlsAndStatus" --rerun-tasks` - pass on the current baseline, confirming the settings screen persists IM runtime config and shows integration-status text for ready vs incomplete cases
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `8bad14f`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
