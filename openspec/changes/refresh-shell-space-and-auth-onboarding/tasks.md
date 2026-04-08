@@ -10,7 +10,7 @@
 
 ## 3. Welcome and Android auth shell
 
-- [ ] 3.1 Add a root auth state machine and welcome/onboarding route that uses the provided `docs/stitch-design/welcome_screen` design direction and media assets to expose `注册` and `登录` entry actions before the main shell.
+- [x] 3.1 Add a root auth state machine and welcome/onboarding route that uses the provided `docs/stitch-design/welcome_screen` design direction and media assets to expose `注册` and `登录` entry actions before the main shell.
 - [ ] 3.2 Introduce Android-side account session persistence, login/register form flows, and authenticated-shell gating tests so returning users bypass welcome while signed-out users cannot access the app shell.
 
 ## 4. Backend account and contact foundation
@@ -83,6 +83,21 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `347b6e0`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 3.1: Add a root auth state machine and welcome/onboarding route that uses the provided `docs/stitch-design/welcome_screen` design direction and media assets to expose `注册` and `登录` entry actions before the main shell.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#launchShowsWelcomeOnboardingBeforeMainShell,com.gkim.im.android.feature.navigation.GkimRootAppTest#welcomeLoginActionEntersAuthenticatedShellPreview,com.gkim.im.android.feature.navigation.GkimRootAppTest#rootShellDefaultsToChineseAndLightThemeOnFirstRun,com.gkim.im.android.feature.navigation.GkimRootAppTest#bottomNavigationSwitchesAcrossPrimaryTabs" --rerun-tasks` - pass, confirming cold launch now shows the stitched welcome route with media-backed onboarding CTAs while the authenticated preview seam still enters the Chinese/light shell and preserves existing shell navigation tests
+  - `$target = Resolve-Path 'x:\Repos\GKIM\android\app\build\kspCaches\debug\backups\java\byRounds' -ErrorAction SilentlyContinue; if ($target) { Remove-Item -LiteralPath $target -Recurse -Force }; $env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:compileDebugKotlin` - pass, confirming the root auth gate, welcome route, and packaged media resources compile cleanly after clearing a stale local KSP backup cache collision
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/feature/navigation/GkimRootApp.kt android/app/src/main/java/com/gkim/im/android/feature/navigation/WelcomeRoute.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/LiveImBackendValidationTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `7a4e6a2`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
