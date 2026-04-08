@@ -1,7 +1,7 @@
 ## 1. Active repository audit for database-provider assumptions
 
 - [x] 1.1 Inventory active, non-archived files that still reference the previous Aiven PostgreSQL DSN or certificate story, and decide whether each reference should be updated, removed, or preserved only in historical archives.
-- [ ] 1.2 Confirm the replacement-database secret-handling contract for active repo surfaces so host and boundary guidance can be documented without committing the supplied password or other live secrets.
+- [x] 1.2 Confirm the replacement-database secret-handling contract for active repo surfaces so host and boundary guidance can be documented without committing the supplied password or other live secrets.
 
 ## 2. Backend-facing configuration guidance refresh
 
