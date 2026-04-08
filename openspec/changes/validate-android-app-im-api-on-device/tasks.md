@@ -9,10 +9,10 @@
 - [x] 2.2 Upgrade `RealtimeChatClient` into an authenticated backend event adapter that can connect, reconnect, send messages, mark reads, and surface delivery/read/error events to repository consumers.
 - [x] 2.3 Replace the seed-only Android IM repository wiring with a backend-backed messaging state holder that hydrates Messages/Chat from live APIs and reconciles WebSocket events without breaking existing UI contracts.
 
-## 3. Physical-device validation workflow
+## 3. Emulator validation workflow
 
-- [ ] 3.1 Add the repeatable device-validation workflow for the current deployment path, including SSH tunnel + `adb reverse` guidance, backend reachability checks, and adb/logcat evidence capture steps for a physical Android device.
-- [ ] 3.2 Run the full physical-device IM API validation flow against the deployed backend for session, bootstrap, history, send, realtime receive, delivery/read, and reconnect recovery, then capture the required evidence in `docs/DELIVERY_WORKFLOW.md`.
+- [x] 3.1 Add local Docker packaging for the IM backend plus the repeatable emulator-validation workflow for the current deployment path, including host-published container ports, emulator endpoint guidance, backend reachability checks, and adb/logcat evidence capture steps.
+- [ ] 3.2 Run the full Android emulator IM API validation flow against the local Docker backend for session, bootstrap, history, send, realtime receive, delivery/read, and reconnect recovery, then capture the required evidence in `docs/DELIVERY_WORKFLOW.md`.
 
 ## Task Evidence
 
@@ -84,6 +84,23 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `bfacbd0`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 3.1: Add local Docker packaging for the IM backend plus the repeatable emulator-validation workflow for the current deployment path, including host-published container ports, emulator endpoint guidance, backend reachability checks, and adb/logcat evidence capture steps.
+
+- Verification:
+  - `docker build -t gkim-im-backend:local backend` - pass, rebuilding the local backend image from the checked-in `backend/Dockerfile`
+  - `docker run --rm -d --name gkim-im-backend-local --env-file backend/.env.local -e APP_BIND_ADDR=0.0.0.0:8080 -p 18080:8080 gkim-im-backend:local` plus `Invoke-WebRequest http://127.0.0.1:18080/health` - pass, confirming the published host port serves the backend health endpoint from the container
+  - `Invoke-RestMethod -Method Post http://127.0.0.1:18080/api/session/dev ...` plus `Invoke-RestMethod http://127.0.0.1:18080/api/bootstrap ...` - pass, confirming the local image can issue a dev session and hydrate live bootstrap data against the configured PostgreSQL runtime
+  - `D:\Android\Sdk\platform-tools\adb.exe devices -l`, `adb reverse tcp:18080 tcp:18080`, and `adb reverse --list` - pass, confirming the active emulator can reach the host-published backend through the documented validation path
+  - `git diff --check -- backend/Dockerfile backend/.dockerignore backend/README.md android/README.md openspec/changes/validate-android-app-im-api-on-device/proposal.md openspec/changes/validate-android-app-im-api-on-device/design.md openspec/changes/validate-android-app-im-api-on-device/specs/core/im-app/spec.md openspec/changes/validate-android-app-im-api-on-device/tasks.md` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `4f0ce71`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
