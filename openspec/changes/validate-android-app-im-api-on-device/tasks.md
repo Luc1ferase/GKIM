@@ -5,9 +5,9 @@
 
 ## 2. Live IM backend integration in the Android app
 
-- [ ] 2.1 Implement Android HTTP client contracts and mappers for backend development session issuance, bootstrap hydration, and paginated message history retrieval.
-- [ ] 2.2 Upgrade `RealtimeChatClient` into an authenticated backend event adapter that can connect, reconnect, send messages, mark reads, and surface delivery/read/error events to repository consumers.
-- [ ] 2.3 Replace the seed-only Android IM repository wiring with a backend-backed messaging state holder that hydrates Messages/Chat from live APIs and reconciles WebSocket events without breaking existing UI contracts.
+- [x] 2.1 Implement Android HTTP client contracts and mappers for backend development session issuance, bootstrap hydration, and paginated message history retrieval.
+- [x] 2.2 Upgrade `RealtimeChatClient` into an authenticated backend event adapter that can connect, reconnect, send messages, mark reads, and surface delivery/read/error events to repository consumers.
+- [x] 2.3 Replace the seed-only Android IM repository wiring with a backend-backed messaging state holder that hydrates Messages/Chat from live APIs and reconciles WebSocket events without breaking existing UI contracts.
 
 ## 3. Physical-device validation workflow
 
@@ -41,6 +41,49 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `8bad14f`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.1: Implement Android HTTP client contracts and mappers for backend development session issuance, bootstrap hydration, and paginated message history retrieval.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendHttpClientTest --tests com.gkim.im.android.data.remote.realtime.RealtimeChatClientTest --tests com.gkim.im.android.data.repository.LiveMessagingRepositoryTest --tests com.gkim.im.android.feature.messages.MessagesViewModelTest --rerun-tasks` - pass, reconfirming the IM backend HTTP client, repository mappers, and current app-shell consumers work together on the active branch
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/data/remote/im/ImBackendClient.kt android/app/src/main/java/com/gkim/im/android/data/remote/im/ImBackendHttpClient.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `30a0e57`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.2: Upgrade `RealtimeChatClient` into an authenticated backend event adapter that can connect, reconnect, send messages, mark reads, and surface delivery/read/error events to repository consumers.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendHttpClientTest --tests com.gkim.im.android.data.remote.realtime.RealtimeChatClientTest --tests com.gkim.im.android.data.repository.LiveMessagingRepositoryTest --tests com.gkim.im.android.feature.messages.MessagesViewModelTest --rerun-tasks` - pass, reconfirming the authenticated realtime adapter, parsed gateway events, and repository consumers remain green on the active branch
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/data/remote/realtime/RealtimeGateway.kt android/app/src/main/java/com/gkim/im/android/data/remote/realtime/RealtimeChatClient.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `30a0e57`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.3: Replace the seed-only Android IM repository wiring with a backend-backed messaging state holder that hydrates Messages/Chat from live APIs and reconciles WebSocket events without breaking existing UI contracts.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendHttpClientTest --tests com.gkim.im.android.data.remote.realtime.RealtimeChatClientTest --tests com.gkim.im.android.data.repository.LiveMessagingRepositoryTest --tests com.gkim.im.android.feature.messages.MessagesViewModelTest --rerun-tasks` - pass, confirming the active branch hydrates IM state through the live repository path and preserves current UI-facing state contracts
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#openingConversationRequestsLiveHistoryLoad" --rerun-tasks` - pass, confirming the app shell requests live conversation history when entering a backend-backed chat
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/data/repository/Repositories.kt android/app/src/main/java/com/gkim/im/android/data/repository/AppContainer.kt android/app/src/main/java/com/gkim/im/android/feature/messages/MessagesRoute.kt android/app/src/main/java/com/gkim/im/android/feature/chat/ChatRoute.kt android/app/src/test/java/com/gkim/im/android/data/repository/LiveMessagingRepositoryTest.kt android/app/src/test/java/com/gkim/im/android/feature/messages/MessagesViewModelTest.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt` - pass
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `bfacbd0`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
