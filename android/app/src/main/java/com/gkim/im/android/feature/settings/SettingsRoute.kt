@@ -236,8 +236,8 @@ private fun SettingsScreen(
             Text(text = appLanguage.pick("BACKEND-ONLY DATABASE NOTE", "仅后端数据库说明"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
             Text(
                 text = appLanguage.pick(
-                    "The Postgres DSN and CA certificate belong to backend infrastructure and are not packaged into the Android client. Future server-side trust material should live under infra/certs/.",
-                    "Postgres DSN 与 CA 证书属于后端基础设施，不会打包进 Android 客户端。后续服务端证书材料应存放在 infra/certs/ 下。",
+                    "Backend services can target 124.222.15.128:5432 through secret-managed environment values. PostgreSQL credentials and any optional TLS trust material stay on the backend and are never packaged into the Android client.",
+                    "后端服务可以通过受密钥管理的环境变量连接到 124.222.15.128:5432。PostgreSQL 凭据以及任何可选 TLS 信任材料都只保留在后端，绝不会打包进 Android 客户端。",
                 ),
                 style = MaterialTheme.typography.bodyLarge,
                 color = AetherColors.OnSurfaceVariant,

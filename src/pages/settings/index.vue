@@ -65,8 +65,8 @@ function goBack() {
     </view>
 
     <view class="card-shell px-5 py-5 section-stack gap-3">
-      <text class="text-[20rpx] uppercase tracking-[0.2em] text-primary">Local database note</text>
-      <text class="text-[24rpx] leading-[1.7] text-on-surface-variant">Backend Postgres details stay in untracked local environment values, and any optional TLS trust material stays on the backend. None of it is wired into the mobile client runtime.</text>
+      <text class="text-[20rpx] uppercase tracking-[0.2em] text-primary">Backend-only database note</text>
+      <text class="text-[24rpx] leading-[1.7] text-on-surface-variant">Backend services can target 124.222.15.128:5432 through secret-managed environment values. PostgreSQL credentials and any optional TLS trust material stay on the backend and never ship with the client runtime.</text>
     </view>
   </view>
 </template>
