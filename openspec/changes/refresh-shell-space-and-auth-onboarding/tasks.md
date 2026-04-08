@@ -5,7 +5,7 @@
 
 ## 2. Messages and Space information architecture
 
-- [ ] 2.1 Remove unread-count bubble badges from the message shell surfaces and update the affected Messages UI/state tests so incoming messages no longer render badge bubbles.
+- [x] 2.1 Remove unread-count bubble badges from the message shell surfaces and update the affected Messages UI/state tests so incoming messages no longer render badge bubbles.
 - [ ] 2.2 Merge Workshop discovery into the Space filter row, normalize post and prompt/workshop cards into one waterfall-style feed model, and remove the separate Workshop navigation entry with updated UI coverage.
 
 ## 3. Welcome and Android auth shell
@@ -53,6 +53,21 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `7504ae7`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.1: Remove unread-count bubble badges from the message shell surfaces and update the affected Messages UI/state tests so incoming messages no longer render badge bubbles.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesConversationRowsHideUnreadBubbleBadgesButKeepCoreMetadata,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesScreenStartsAtRecentConversationsWithoutUnreadSummaryPanel,com.gkim.im.android.feature.navigation.GkimRootAppTest#spaceScreenShowsUnreadSummaryAsSupportingContext" --rerun-tasks` - pass, confirming Messages rows drop unread bubble badges while keeping name/preview/time metadata intact and Space still preserves its top-level unread supporting summary
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:compileDebugKotlin` - pass, confirming the Messages route compiles cleanly after removing the unread bubble rendering branch
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/feature/messages/MessagesRoute.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `da41db0`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
