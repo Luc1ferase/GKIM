@@ -1,8 +1,9 @@
 use crate::config::AppConfig;
 use crate::im::service::ImService;
 use crate::session::{SessionIssue, SessionService};
+use crate::ws::{serve_socket, ConnectionHub};
 use axum::{
-    extract::{Path, Query, State},
+    extract::{ws::WebSocketUpgrade, Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -16,6 +17,7 @@ struct AppState {
     service_name: String,
     session_service: SessionService,
     im_service: ImService,
+    connection_hub: ConnectionHub,
 }
 
 #[derive(Serialize)]
@@ -101,6 +103,7 @@ impl IntoResponse for AppError {
 pub fn build_router(config: AppConfig, pool: PgPool) -> Router {
     Router::new()
         .route("/health", get(health_handler))
+        .route("/ws", get(websocket_gateway))
         .route("/api/session/dev", post(issue_dev_session))
         .route("/api/bootstrap", get(get_bootstrap))
         .route(
@@ -111,6 +114,7 @@ pub fn build_router(config: AppConfig, pool: PgPool) -> Router {
             service_name: config.service_name,
             session_service: SessionService::new(pool.clone()),
             im_service: ImService::new(pool),
+            connection_hub: ConnectionHub::default(),
         })
 }
 
@@ -119,6 +123,19 @@ async fn health_handler(State(state): State<AppState>) -> Json<HealthResponse> {
         service: state.service_name,
         status: "ok",
     })
+}
+
+async fn websocket_gateway(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    websocket: WebSocketUpgrade,
+) -> Result<Response, AppError> {
+    let user = authenticated_user(&state, &headers).await?;
+    let hub = state.connection_hub.clone();
+
+    Ok(websocket.on_upgrade(move |socket| async move {
+        serve_socket(socket, hub, user).await;
+    }))
 }
 
 async fn issue_dev_session(
