@@ -5,7 +5,7 @@
 
 ## 2. HTTP and WebSocket transport wiring
 
-- [ ] 2.1 Implement the Android IM HTTP client layer for development session issuance, bootstrap hydration, and paginated message history retrieval using configurable backend endpoints.
+- [x] 2.1 Implement the Android IM HTTP client layer for development session issuance, bootstrap hydration, and paginated message history retrieval using configurable backend endpoints.
 - [ ] 2.2 Upgrade `RealtimeChatClient` into an authenticated IM gateway adapter that parses typed backend events, exposes connection/error state, and supports send/read commands against the live WebSocket contract.
 
 ## 3. Repository and UI handoff
@@ -43,6 +43,20 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `8bad14f`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.1: Implement the Android IM HTTP client layer for development session issuance, bootstrap hydration, and paginated message history retrieval using configurable backend endpoints.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendHttpClientTest` - failed first with missing HTTP client symbols, then passed after adding the IM backend Retrofit wrapper and MockWebServer contract coverage for session, bootstrap, history, auth header, and query forwarding
+  - `git diff --check -- android/app/build.gradle.kts android/app/src/main/java/com/gkim/im/android/data/remote/im/ImBackendHttpClient.kt android/app/src/test/java/com/gkim/im/android/data/remote/im/ImBackendHttpClientTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `59e5513`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
