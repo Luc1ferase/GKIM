@@ -5,7 +5,7 @@
 
 ## 2. PostgreSQL-backed IM domain and bootstrap APIs
 
-- [ ] 2.1 Add SQLx migrations and schema for development users, contacts, direct conversations, messages, unread/delivery state, and session tokens required by the first IM milestone.
+- [x] 2.1 Add SQLx migrations and schema for development users, contacts, direct conversations, messages, unread/delivery state, and session tokens required by the first IM milestone.
 - [ ] 2.2 Implement repository and service layers that persist direct-message state in PostgreSQL and can rebuild conversation bootstrap, unread counts, and paginated message history for reconnecting users.
 - [ ] 2.3 Implement the development-safe session bootstrap flow plus authenticated HTTP endpoints for health, session issuance, contacts/conversation bootstrap, and message history retrieval.
 
@@ -66,7 +66,7 @@
   - Score: `96/100`
   - Findings: `No findings`
 - Upload:
-  - Commit: `not created`
+  - Commit: `ed7e79b`
   - Branch: `master`
-  - Push: `pending`
-- Result: `blocked`
+  - Push: `origin/master`
+- Result: `accepted`
