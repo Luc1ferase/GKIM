@@ -55,3 +55,18 @@
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
+
+### Task 2.1: Add SQLx migrations and schema for development users, contacts, direct conversations, messages, unread/delivery state, and session tokens required by the first IM milestone.
+
+- Verification:
+  - `cd backend && cargo fmt --check` - pass
+  - `cd backend && cargo test` - pass (`5` tests)
+  - `cd backend && cargo check` - pass
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `pending`
+- Result: `blocked`
