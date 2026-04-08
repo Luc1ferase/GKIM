@@ -327,6 +327,7 @@ class LiveMessagingRepository(
     private val conversationState = MutableStateFlow<List<Conversation>>(emptyList())
     private val integrationStateValue = MutableStateFlow(MessagingIntegrationState())
     private val loadedConversationIds = mutableSetOf<String>()
+    private val backendConversationIds = mutableSetOf<String>()
 
     private var activeToken: String? = null
     private var activeUserExternalId: String? = null
@@ -424,6 +425,7 @@ class LiveMessagingRepository(
     }
 
     override fun loadConversationHistory(conversationId: String) {
+        if (!backendConversationIds.contains(conversationId)) return
         if (loadedConversationIds.contains(conversationId)) return
         val token = activeToken ?: return
         val baseUrl = activeHttpBaseUrl ?: return
@@ -463,6 +465,7 @@ class LiveMessagingRepository(
     ) {
         realtimeGateway.disconnect()
         loadedConversationIds.clear()
+        backendConversationIds.clear()
         integrationStateValue.value = MessagingIntegrationState(
             phase = MessagingIntegrationPhase.Authenticating,
             activeUserExternalId = devUserExternalId,
@@ -479,6 +482,7 @@ class LiveMessagingRepository(
         )
         val bootstrap = backendClient.loadBootstrap(httpBaseUrl, session.token)
         conversationState.value = bootstrap.toBootstrapState(activeUserExternalId = session.user.externalId).conversations
+        backendConversationIds += conversationState.value.map { it.id }
 
         integrationStateValue.value = MessagingIntegrationState(
             phase = MessagingIntegrationPhase.RealtimeConnecting,

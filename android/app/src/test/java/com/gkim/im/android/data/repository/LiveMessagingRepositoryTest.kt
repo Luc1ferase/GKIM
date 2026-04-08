@@ -10,6 +10,7 @@ import com.gkim.im.android.data.remote.im.ImGatewayEvent
 import com.gkim.im.android.data.remote.im.MessageHistoryPageDto
 import com.gkim.im.android.data.remote.im.MessageRecordDto
 import com.gkim.im.android.data.remote.realtime.RealtimeGateway
+import com.gkim.im.android.core.model.Contact
 import com.gkim.im.android.testing.FakePreferencesStore
 import com.gkim.im.android.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -131,6 +132,38 @@ class LiveMessagingRepositoryTest {
     }
 
     @Test
+    fun `repository skips history fetch for fallback-only conversations`() = runTest(mainDispatcherRule.dispatcher) {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val backendClient = FakeImBackendClient()
+        val realtimeGateway = FakeRealtimeGateway()
+        val repository = LiveMessagingRepository(
+            backendClient = backendClient,
+            realtimeGateway = realtimeGateway,
+            preferencesStore = FakePreferencesStore(),
+            fallbackRepository = InMemoryMessagingRepository(seedConversations),
+            dispatcher = dispatcher,
+        )
+
+        advanceUntilIdle()
+        val fallbackConversation = repository.ensureConversation(
+            Contact(
+                id = "aria-thorne",
+                nickname = "Aria Thorne",
+                title = "Prompt Architect",
+                avatarText = "AT",
+                addedAt = "2026-04-08T09:04:00Z",
+                isOnline = true,
+            )
+        )
+
+        repository.loadConversationHistory(fallbackConversation.id)
+        advanceUntilIdle()
+
+        assertTrue(backendClient.historyRequests.none { it == fallbackConversation.id })
+        assertEquals(MessagingIntegrationPhase.Ready, repository.integrationState.value.phase)
+    }
+
+    @Test
     fun `repository reconciles realtime receive delivered and read events into conversation state`() = runTest(mainDispatcherRule.dispatcher) {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val backendClient = FakeImBackendClient()
@@ -204,6 +237,7 @@ class LiveMessagingRepositoryTest {
         private val historyFailure: Throwable? = null,
     ) : ImBackendClient {
         var issuedToken: String? = null
+        val historyRequests = mutableListOf<String>()
 
         override suspend fun issueDevSession(baseUrl: String, externalId: String): DevSessionResponseDto {
             sessionFailure?.let { throw it }
@@ -277,6 +311,7 @@ class LiveMessagingRepositoryTest {
             before: String?,
         ): MessageHistoryPageDto {
             historyFailure?.let { throw it }
+            historyRequests += conversationId
             return MessageHistoryPageDto(
                 conversationId = conversationId,
                 hasMore = false,

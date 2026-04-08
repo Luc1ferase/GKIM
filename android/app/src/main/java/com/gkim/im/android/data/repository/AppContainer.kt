@@ -10,6 +10,7 @@ import com.gkim.im.android.data.local.PreferencesStore
 import com.gkim.im.android.data.remote.api.AigcService
 import com.gkim.im.android.data.remote.api.FeedService
 import com.gkim.im.android.data.remote.api.ServiceFactory
+import com.gkim.im.android.data.remote.im.ImBackendHttpClient
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
 import okhttp3.OkHttpClient
 
@@ -34,11 +35,18 @@ class DefaultAppContainer(context: Context) : AppContainer {
     private val aigcService = retrofit.create(AigcService::class.java)
     @Suppress("unused")
     private val feedService = retrofit.create(FeedService::class.java)
+    private val fallbackMessagingRepository = InMemoryMessagingRepository(seedConversations)
+    private val imBackendClient = ImBackendHttpClient(okHttpClient)
 
     override val markdownParser = MarkdownDocumentParser()
     override val realtimeChatClient = RealtimeChatClient(okHttpClient, "wss://example.com/realtime")
 
-    override val messagingRepository: MessagingRepository = InMemoryMessagingRepository(seedConversations)
+    override val messagingRepository: MessagingRepository = LiveMessagingRepository(
+        backendClient = imBackendClient,
+        realtimeGateway = realtimeChatClient,
+        preferencesStore = preferencesStore,
+        fallbackRepository = fallbackMessagingRepository,
+    )
     override val contactsRepository: ContactsRepository = DefaultContactsRepository(seedContacts, preferencesStore)
     override val feedRepository: FeedRepository = DefaultFeedRepository(seedPosts, seedPrompts)
     override val aigcRepository: AigcRepository = DefaultAigcRepository(

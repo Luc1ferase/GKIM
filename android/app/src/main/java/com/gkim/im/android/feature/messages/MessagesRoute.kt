@@ -35,22 +35,26 @@ import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.Conversation
 import com.gkim.im.android.core.util.formatChatTimestamp
 import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.repository.MessagingIntegrationPhase
+import com.gkim.im.android.data.repository.MessagingIntegrationState
 import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 internal data class MessagesUiState(
     val conversations: List<Conversation> = emptyList(),
     val totalUnread: Int = 0,
+    val integrationState: MessagingIntegrationState = MessagingIntegrationState(),
 )
 
 internal class MessagesViewModel(repository: MessagingRepository) : ViewModel() {
-    val uiState = repository.conversations.map { conversations ->
+    val uiState = combine(repository.conversations, repository.integrationState) { conversations, integrationState ->
         MessagesUiState(
             conversations = conversations,
             totalUnread = conversations.sumOf { it.unreadCount },
+            integrationState = integrationState,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MessagesUiState())
 }
@@ -106,6 +110,23 @@ private fun MessagesScreen(
             }
         }
 
+        GlassCard(modifier = Modifier.testTag("messages-integration-status")) {
+            Text(
+                text = appLanguage.pick("LIVE IM", "实时 IM"),
+                style = MaterialTheme.typography.labelLarge,
+                color = AetherColors.Primary,
+            )
+            Text(
+                text = integrationStatusLabel(uiState.integrationState, appLanguage),
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (uiState.integrationState.phase == MessagingIntegrationPhase.Error) {
+                    AetherColors.OnSurfaceVariant
+                } else {
+                    AetherColors.OnSurface
+                },
+            )
+        }
+
         if (uiState.conversations.isEmpty()) {
             GlassCard(modifier = Modifier.testTag("messages-empty")) {
                 Text(
@@ -115,8 +136,8 @@ private fun MessagesScreen(
                 )
                 Text(
                     text = appLanguage.pick(
-                        "Seed data, websocket sync, or imported contacts will populate this lane once connected.",
-                        "接入种子数据、WebSocket 同步或导入联系人后，这里会出现会话内容。",
+                        "Live IM conversations will appear after bootstrap completes or when a fallback room is opened from Contacts.",
+                        "完成 live IM 引导后，这里会出现会话；也可以先从联系人入口打开回退房间。",
                     ),
                     style = MaterialTheme.typography.bodyLarge,
                     color = AetherColors.OnSurfaceVariant,
@@ -134,6 +155,21 @@ private fun MessagesScreen(
                 }
             }
         }
+    }
+}
+
+private fun integrationStatusLabel(
+    state: MessagingIntegrationState,
+    appLanguage: com.gkim.im.android.core.model.AppLanguage,
+): String {
+    state.message?.let { return it }
+    return when (state.phase) {
+        MessagingIntegrationPhase.Idle -> appLanguage.pick("Waiting for live IM configuration", "等待 live IM 配置")
+        MessagingIntegrationPhase.Authenticating -> appLanguage.pick("Authenticating live IM session", "正在认证 live IM 会话")
+        MessagingIntegrationPhase.Bootstrapping -> appLanguage.pick("Hydrating live conversations", "正在拉取 live 会话")
+        MessagingIntegrationPhase.RealtimeConnecting -> appLanguage.pick("Connecting realtime gateway", "正在连接实时网关")
+        MessagingIntegrationPhase.Ready -> appLanguage.pick("Live IM connected", "live IM 已连接")
+        MessagingIntegrationPhase.Error -> appLanguage.pick("Live IM error", "live IM 出错")
     }
 }
 

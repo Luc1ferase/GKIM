@@ -74,6 +74,10 @@ private class ChatViewModel(
 ) : ViewModel() {
     private val resolvedConversationId = if (conversationId.isBlank() || conversationId == "studio") messagingRepository.ensureStudioRoom().id else conversationId
 
+    init {
+        messagingRepository.loadConversationHistory(resolvedConversationId)
+    }
+
     val uiState = combine(
         messagingRepository.conversation(resolvedConversationId),
         aigcRepository.providers,

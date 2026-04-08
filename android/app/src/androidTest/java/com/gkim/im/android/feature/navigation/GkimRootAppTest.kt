@@ -27,6 +27,8 @@ import com.gkim.im.android.data.repository.DefaultContactsRepository
 import com.gkim.im.android.data.repository.DefaultFeedRepository
 import com.gkim.im.android.data.repository.FeedRepository
 import com.gkim.im.android.data.repository.InMemoryMessagingRepository
+import com.gkim.im.android.data.repository.MessagingIntegrationPhase
+import com.gkim.im.android.data.repository.MessagingIntegrationState
 import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.data.repository.presetProviders
 import com.gkim.im.android.data.repository.seedContacts
@@ -34,6 +36,8 @@ import com.gkim.im.android.data.repository.seedConversations
 import com.gkim.im.android.data.repository.seedPosts
 import com.gkim.im.android.data.repository.seedPrompts
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -115,6 +119,18 @@ class GkimRootAppTest {
 
         composeRule.onNodeWithTag("chat-back-button").performClick()
         composeRule.onNodeWithTag("messages-screen").fetchSemanticsNode()
+    }
+
+    @Test
+    fun openingConversationRequestsLiveHistoryLoad() {
+        val messagingRepository = RecordingMessagingRepository()
+        setApp(UiTestAppContainer(messagingRepository = messagingRepository))
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+
+        composeRule.waitUntil(5_000) {
+            messagingRepository.loadedConversationIds.contains("room-leo")
+        }
     }
 
     @Test
@@ -534,14 +550,31 @@ private fun adaptiveWidthConversations(): List<com.gkim.im.android.core.model.Co
 
 private class UiTestAppContainer(
     conversations: List<com.gkim.im.android.core.model.Conversation> = seedConversations,
+    override val messagingRepository: MessagingRepository = InMemoryMessagingRepository(conversations),
 ) : AppContainer {
     override val preferencesStore = UiTestPreferencesStore()
     private val secureStore = UiInMemorySecureStore()
 
-    override val messagingRepository: MessagingRepository = InMemoryMessagingRepository(conversations)
     override val contactsRepository: ContactsRepository = DefaultContactsRepository(seedContacts, preferencesStore, Dispatchers.Main)
     override val feedRepository: FeedRepository = DefaultFeedRepository(seedPosts, seedPrompts, Dispatchers.Main)
     override val aigcRepository: AigcRepository = DefaultAigcRepository(presetProviders, preferencesStore, secureStore, Dispatchers.Main)
     override val markdownParser: MarkdownDocumentParser = MarkdownDocumentParser()
     override val realtimeChatClient: RealtimeChatClient = RealtimeChatClient(OkHttpClient.Builder().build(), "wss://example.com/realtime")
+}
+
+private class RecordingMessagingRepository(
+    private val delegate: MessagingRepository = InMemoryMessagingRepository(seedConversations),
+) : MessagingRepository by delegate {
+    private val integrationStateValue = MutableStateFlow(
+        MessagingIntegrationState(phase = MessagingIntegrationPhase.Ready)
+    )
+
+    val loadedConversationIds = mutableListOf<String>()
+
+    override val integrationState: StateFlow<MessagingIntegrationState> = integrationStateValue
+
+    override fun loadConversationHistory(conversationId: String) {
+        loadedConversationIds += conversationId
+        delegate.loadConversationHistory(conversationId)
+    }
 }
