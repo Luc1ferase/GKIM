@@ -70,3 +70,19 @@
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
+
+### Task 2.2: Implement repository and service layers that persist direct-message state in PostgreSQL and can rebuild conversation bootstrap, unread counts, and paginated message history for reconnecting users.
+
+- Verification:
+  - `cd backend && cargo fmt --check` - pass
+  - `cd backend && cargo test` - pass (`7` tests)
+  - `cd backend && cargo check` - pass
+  - `cd backend && GKIM_TEST_DATABASE_URL=<redacted> cargo test --test im_service_pg` - pass (`2` PostgreSQL integration tests against the target host)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `pending`
+- Result: `blocked`

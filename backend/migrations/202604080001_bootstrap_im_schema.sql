@@ -112,7 +112,7 @@ values
     ('aria-thorne', 'Aria Thorne', 'Prompt Architect', 'AT'),
     ('clara-wu', 'Clara Wu', 'Visual Systems', 'CW');
 
-with current_user as (
+with seed_owner as (
     select id
     from users
     where external_id = 'nox-dev'
@@ -123,6 +123,6 @@ contact_users as (
     where external_id in ('leo-vance', 'aria-thorne', 'clara-wu')
 )
 insert into contacts (user_id, contact_user_id)
-select current_user.id, contact_users.id
-from current_user
+select seed_owner.id, contact_users.id
+from seed_owner
 cross join contact_users;
