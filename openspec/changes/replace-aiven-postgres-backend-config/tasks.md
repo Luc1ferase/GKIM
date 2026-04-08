@@ -11,4 +11,4 @@
 ## 3. Product-copy alignment and verification evidence
 
 - [x] 3.1 Refresh maintained user-facing backend-database notes, including Android and any still-supported legacy settings surfaces, so they consistently explain that PostgreSQL credentials stay on the backend and are not packaged into the client.
-- [ ] 3.2 Run focused verification for the updated notes and a repo-wide search of active files to confirm the old Aiven-specific database narrative is gone where intended, then record the evidence in the delivery workflow format.
+- [x] 3.2 Run focused verification for the updated notes and a repo-wide search of active files to confirm the old Aiven-specific database narrative is gone where intended, then record the evidence in the delivery workflow format.
