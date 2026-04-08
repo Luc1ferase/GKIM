@@ -6,7 +6,7 @@
 ## 2. Backend-facing configuration guidance refresh
 
 - [x] 2.1 Update `infra/` notes and any active configuration placeholders so they describe backend-only connectivity to the replacement PostgreSQL target at `124.222.15.128:5432` through deployment-managed secrets instead of the old Aiven guidance.
-- [ ] 2.2 Remove or rewrite active references to `ca.pem` and `aiven-postgres-ca.pem` that imply the previous Aiven trust path is still canonical, while leaving room for future backend-only TLS inputs if the new server requires them.
+- [x] 2.2 Remove or rewrite active references to `ca.pem` and `aiven-postgres-ca.pem` that imply the previous Aiven trust path is still canonical, while leaving room for future backend-only TLS inputs if the new server requires them.
 
 ## 3. Product-copy alignment and verification evidence
 

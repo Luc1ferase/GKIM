@@ -66,7 +66,7 @@ function goBack() {
 
     <view class="card-shell px-5 py-5 section-stack gap-3">
       <text class="text-[20rpx] uppercase tracking-[0.2em] text-primary">Local database note</text>
-      <text class="text-[24rpx] leading-[1.7] text-on-surface-variant">The Postgres connection is stored in `.env.local`, and the CA certificate is mirrored at `certs/aiven-postgres-ca.pem` for future server-side tooling. It is not wired into the mobile client runtime.</text>
+      <text class="text-[24rpx] leading-[1.7] text-on-surface-variant">Backend Postgres details stay in untracked local environment values, and any optional TLS trust material stays on the backend. None of it is wired into the mobile client runtime.</text>
     </view>
   </view>
 </template>
