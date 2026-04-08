@@ -74,11 +74,11 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
     }
 
     override val appLanguage: Flow<AppLanguage> = context.preferencesStore.data.map { prefs ->
-        AppLanguage.valueOf(prefs[appLanguageKey] ?: AppLanguage.English.name)
+        AppLanguage.valueOf(prefs[appLanguageKey] ?: AppLanguage.Chinese.name)
     }
 
     override val appThemeMode: Flow<AppThemeMode> = context.preferencesStore.data.map { prefs ->
-        AppThemeMode.valueOf(prefs[appThemeModeKey] ?: AppThemeMode.Dark.name)
+        AppThemeMode.valueOf(prefs[appThemeModeKey] ?: AppThemeMode.Light.name)
     }
 
     override suspend fun setContactSortMode(mode: ContactSortMode) {

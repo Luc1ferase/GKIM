@@ -51,8 +51,8 @@ fun GkimRootApp(
 ) {
     val resolvedContainer = container ?: (LocalContext.current.applicationContext as GkimApplication).container
     val resolvedNavController = navController ?: rememberNavController()
-    val appLanguage by resolvedContainer.preferencesStore.appLanguage.collectAsStateWithLifecycle(initialValue = com.gkim.im.android.core.model.AppLanguage.English)
-    val appThemeMode by resolvedContainer.preferencesStore.appThemeMode.collectAsStateWithLifecycle(initialValue = AppThemeMode.Dark)
+    val appLanguage by resolvedContainer.preferencesStore.appLanguage.collectAsStateWithLifecycle(initialValue = com.gkim.im.android.core.model.AppLanguage.Chinese)
+    val appThemeMode by resolvedContainer.preferencesStore.appThemeMode.collectAsStateWithLifecycle(initialValue = AppThemeMode.Light)
 
     GkimTheme(darkTheme = appThemeMode != AppThemeMode.Light) {
         CompositionLocalProvider(LocalAppLanguage provides appLanguage) {

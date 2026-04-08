@@ -17,8 +17,8 @@ internal class UiTestPreferencesStore : PreferencesStore {
     private val imHttpBaseUrlState = MutableStateFlow("http://127.0.0.1:18080/")
     private val imWebSocketUrlState = MutableStateFlow("ws://127.0.0.1:18080/ws")
     private val imDevUserExternalIdState = MutableStateFlow("nox-dev")
-    private val appLanguageState = MutableStateFlow(AppLanguage.English)
-    private val appThemeModeState = MutableStateFlow(AppThemeMode.Dark)
+    private val appLanguageState = MutableStateFlow(AppLanguage.Chinese)
+    private val appThemeModeState = MutableStateFlow(AppThemeMode.Light)
 
     override val contactSortMode: Flow<ContactSortMode> = contactSortModeState.asStateFlow()
     override val activeProviderId: Flow<String> = activeProviderIdState.asStateFlow()

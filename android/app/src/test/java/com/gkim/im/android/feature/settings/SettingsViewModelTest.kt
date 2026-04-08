@@ -54,6 +54,25 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `settings view model defaults to Chinese and light theme for first run`() = runTest(mainDispatcherRule.dispatcher) {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val preferencesStore = FakePreferencesStore()
+        val secureStore = InMemorySecureKeyValueStore()
+        val repository = DefaultAigcRepository(presetProviders, preferencesStore, secureStore, dispatcher)
+        val viewModel = SettingsViewModel(repository, preferencesStore)
+        val collector = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect { }
+        }
+
+        advanceUntilIdle()
+
+        assertEquals(AppLanguage.Chinese, viewModel.uiState.value.appLanguage)
+        assertEquals(AppThemeMode.Light, viewModel.uiState.value.themeMode)
+
+        collector.cancel()
+    }
+
+    @Test
     fun `settings view model exposes and updates persisted language and theme preferences`() = runTest(mainDispatcherRule.dispatcher) {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val preferencesStore = FakePreferencesStore(

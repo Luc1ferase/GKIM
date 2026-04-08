@@ -17,8 +17,8 @@ class FakePreferencesStore(
     initialImHttpBaseUrl: String = "http://127.0.0.1:18080/",
     initialImWebSocketUrl: String = "ws://127.0.0.1:18080/ws",
     initialImDevUserExternalId: String = "nox-dev",
-    initialLanguage: AppLanguage = AppLanguage.English,
-    initialThemeMode: AppThemeMode = AppThemeMode.Dark,
+    initialLanguage: AppLanguage = AppLanguage.Chinese,
+    initialThemeMode: AppThemeMode = AppThemeMode.Light,
 ) : PreferencesStore {
     private val contactSortModeState = MutableStateFlow(initialSortMode)
     private val activeProviderIdState = MutableStateFlow(initialProviderId)

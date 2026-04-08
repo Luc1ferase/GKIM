@@ -51,13 +51,23 @@ class GkimRootAppTest {
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
+    fun rootShellDefaultsToChineseAndLightThemeOnFirstRun() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithTag("gkim-theme-Light").fetchSemanticsNode()
+        composeRule.onNodeWithText("消息").fetchSemanticsNode()
+        composeRule.onNodeWithText("联系人").fetchSemanticsNode()
+        composeRule.onNodeWithText("空间").fetchSemanticsNode()
+    }
+
+    @Test
     fun bottomNavigationSwitchesAcrossPrimaryTabs() {
         setApp(UiTestAppContainer())
 
         composeRule.onNodeWithTag("bottom-nav").fetchSemanticsNode()
-        composeRule.onNodeWithText("Contacts").performClick()
+        composeRule.onNodeWithText("联系人").performClick()
         composeRule.onNodeWithTag("contacts-screen").fetchSemanticsNode()
-        composeRule.onNodeWithText("Space").performClick()
+        composeRule.onNodeWithText("空间").performClick()
         composeRule.onNodeWithTag("space-screen").fetchSemanticsNode()
     }
 
@@ -97,7 +107,7 @@ class GkimRootAppTest {
     fun spaceScreenShowsUnreadSummaryAsSupportingContext() {
         setApp(UiTestAppContainer())
 
-        composeRule.onNodeWithText("Space").performClick()
+        composeRule.onNodeWithText("空间").performClick()
 
         val summaryBounds = composeRule.onNodeWithTag("space-unread-summary").fetchSemanticsNode().boundsInRoot
         val feedBounds = composeRule.onNodeWithTag("space-feed").fetchSemanticsNode().boundsInRoot
@@ -374,7 +384,7 @@ class GkimRootAppTest {
     fun contactsScreenUsesSingleDropdownSortControl() {
         setApp(UiTestAppContainer())
 
-        composeRule.onNodeWithText("Contacts").performClick()
+        composeRule.onNodeWithText("联系人").performClick()
 
         composeRule.onNodeWithTag("contact-sort-dropdown").fetchSemanticsNode()
         assertTrue(!nodeExists("contact-sort-Nickname"))
@@ -386,7 +396,7 @@ class GkimRootAppTest {
     fun contactSortingChangesRenderedRowOrder() {
         setApp(UiTestAppContainer())
 
-        composeRule.onNodeWithText("Contacts").performClick()
+        composeRule.onNodeWithText("联系人").performClick()
         composeRule.onNodeWithTag("contact-sort-dropdown").performClick()
         composeRule.onNodeWithTag("contact-sort-option-AddedDescending").performClick()
         composeRule.waitUntil(5_000) { nodeExists("contact-row-clara-wu") && nodeExists("contact-row-aria-thorne") }
@@ -402,7 +412,7 @@ class GkimRootAppTest {
         val container = UiTestAppContainer()
         setApp(container)
 
-        composeRule.onNodeWithText("Settings").performClick()
+        composeRule.onNodeWithText("设置").performClick()
         composeRule.onNodeWithTag("settings-screen").fetchSemanticsNode()
         composeRule.onNodeWithTag("settings-provider-custom").performClick()
         composeRule.waitUntil(5_000) { container.aigcRepository.activeProviderId.value == "custom" }
@@ -425,7 +435,7 @@ class GkimRootAppTest {
         val container = UiTestAppContainer()
         setApp(container)
 
-        composeRule.onNodeWithText("Settings").performClick()
+        composeRule.onNodeWithText("设置").performClick()
         composeRule.onNodeWithTag("settings-language-chinese").performClick()
         composeRule.onNodeWithTag("settings-theme-light").performClick()
         composeRule.waitUntil(5_000) {
@@ -446,7 +456,7 @@ class GkimRootAppTest {
         val container = UiTestAppContainer()
         setApp(container)
 
-        composeRule.onNodeWithText("Settings").performClick()
+        composeRule.onNodeWithText("设置").performClick()
         composeRule.onNodeWithTag("settings-im-http-base-url").performTextReplacement("https://forward.example.com/")
         composeRule.onNodeWithTag("settings-im-websocket-url").performTextReplacement("wss://forward.example.com/ws")
         composeRule.onNodeWithTag("settings-im-dev-user").performTextReplacement("leo-vance")

@@ -54,7 +54,7 @@ internal data class SettingsUiState(
     val imDevUserExternalId: String = "",
     val imValidationError: String? = null,
     val appLanguage: AppLanguage = AppLanguage.English,
-    val themeMode: AppThemeMode = AppThemeMode.Dark,
+    val themeMode: AppThemeMode = AppThemeMode.Light,
 )
 
 internal class SettingsViewModel(
@@ -116,8 +116,8 @@ internal class SettingsViewModel(
             imHttpBaseUrl = "http://127.0.0.1:18080/",
             imWebSocketUrl = "ws://127.0.0.1:18080/ws",
             imDevUserExternalId = "nox-dev",
-            appLanguage = AppLanguage.English,
-            themeMode = AppThemeMode.Dark,
+            appLanguage = AppLanguage.Chinese,
+            themeMode = AppThemeMode.Light,
         ),
     )
 
