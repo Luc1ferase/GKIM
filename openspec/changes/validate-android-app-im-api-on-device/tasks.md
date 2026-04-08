@@ -12,7 +12,7 @@
 ## 3. Emulator validation workflow
 
 - [x] 3.1 Add local Docker packaging for the IM backend plus the repeatable emulator-validation workflow for the current deployment path, including host-published container ports, emulator endpoint guidance, backend reachability checks, and adb/logcat evidence capture steps.
-- [ ] 3.2 Run the full Android emulator IM API validation flow against the local Docker backend for session, bootstrap, history, send, realtime receive, delivery/read, and reconnect recovery, then capture the required evidence in `docs/DELIVERY_WORKFLOW.md`.
+- [x] 3.2 Run the full Android emulator IM API validation flow against the local Docker backend for session, bootstrap, history, send, realtime receive, delivery/read, and reconnect recovery, then capture the required evidence in `docs/DELIVERY_WORKFLOW.md`.
 
 ## Task Evidence
 
@@ -101,6 +101,21 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `4f0ce71`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 3.2: Run the full Android emulator IM API validation flow against the local Docker backend for session, bootstrap, history, send, realtime receive, delivery/read, and reconnect recovery, then capture the required evidence in `docs/DELIVERY_WORKFLOW.md`.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.LiveImBackendValidationTest#emulatorValidationCoversLiveRoundTripAndReloadRecovery" --rerun-tasks` - pass, proving the emulator can issue a dev session, hydrate bootstrap plus history, send a live outbound message, observe realtime receive and read/delivery updates through a counterpart gateway, then rebuild the app container and recover both outbound and inbound messages after reload
+  - `D:\Android\Sdk\platform-tools\adb.exe logcat -d > android\emulator-im-validation.log`, `adb exec-out screencap -p > android\emulator-im-validation.png`, and `docker logs gkim-im-backend-local > backend\docker-im-validation.log` - pass, capturing the emulator-facing log stream, current screen evidence, and backend container logs for the accepted validation run
+  - `git diff --check -- android/app/src/debug/AndroidManifest.xml android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/LiveImBackendValidationTest.kt` - pass
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `9bcfb37`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
