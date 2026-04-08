@@ -1,0 +1,31 @@
+## 1. Validation scaffolding and operator-facing configuration
+
+- [x] 1.1 Add or update unit/integration coverage for IM session, bootstrap, history, and gateway-event mapping so backend-backed Android messaging state can be verified independently of device runs.
+- [ ] 1.2 Extend the Android preference and Settings/debug surfaces with IM backend validation inputs for HTTP endpoint, WebSocket endpoint, development user selection, and explicit validation failure state.
+
+## 2. Live IM backend integration in the Android app
+
+- [ ] 2.1 Implement Android HTTP client contracts and mappers for backend development session issuance, bootstrap hydration, and paginated message history retrieval.
+- [ ] 2.2 Upgrade `RealtimeChatClient` into an authenticated backend event adapter that can connect, reconnect, send messages, mark reads, and surface delivery/read/error events to repository consumers.
+- [ ] 2.3 Replace the seed-only Android IM repository wiring with a backend-backed messaging state holder that hydrates Messages/Chat from live APIs and reconciles WebSocket events without breaking existing UI contracts.
+
+## 3. Physical-device validation workflow
+
+- [ ] 3.1 Add the repeatable device-validation workflow for the current deployment path, including SSH tunnel + `adb reverse` guidance, backend reachability checks, and adb/logcat evidence capture steps for a physical Android device.
+- [ ] 3.2 Run the full physical-device IM API validation flow against the deployed backend for session, bootstrap, history, send, realtime receive, delivery/read, and reconnect recovery, then capture the required evidence in `docs/DELIVERY_WORKFLOW.md`.
+
+## Task Evidence
+
+### Task 1.1: Add or update unit/integration coverage for IM session, bootstrap, history, and gateway-event mapping so backend-backed Android messaging state can be verified independently of device runs.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendPayloadsTest` - failed first with unresolved backend DTO/parser symbols, then passed after adding IM payload DTOs, bootstrap/history mappers, gateway-event parsing, and receipt fields on `ChatMessage`
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/core/model/ChatModels.kt android/app/src/main/java/com/gkim/im/android/data/remote/im/ImBackendModels.kt android/app/src/test/java/com/gkim/im/android/data/remote/im/ImBackendPayloadsTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not pushed`
+- Result: `accepted`

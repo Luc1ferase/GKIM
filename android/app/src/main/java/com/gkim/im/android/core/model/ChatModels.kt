@@ -29,6 +29,8 @@ data class ChatMessage(
     val kind: MessageKind,
     val body: String,
     val createdAt: String,
+    val deliveredAt: String? = null,
+    val readAt: String? = null,
     val chips: List<String> = emptyList(),
     val attachment: MessageAttachment? = null,
 )
