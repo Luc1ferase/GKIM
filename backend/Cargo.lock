@@ -412,8 +412,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "hex",
  "http-body-util",
  "serde",
+ "serde_json",
+ "sha2",
  "sqlx",
  "tokio",
  "tower",

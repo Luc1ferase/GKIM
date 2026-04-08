@@ -14,7 +14,9 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1.0"
 axum = { version = "0.7", features = ["http1", "json", "macros", "tokio"] }
+hex = "0.4"
 serde = { version = "1.0", features = ["derive"] }
+sha2 = "0.10"
 sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio-rustls"] }
 tokio = { version = "1.42", features = ["macros", "rt-multi-thread", "signal"] }
 tracing = "0.1"
@@ -22,4 +24,5 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 [dev-dependencies]
 http-body-util = "0.1"
+serde_json = "1.0"
 tower = { version = "0.5", features = ["util"] }

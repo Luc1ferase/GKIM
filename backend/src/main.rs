@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use gkim_im_backend::{app::build_router, config::AppConfig};
+use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
@@ -8,11 +9,16 @@ use tracing_subscriber::EnvFilter;
 async fn main() -> Result<()> {
     let config = AppConfig::from_env().context("load backend configuration")?;
     init_tracing(&config.log_filter)?;
+    let pool = PgPoolOptions::new()
+        .max_connections(10)
+        .connect(&config.database_url)
+        .await
+        .context("connect postgres pool")?;
 
     let listener = TcpListener::bind(&config.bind_addr)
         .await
         .with_context(|| format!("bind backend listener on {}", config.bind_addr))?;
-    let router = build_router(config.clone());
+    let router = build_router(config.clone(), pool);
 
     info!(
         service = %config.service_name,
