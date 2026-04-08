@@ -1,7 +1,7 @@
 ## 1. Shell defaults and settings navigation
 
 - [x] 1.1 Update Android preference defaults and root shell startup so first-run users start in Chinese and light theme, with regression coverage for persisted overrides.
-- [ ] 1.2 Replace the current long-form Settings page with a menu-style settings landing flow plus focused detail surfaces for appearance/language, AI provider, IM validation, and account actions.
+- [x] 1.2 Replace the current long-form Settings page with a menu-style settings landing flow plus focused detail surfaces for appearance/language, AI provider, IM validation, and account actions.
 
 ## 2. Messages and Space information architecture
 
@@ -37,6 +37,22 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `ef2bb68`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 1.2: Replace the current long-form Settings page with a menu-style settings landing flow plus focused detail surfaces for appearance/language, AI provider, IM validation, and account actions.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsMenuPresentsFocusedEntriesAndAccountActionsSurface,com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsInteractionsUpdateProviderConfiguration,com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsScreenAppliesLanguageAndThemePreferencesAcrossShell,com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsScreenExposesImBackendValidationControlsAndStatus" --rerun-tasks` - pass, confirming the new menu-style Settings landing, focused detail surfaces, provider editing flow, appearance persistence flow, and IM validation detail all work on the emulator
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:compileDebugKotlin` - pass, confirming the refactored settings route compiles cleanly after the new internal settings state machine and detail surfaces were introduced
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.feature.settings.SettingsViewModelTest --rerun-tasks` - pass, confirming the underlying settings view-model state and persistence behavior remained green after the UI restructuring
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/feature/settings/SettingsRoute.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `7504ae7`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
