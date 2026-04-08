@@ -408,12 +408,34 @@ class GkimRootAppTest {
     }
 
     @Test
+    fun settingsMenuPresentsFocusedEntriesAndAccountActionsSurface() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithText("设置").performClick()
+
+        composeRule.onNodeWithTag("settings-menu-screen").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-menu-appearance").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-menu-ai-provider").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-menu-im-validation").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-menu-account").fetchSemanticsNode()
+        assertTrue(!nodeExists("settings-base-url"))
+        assertTrue(!nodeExists("settings-im-http-base-url"))
+
+        composeRule.onNodeWithTag("settings-menu-account").performClick()
+
+        composeRule.onNodeWithTag("settings-detail-account").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-account-login").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-account-register").fetchSemanticsNode()
+    }
+
+    @Test
     fun settingsInteractionsUpdateProviderConfiguration() {
         val container = UiTestAppContainer()
         setApp(container)
 
         composeRule.onNodeWithText("设置").performClick()
-        composeRule.onNodeWithTag("settings-screen").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-menu-ai-provider").performClick()
+        composeRule.onNodeWithTag("settings-detail-ai-provider").fetchSemanticsNode()
         composeRule.onNodeWithTag("settings-provider-custom").performClick()
         composeRule.waitUntil(5_000) { container.aigcRepository.activeProviderId.value == "custom" }
 
@@ -436,6 +458,8 @@ class GkimRootAppTest {
         setApp(container)
 
         composeRule.onNodeWithText("设置").performClick()
+        composeRule.onNodeWithTag("settings-menu-appearance").performClick()
+        composeRule.onNodeWithTag("settings-detail-appearance").fetchSemanticsNode()
         composeRule.onNodeWithTag("settings-language-chinese").performClick()
         composeRule.onNodeWithTag("settings-theme-light").performClick()
         composeRule.waitUntil(5_000) {
@@ -446,6 +470,11 @@ class GkimRootAppTest {
         composeRule.activity.runOnUiThread {
             composeRule.activity.onBackPressedDispatcher.onBackPressed()
         }
+        composeRule.waitUntil(5_000) { nodeExists("settings-menu-screen") }
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.onBackPressedDispatcher.onBackPressed()
+        }
+        composeRule.waitUntil(5_000) { nodeExists("messages-screen") }
 
         composeRule.onNodeWithTag("gkim-theme-Light").fetchSemanticsNode()
         composeRule.onNodeWithText("消息").fetchSemanticsNode()
@@ -457,6 +486,8 @@ class GkimRootAppTest {
         setApp(container)
 
         composeRule.onNodeWithText("设置").performClick()
+        composeRule.onNodeWithTag("settings-menu-im-validation").performClick()
+        composeRule.onNodeWithTag("settings-detail-im-validation").fetchSemanticsNode()
         composeRule.onNodeWithTag("settings-im-http-base-url").performTextReplacement("https://forward.example.com/")
         composeRule.onNodeWithTag("settings-im-websocket-url").performTextReplacement("wss://forward.example.com/ws")
         composeRule.onNodeWithTag("settings-im-dev-user").performTextReplacement("leo-vance")
@@ -467,7 +498,7 @@ class GkimRootAppTest {
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Ready for IM validation").fetchSemanticsNode()
+        composeRule.onNodeWithText("已准备好进行 IM 验证").fetchSemanticsNode()
 
         composeRule.onNodeWithTag("settings-im-dev-user").performTextClearance()
         composeRule.waitUntil(5_000) { container.preferencesStore.currentImDevUserExternalId.isEmpty() }
