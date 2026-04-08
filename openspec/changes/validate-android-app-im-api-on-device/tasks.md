@@ -1,7 +1,7 @@
 ## 1. Validation scaffolding and operator-facing configuration
 
 - [x] 1.1 Add or update unit/integration coverage for IM session, bootstrap, history, and gateway-event mapping so backend-backed Android messaging state can be verified independently of device runs.
-- [ ] 1.2 Extend the Android preference and Settings/debug surfaces with IM backend validation inputs for HTTP endpoint, WebSocket endpoint, development user selection, and explicit validation failure state.
+- [x] 1.2 Extend the Android preference and Settings/debug surfaces with IM backend validation inputs for HTTP endpoint, WebSocket endpoint, development user selection, and explicit validation failure state.
 
 ## 2. Live IM backend integration in the Android app
 
@@ -26,6 +26,21 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `3c8a034`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 1.2: Extend the Android preference and Settings/debug surfaces with IM backend validation inputs for HTTP endpoint, WebSocket endpoint, development user selection, and explicit validation failure state.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.feature.settings.SettingsViewModelTest` - failed first with missing IM validation config state and preference methods, then passed after extending `PreferencesStore` plus `SettingsViewModel`/`SettingsRoute` with IM backend validation inputs and derived status
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsScreenExposesImBackendValidationControlsAndStatus" --rerun-tasks` - failed first on the IM validation status assertion, then passed after tightening the test around real visible status text and field-clearing behavior
+  - `git diff --check -- android/app/src/main/java/com/gkim/im/android/data/local/AppPreferencesStore.kt android/app/src/main/java/com/gkim/im/android/feature/settings/SettingsRoute.kt android/app/src/test/java/com/gkim/im/android/testing/TestFakes.kt android/app/src/test/java/com/gkim/im/android/feature/settings/SettingsViewModelTest.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/UiTestFakes.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt` - pass with line-ending warnings only
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `8bad14f`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
