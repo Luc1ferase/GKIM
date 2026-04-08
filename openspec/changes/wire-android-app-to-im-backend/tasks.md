@@ -16,7 +16,7 @@
 
 ## 4. Regression and handoff
 
-- [ ] 4.1 Add the minimal operator/developer handoff notes for configuring live IM endpoints and known scope limits before full device validation, then run the layered regression commands required by `docs/DELIVERY_WORKFLOW.md` and capture the evidence for this wiring change.
+- [x] 4.1 Add the minimal operator/developer handoff notes for configuring live IM endpoints and known scope limits before full device validation, then run the layered regression commands required by `docs/DELIVERY_WORKFLOW.md` and capture the evidence for this wiring change.
 
 ## Task Evidence
 
@@ -114,6 +114,22 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `bfacbd0`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 4.1: Add the minimal operator/developer handoff notes for configuring live IM endpoints and known scope limits before full device validation, then run the layered regression commands required by `docs/DELIVERY_WORKFLOW.md` and capture the evidence for this wiring change.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendHttpClientTest --tests com.gkim.im.android.data.remote.realtime.RealtimeChatClientTest --tests com.gkim.im.android.data.repository.LiveMessagingRepositoryTest --tests com.gkim.im.android.feature.messages.MessagesViewModelTest --rerun-tasks` - pass, reconfirming transport mapping, repository reconciliation, fallback history guardrails, and Messages live-status wiring remain green together
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsScreenExposesImBackendValidationControlsAndStatus" --rerun-tasks` - pass, confirming operators can still configure IM HTTP/WS/dev-user inputs in-app before wider validation
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#openingConversationRequestsLiveHistoryLoad" --rerun-tasks` - pass, confirming the app shell requests live conversation history when entering a backend-backed chat
+  - `git diff --check -- android/README.md` - pass with line-ending warnings only
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `2dc7378`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
