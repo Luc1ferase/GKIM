@@ -82,7 +82,7 @@ class GkimRootAppTest {
     fun messagesScreenStartsAtRecentConversationsWithoutUnreadSummaryPanel() {
         setApp(UiTestAppContainer())
 
-        val headingBounds = composeRule.onNodeWithText("Recent conversations").fetchSemanticsNode().boundsInRoot
+        val headingBounds = composeRule.onNodeWithText("最近对话").fetchSemanticsNode().boundsInRoot
         val firstRowBounds = composeRule.onNodeWithTag("conversation-row-room-leo").fetchSemanticsNode().boundsInRoot
 
         assertTrue("headingTop=${headingBounds.top}", headingBounds.top < 160f)
@@ -94,13 +94,17 @@ class GkimRootAppTest {
     }
 
     @Test
-    fun messagesConversationRowsStillExposeUnreadMetadata() {
+    fun messagesConversationRowsHideUnreadBubbleBadgesButKeepCoreMetadata() {
         setApp(UiTestAppContainer())
 
         composeRule.onNodeWithTag("conversation-name-room-leo", useUnmergedTree = true).fetchSemanticsNode()
         composeRule.onNodeWithTag("conversation-preview-room-leo", useUnmergedTree = true).fetchSemanticsNode()
         composeRule.onNodeWithTag("conversation-time-room-leo", useUnmergedTree = true).fetchSemanticsNode()
-        composeRule.onNodeWithTag("conversation-unread-room-leo", useUnmergedTree = true).fetchSemanticsNode()
+        val unreadBadgeExists = runCatching {
+            composeRule.onNodeWithTag("conversation-unread-room-leo", useUnmergedTree = true).fetchSemanticsNode()
+            true
+        }.getOrDefault(false)
+        assertTrue(!unreadBadgeExists)
     }
 
     @Test

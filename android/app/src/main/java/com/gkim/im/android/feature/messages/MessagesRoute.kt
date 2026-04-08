@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -208,21 +207,6 @@ private fun ConversationRow(conversation: Conversation, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.testTag("conversation-preview-${conversation.id}"),
                 )
-            }
-            if (conversation.unreadCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .background(AetherColors.PrimaryContainer, RoundedCornerShape(999.dp))
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = conversation.unreadCount.toString(),
-                        color = AetherColors.OnSurface,
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.testTag("conversation-unread-${conversation.id}"),
-                    )
-                }
             }
         }
     }
