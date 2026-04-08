@@ -1,7 +1,7 @@
 ## 1. Backend scaffold and remote-debug foundation
 
 - [x] 1.1 Create a Rust backend workspace or service directory with Axum/Tokio entrypoints, structured config loading, tracing, and a health endpoint that can boot without checked-in secrets.
-- [ ] 1.2 Add backend environment templates plus Ubuntu deployment/debug assets for `124.222.15.128`, including SSH-safe scripts or service-unit scaffolding that keep SSH and PostgreSQL passwords outside the repository.
+- [x] 1.2 Add backend environment templates plus Ubuntu deployment/debug assets for `124.222.15.128`, including SSH-safe scripts or service-unit scaffolding that keep SSH and PostgreSQL passwords outside the repository.
 
 ## 2. PostgreSQL-backed IM domain and bootstrap APIs
 
@@ -51,7 +51,7 @@
   - Score: `96/100`
   - Findings: `No findings`
 - Upload:
-  - Commit: `not created`
+  - Commit: `3d660e8`
   - Branch: `master`
-  - Push: `pending`
-- Result: `blocked`
+  - Push: `origin/master`
+- Result: `accepted`
