@@ -118,3 +118,19 @@
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
+
+### Task 3.2: Implement persist-then-fanout direct-message send flow, delivery/read event emission, and offline unread recovery so online users receive pushed updates without polling.
+
+- Verification:
+  - `cd backend && cargo fmt --check` - pass
+  - `cd backend && cargo test` - pass (`13` tests)
+  - `cd backend && cargo check` - pass
+  - `cd backend && GKIM_TEST_DATABASE_URL=<redacted> cargo test --test http_im_api --test im_service_pg --test ws_gateway` - pass (`7` PostgreSQL integration tests across HTTP, service, and WebSocket layers)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `pending`
+- Result: `blocked`

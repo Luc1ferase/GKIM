@@ -1,8 +1,10 @@
 use crate::im::{
-    model::{BootstrapBundle, MessageHistoryPage},
+    model::{
+        BootstrapBundle, DeliveryUpdate, MessageHistoryPage, ReadReceiptUpdate, SendMessageResult,
+    },
     repository::ImRepository,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, ensure, Result};
 use sqlx::PgPool;
 
 #[derive(Debug, Clone)]
@@ -80,5 +82,49 @@ impl ImService {
             messages,
             has_more,
         })
+    }
+
+    pub async fn send_direct_message(
+        &self,
+        sender_external_id: &str,
+        recipient_external_id: &str,
+        client_message_id: Option<&str>,
+        body: &str,
+    ) -> Result<SendMessageResult> {
+        ensure!(
+            !body.trim().is_empty(),
+            "message body must not be empty for direct-message send"
+        );
+
+        self.repository
+            .persist_direct_message(
+                sender_external_id,
+                recipient_external_id,
+                client_message_id,
+                body.trim(),
+            )
+            .await
+    }
+
+    pub async fn mark_message_delivered(
+        &self,
+        recipient_external_id: &str,
+        conversation_id: &str,
+        message_id: &str,
+    ) -> Result<DeliveryUpdate> {
+        self.repository
+            .mark_message_delivered(recipient_external_id, conversation_id, message_id)
+            .await
+    }
+
+    pub async fn mark_message_read(
+        &self,
+        reader_external_id: &str,
+        conversation_id: &str,
+        message_id: &str,
+    ) -> Result<ReadReceiptUpdate> {
+        self.repository
+            .mark_message_read(reader_external_id, conversation_id, message_id)
+            .await
     }
 }

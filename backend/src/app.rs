@@ -132,9 +132,10 @@ async fn websocket_gateway(
 ) -> Result<Response, AppError> {
     let user = authenticated_user(&state, &headers).await?;
     let hub = state.connection_hub.clone();
+    let im_service = state.im_service.clone();
 
     Ok(websocket.on_upgrade(move |socket| async move {
-        serve_socket(socket, hub, user).await;
+        serve_socket(socket, hub, im_service, user).await;
     }))
 }
 

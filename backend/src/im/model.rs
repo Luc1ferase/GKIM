@@ -59,3 +59,32 @@ pub struct MessageHistoryPage {
     pub messages: Vec<MessageRecord>,
     pub has_more: bool,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SendMessageResult {
+    pub conversation_id: String,
+    pub recipient_external_id: String,
+    pub recipient_unread_count: i64,
+    pub message: MessageRecord,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeliveryUpdate {
+    pub conversation_id: String,
+    pub message_id: String,
+    pub recipient_external_id: String,
+    pub delivered_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadReceiptUpdate {
+    pub conversation_id: String,
+    pub message_id: String,
+    pub reader_external_id: String,
+    pub sender_external_id: String,
+    pub unread_count: i64,
+    pub read_at: String,
+}

@@ -1,4 +1,4 @@
-use crate::im::model::UserProfile;
+use crate::im::{model::UserProfile, service::ImService};
 use anyhow::Result;
 use axum::extract::ws::Message;
 use futures_util::{SinkExt, StreamExt};
@@ -39,6 +39,39 @@ pub enum GatewayEvent {
     #[serde(rename = "pong")]
     #[serde(rename_all = "camelCase")]
     Pong { at: String },
+    #[serde(rename = "message.sent")]
+    #[serde(rename_all = "camelCase")]
+    MessageSent {
+        conversation_id: String,
+        message: crate::im::model::MessageRecord,
+    },
+    #[serde(rename = "message.received")]
+    #[serde(rename_all = "camelCase")]
+    MessageReceived {
+        conversation_id: String,
+        unread_count: i64,
+        message: crate::im::model::MessageRecord,
+    },
+    #[serde(rename = "message.delivered")]
+    #[serde(rename_all = "camelCase")]
+    MessageDelivered {
+        conversation_id: String,
+        message_id: String,
+        recipient_external_id: String,
+        delivered_at: String,
+    },
+    #[serde(rename = "message.read")]
+    #[serde(rename_all = "camelCase")]
+    MessageRead {
+        conversation_id: String,
+        message_id: String,
+        reader_external_id: String,
+        unread_count: i64,
+        read_at: String,
+    },
+    #[serde(rename = "error")]
+    #[serde(rename_all = "camelCase")]
+    Error { code: String, message: String },
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,6 +79,19 @@ pub enum GatewayEvent {
 pub enum ClientEvent {
     #[serde(rename = "ping")]
     Ping,
+    #[serde(rename = "message.send")]
+    #[serde(rename_all = "camelCase")]
+    MessageSend {
+        recipient_external_id: String,
+        client_message_id: Option<String>,
+        body: String,
+    },
+    #[serde(rename = "message.read")]
+    #[serde(rename_all = "camelCase")]
+    MessageRead {
+        conversation_id: String,
+        message_id: String,
+    },
 }
 
 impl ConnectionHub {
@@ -82,11 +128,31 @@ impl ConnectionHub {
             .map(|value| value.len())
             .unwrap_or(0)
     }
+
+    pub async fn send_to_user(&self, user_external_id: &str, event: GatewayEvent) -> usize {
+        let senders = {
+            let guard = self.connections.read().await;
+            guard
+                .get(user_external_id)
+                .map(|value| value.values().cloned().collect::<Vec<_>>())
+                .unwrap_or_default()
+        };
+
+        let mut delivered = 0;
+        for sender in senders {
+            if sender.send(event.clone()).is_ok() {
+                delivered += 1;
+            }
+        }
+
+        delivered
+    }
 }
 
 pub async fn serve_socket(
     socket: axum::extract::ws::WebSocket,
     hub: ConnectionHub,
+    im_service: ImService,
     user: UserProfile,
 ) {
     let registration = hub.register(&user).await;
@@ -125,10 +191,69 @@ pub async fn serve_socket(
             maybe_message = receiver.next() => {
                 match maybe_message {
                     Some(Ok(Message::Text(text))) => {
-                        if let Ok(ClientEvent::Ping) = serde_json::from_str::<ClientEvent>(&text) {
-                            if send_event(&mut sender, GatewayEvent::Pong { at: now_rfc3339() }).await.is_err() {
-                                break;
+                        match serde_json::from_str::<ClientEvent>(&text) {
+                            Ok(ClientEvent::Ping) => {
+                                if send_event(&mut sender, GatewayEvent::Pong { at: now_rfc3339() }).await.is_err() {
+                                    break;
+                                }
                             }
+                            Ok(ClientEvent::MessageSend {
+                                recipient_external_id,
+                                client_message_id,
+                                body,
+                            }) => {
+                                if let Err(error) = handle_message_send(
+                                    &hub,
+                                    &im_service,
+                                    &user,
+                                    &recipient_external_id,
+                                    client_message_id.as_deref(),
+                                    &body,
+                                )
+                                .await
+                                {
+                                    if send_event(
+                                        &mut sender,
+                                        GatewayEvent::Error {
+                                            code: "message.send_failed".to_string(),
+                                            message: error.to_string(),
+                                        },
+                                    )
+                                    .await
+                                    .is_err()
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+                            Ok(ClientEvent::MessageRead {
+                                conversation_id,
+                                message_id,
+                            }) => {
+                                if let Err(error) = handle_message_read(
+                                    &hub,
+                                    &im_service,
+                                    &user,
+                                    &conversation_id,
+                                    &message_id,
+                                )
+                                .await
+                                {
+                                    if send_event(
+                                        &mut sender,
+                                        GatewayEvent::Error {
+                                            code: "message.read_failed".to_string(),
+                                            message: error.to_string(),
+                                        },
+                                    )
+                                    .await
+                                    .is_err()
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+                            Err(_) => {}
                         }
                     }
                     Some(Ok(Message::Close(_))) | None => break,
@@ -140,6 +265,93 @@ pub async fn serve_socket(
     }
 
     hub.unregister(&user.external_id, &connection_id).await;
+}
+
+async fn handle_message_send(
+    hub: &ConnectionHub,
+    im_service: &ImService,
+    sender: &UserProfile,
+    recipient_external_id: &str,
+    client_message_id: Option<&str>,
+    body: &str,
+) -> Result<()> {
+    let send_result = im_service
+        .send_direct_message(
+            &sender.external_id,
+            recipient_external_id,
+            client_message_id,
+            body,
+        )
+        .await?;
+
+    hub.send_to_user(
+        &sender.external_id,
+        GatewayEvent::MessageSent {
+            conversation_id: send_result.conversation_id.clone(),
+            message: send_result.message.clone(),
+        },
+    )
+    .await;
+
+    let delivered_connections = hub
+        .send_to_user(
+            &send_result.recipient_external_id,
+            GatewayEvent::MessageReceived {
+                conversation_id: send_result.conversation_id.clone(),
+                unread_count: send_result.recipient_unread_count,
+                message: send_result.message.clone(),
+            },
+        )
+        .await;
+
+    if delivered_connections > 0 {
+        let delivery = im_service
+            .mark_message_delivered(
+                &send_result.recipient_external_id,
+                &send_result.conversation_id,
+                &send_result.message.id,
+            )
+            .await?;
+
+        hub.send_to_user(
+            &sender.external_id,
+            GatewayEvent::MessageDelivered {
+                conversation_id: delivery.conversation_id,
+                message_id: delivery.message_id,
+                recipient_external_id: delivery.recipient_external_id,
+                delivered_at: delivery.delivered_at,
+            },
+        )
+        .await;
+    }
+
+    Ok(())
+}
+
+async fn handle_message_read(
+    hub: &ConnectionHub,
+    im_service: &ImService,
+    reader: &UserProfile,
+    conversation_id: &str,
+    message_id: &str,
+) -> Result<()> {
+    let update = im_service
+        .mark_message_read(&reader.external_id, conversation_id, message_id)
+        .await?;
+
+    let event = GatewayEvent::MessageRead {
+        conversation_id: update.conversation_id.clone(),
+        message_id: update.message_id.clone(),
+        reader_external_id: update.reader_external_id.clone(),
+        unread_count: update.unread_count,
+        read_at: update.read_at.clone(),
+    };
+
+    hub.send_to_user(&update.sender_external_id, event.clone())
+        .await;
+    hub.send_to_user(&reader.external_id, event).await;
+
+    Ok(())
 }
 
 async fn send_event(
