@@ -88,6 +88,23 @@ class GkimRootAppTest {
     }
 
     @Test
+    fun welcomeUsesApprovedReplacementVideoResource() {
+        val packagedReplacementVideo = composeRule.activity.resources.getIdentifier(
+            "welcome_intro_1",
+            "raw",
+            composeRule.activity.packageName,
+        )
+        val supersededVideo = composeRule.activity.resources.getIdentifier(
+            "welcome_atrium",
+            "raw",
+            composeRule.activity.packageName,
+        )
+
+        assertTrue(packagedReplacementVideo != 0)
+        assertEquals(0, supersededVideo)
+    }
+
+    @Test
     fun rootShellDefaultsToChineseAndLightThemeOnFirstRun() {
         setApp(UiTestAppContainer())
 

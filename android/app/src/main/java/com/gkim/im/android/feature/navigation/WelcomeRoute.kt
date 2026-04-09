@@ -189,7 +189,7 @@ private fun WelcomeVideoBackdrop() {
             .testTag("welcome-video"),
         factory = {
             VideoView(it).apply {
-                setVideoURI(Uri.parse("android.resource://${context.packageName}/${R.raw.welcome_atrium}"))
+                setVideoURI(Uri.parse("android.resource://${context.packageName}/${R.raw.welcome_intro_1}"))
                 setOnPreparedListener { mediaPlayer ->
                     mediaPlayer.isLooping = true
                     mediaPlayer.setVolume(0f, 0f)
