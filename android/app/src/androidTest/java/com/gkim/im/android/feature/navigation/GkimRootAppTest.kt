@@ -144,15 +144,17 @@ class GkimRootAppTest {
     }
 
     @Test
-    fun spaceScreenShowsUnreadSummaryAsSupportingContext() {
+    fun spaceScreenStartsAtDiscoveryFiltersWithoutUnreadSummaryChrome() {
         setApp(UiTestAppContainer())
 
         composeRule.onNodeWithText("空间").performClick()
 
-        val summaryBounds = composeRule.onNodeWithTag("space-unread-summary").fetchSemanticsNode().boundsInRoot
-        val feedBounds = composeRule.onNodeWithTag("space-feed").fetchSemanticsNode().boundsInRoot
-
-        assertTrue(summaryBounds.bottom <= feedBounds.top)
+        composeRule.onNodeWithTag("space-filter-for-you").fetchSemanticsNode()
+        composeRule.onNodeWithTag("space-filter-prompting").fetchSemanticsNode()
+        composeRule.onNodeWithTag("space-filter-ai-tools").fetchSemanticsNode()
+        composeRule.onNodeWithTag("space-filter-activity").fetchSemanticsNode()
+        assertTrue(!nodeExists("space-unread-summary"))
+        assertTrue(textNodeMissing("未读信号"))
     }
 
     @Test
@@ -163,6 +165,8 @@ class GkimRootAppTest {
 
         composeRule.onNodeWithTag("space-filter-for-you").fetchSemanticsNode()
         composeRule.onNodeWithTag("space-filter-prompting").fetchSemanticsNode()
+        composeRule.onNodeWithTag("space-filter-ai-tools").fetchSemanticsNode()
+        composeRule.onNodeWithTag("space-filter-activity").fetchSemanticsNode()
         assertTrue(textNodeMissing("工作台"))
         composeRule.onNodeWithTag("space-feed-item-post-post-1").fetchSemanticsNode()
         composeRule.onNodeWithTag("space-feed").performScrollToNode(hasTestTag("space-feed-item-prompt-prompt-1"))

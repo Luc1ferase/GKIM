@@ -37,7 +37,6 @@ import com.gkim.im.android.core.rendering.RichContentRenderer
 import com.gkim.im.android.core.util.formatRelativeLabel
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.FeedRepository
-import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,6 +47,8 @@ private data class SpacePostUi(val post: FeedPost, val document: RichDocument)
 private enum class SpaceDiscoveryFilter {
     ForYou,
     Prompting,
+    AiTools,
+    Activity,
 }
 
 private sealed interface SpaceFeedItem {
@@ -65,12 +66,10 @@ private sealed interface SpaceFeedItem {
 private data class SpaceUiState(
     val selectedFilter: SpaceDiscoveryFilter = SpaceDiscoveryFilter.ForYou,
     val items: List<SpaceFeedItem> = emptyList(),
-    val totalUnread: Int = 0,
 )
 
 private class SpaceViewModel(
     feedRepository: FeedRepository,
-    messagingRepository: MessagingRepository,
     parser: MarkdownDocumentParser,
 ) : ViewModel() {
     private val selectedFilter = MutableStateFlow(SpaceDiscoveryFilter.ForYou)
@@ -78,10 +77,12 @@ private class SpaceViewModel(
         when (filter) {
             SpaceDiscoveryFilter.ForYou -> prompts
             SpaceDiscoveryFilter.Prompting -> prompts
+            SpaceDiscoveryFilter.AiTools -> prompts
+            SpaceDiscoveryFilter.Activity -> prompts
         }
     }
 
-    val uiState = combine(feedRepository.posts, promptingPrompts, messagingRepository.conversations, selectedFilter) { posts, prompts, conversations, filter ->
+    val uiState = combine(feedRepository.posts, promptingPrompts, selectedFilter) { posts, prompts, filter ->
         val parsedPosts = posts.map { post ->
             SpacePostUi(post, parser.parse(post.body, mdxReady = true, cssHint = "architectural-glitch"))
         }
@@ -90,8 +91,9 @@ private class SpaceViewModel(
             items = when (filter) {
                 SpaceDiscoveryFilter.ForYou -> mergeDiscoveryItems(parsedPosts, prompts)
                 SpaceDiscoveryFilter.Prompting -> prompts.map { prompt -> SpaceFeedItem.Prompt(prompt) }
+                SpaceDiscoveryFilter.AiTools -> mergeDiscoveryItems(parsedPosts, prompts)
+                SpaceDiscoveryFilter.Activity -> mergeDiscoveryItems(parsedPosts, prompts)
             },
-            totalUnread = conversations.sumOf { it.unreadCount },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SpaceUiState())
 
@@ -116,7 +118,7 @@ private class SpaceViewModel(
 @Composable
 fun SpaceRoute(navController: NavHostController, container: AppContainer) {
     val viewModel = viewModel<SpaceViewModel>(factory = simpleViewModelFactory {
-        SpaceViewModel(container.feedRepository, container.messagingRepository, container.markdownParser)
+        SpaceViewModel(container.feedRepository, container.markdownParser)
     })
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -153,23 +155,6 @@ private fun SpaceScreen(
             ),
         )
 
-        GlassCard(modifier = Modifier.testTag("space-unread-summary")) {
-            Text(
-                text = appLanguage.pick("Unread signals", "未读信号"),
-                style = MaterialTheme.typography.labelLarge,
-                color = AetherColors.Primary,
-            )
-            Text(
-                text = if (appLanguage == com.gkim.im.android.core.model.AppLanguage.Chinese) {
-                    "活跃会话中共有 ${uiState.totalUnread} 条未读"
-                } else {
-                    "${uiState.totalUnread} total across active conversations"
-                },
-                style = MaterialTheme.typography.bodyLarge,
-                color = AetherColors.OnSurface,
-            )
-        }
-
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             val filters = listOf(
                 Triple(
@@ -181,6 +166,16 @@ private fun SpaceScreen(
                     SpaceDiscoveryFilter.Prompting,
                     "space-filter-prompting",
                     appLanguage.pick("Prompting", "提示工程"),
+                ),
+                Triple(
+                    SpaceDiscoveryFilter.AiTools,
+                    "space-filter-ai-tools",
+                    appLanguage.pick("AI Tools", "AI 工具"),
+                ),
+                Triple(
+                    SpaceDiscoveryFilter.Activity,
+                    "space-filter-activity",
+                    appLanguage.pick("Motion", "动态"),
                 ),
             )
             filters.forEach { (filter, testTag, label) ->
