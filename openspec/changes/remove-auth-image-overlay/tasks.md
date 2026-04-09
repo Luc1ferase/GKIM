@@ -1,7 +1,7 @@
 ## 1. Welcome Surface Composition
 
 - [x] 1.1 Remove the static screenshot/mockup image from the Android welcome/auth runtime composition, rebuild the screen from native layout layers, and add UI coverage proving unauthenticated startup still exposes the welcome entry actions cleanly.
-- [ ] 1.2 Clean up the remaining onboarding asset/runtime references so the static reference image is no longer part of the shipped auth entry surface, then verify the adjusted welcome composition still preserves the intended hierarchy and media behavior.
+- [x] 1.2 Clean up the remaining onboarding asset/runtime references so the static reference image is no longer part of the shipped auth entry surface, then verify the adjusted welcome composition still preserves the intended hierarchy and media behavior.
 
 ## Task Evidence
 
@@ -17,6 +17,22 @@
   - Findings: `No findings`
 - Upload:
   - Commit: `2347030`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 1.2: Clean up the remaining onboarding asset/runtime references so the static reference image is no longer part of the shipped auth entry surface, then verify the adjusted welcome composition still preserves the intended hierarchy and media behavior.
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:GRADLE_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT'; $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emulator;${env:Path}"; .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#welcomeReferenceMockupAssetIsNotPackagedInRuntimeResources,com.gkim.im.android.feature.navigation.GkimRootAppTest#launchShowsWelcomeOnboardingBeforeMainShell,com.gkim.im.android.feature.navigation.GkimRootAppTest#welcomeLoginActionEntersAuthenticatedShellPreview" --rerun-tasks` - pass, confirming the packaged screenshot reference asset is gone at runtime while the native welcome surface and login/register entry behavior still hold
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; $env:Path="${env:JAVA_HOME}\bin;${env:Path}"; .\gradlew.bat :app:compileDebugKotlin` - pass, confirming the resource cleanup leaves the Android welcome flow in a compilable state
+  - `if (Test-Path 'x:\Repos\GKIM\android\app\src\main\res\drawable-nodpi\welcome_screen.png') { Write-Output 'present' } else { Write-Output 'missing' }` - pass (`missing`), confirming the static mockup file is no longer shipped from Android runtime resources
+  - `git diff --check -- android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt android/app/src/main/java/com/gkim/im/android/feature/navigation/WelcomeRoute.kt android/app/src/main/res/drawable-nodpi/welcome_screen.png` - pass with line-ending warnings only
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `ac784d4`
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
