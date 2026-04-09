@@ -14,6 +14,17 @@ The system SHALL initialize an Android application scaffold implemented with Kot
 - **WHEN** a screen needs chat, contact, feed, workshop, or AIGC behavior
 - **THEN** the implementation uses ViewModels, repositories, and shared services instead of direct API calls or complex business logic in Compose screen functions
 
+### Requirement: Welcome onboarding uses native runtime composition instead of reference mockup overlays
+The system SHALL render the Android unauthenticated welcome/onboarding surface as native runtime UI aligned to the approved design direction, and it MUST NOT display the provided static welcome/register mockup image as a background, overlay, or other runtime composition layer behind the interactive auth controls.
+
+#### Scenario: Unauthenticated startup shows a native-composed welcome surface
+- **WHEN** the Android app launches without an authenticated session
+- **THEN** the welcome screen renders the onboarding title and `注册` / `登录` actions from native runtime UI layers instead of from a packaged screenshot composition
+
+#### Scenario: Auth controls are not layered on top of a static mockup capture
+- **WHEN** the unauthenticated welcome screen is displayed
+- **THEN** the login/register controls remain readable without relying on a shipped static mockup image behind them
+
 ### Requirement: Android app exercises live IM backend flows during emulator validation
 The system SHALL let the Android app authenticate through the backend development session flow, hydrate conversations and message history from the live IM backend, and reconcile authenticated WebSocket events into visible chat state during Android emulator validation runs against a locally containerized backend.
 
@@ -71,8 +82,15 @@ The system SHALL provide a fixed bottom navigation bar with Messages, Contacts, 
 - **WHEN** the user opens chat detail, creative workshop, or settings
 - **THEN** the application routes to a secondary page flow without redefining the primary tab set
 
+### Requirement: Primary shell tabs use a consistent heading rhythm
+The system SHALL present `Recent conversations / 最近对话`, `Contacts / 联系人`, and `Space / 空间` using the same primary heading scale and top-band alignment so the three top-level tabs read as one coordinated shell.
+
+#### Scenario: User switches between the three primary tabs
+- **WHEN** the user opens Messages, Contacts, and Space from the bottom navigation
+- **THEN** each page shows its main heading at a consistent visual level with the same large heading treatment instead of noticeably different title sizing or top offsets
+
 ### Requirement: Messages tab summarizes conversations in a single-row list
-The system SHALL present conversations as one row per contact showing nickname, latest message preview, message time, and unread badge count when unread messages exist, and it MUST keep the conversation list as the primary focal area without rendering a separate unread summary panel above the list. The first visible section heading on the non-empty Messages screen MUST start at `Recent conversations`.
+The system SHALL present conversations as one row per contact showing nickname, latest message preview, message time, and unread badge count when unread messages exist, and it MUST keep the conversation list as the primary focal area without rendering a separate unread summary panel above the list or a standalone live IM status card ahead of the list. The first visible section heading on the non-empty Messages screen MUST start at `Recent conversations`. The Messages screen MUST NOT include a settings action button; settings access is provided exclusively from the Space page.
 
 #### Scenario: Conversation row includes unread metadata
 - **WHEN** a conversation has unread messages
@@ -86,8 +104,12 @@ The system SHALL present conversations as one row per contact showing nickname, 
 - **WHEN** the user has no conversations in local state
 - **THEN** the Messages page displays an empty-state panel instead of a blank list
 
+#### Scenario: Messages screen does not expose a settings action
+- **WHEN** the Messages screen renders its header
+- **THEN** the header row shows the conversation count but does not include a settings pill or button
+
 ### Requirement: Contacts tab supports deterministic sorting controls
-The system SHALL provide a dropdown control on the Contacts page that allows sorting by nickname initial, added time ascending, and added time descending, and it MUST present that control as a single bubble-aligned dropdown affordance rather than a horizontal strip of equally weighted sort chips.
+The system SHALL provide a compact inline dropdown pill on the Contacts page that allows sorting by nickname initial, added time ascending, and added time descending. The sort control MUST render as a single pill-shaped element displaying the active sort label with a dropdown indicator, and it MUST NOT occupy a full-width card or include explanatory text. The Contacts page header MUST display only the page title without an eyebrow label, description paragraph, or settings action, and the sort control MUST share that top band instead of rendering on a detached row above the list.
 
 #### Scenario: User sorts contacts alphabetically
 - **WHEN** the user selects the nickname-initial sorting option
@@ -101,16 +123,28 @@ The system SHALL provide a dropdown control on the Contacts page that allows sor
 - **WHEN** the user selects the latest-added sorting option
 - **THEN** contacts are ordered from the most recent added record to the earliest
 
-#### Scenario: Sort control stays compact inside one dropdown affordance
+#### Scenario: Sort control renders as a compact inline pill
 - **WHEN** the Contacts page renders its sort controls
-- **THEN** the screen shows one dropdown-style control inside the sort card instead of multiple horizontally arranged sort chips
+- **THEN** the screen shows a single pill-shaped dropdown displaying the current sort label and a dropdown indicator, without a surrounding card, heading label, or explanatory text
+
+#### Scenario: Contacts header shows title only
+- **WHEN** the Contacts page renders its page header
+- **THEN** the header displays only the "Contacts / 联系人" title without an eyebrow, description, or settings action
+
+#### Scenario: Contacts header shows title-only top band with inline sorting
+- **WHEN** the Contacts page renders its top-level header area
+- **THEN** the header displays only the `Contacts / 联系人` title plus the compact sort control in the same row, and the first contact row starts immediately below that shared top band
 
 ### Requirement: Space feed renders developer-oriented rich posts
-The system SHALL provide a Space feed optimized for developer posts, and it MUST render Markdown content, CSS-authored presentation blocks, and MDX-compatible post documents through a shared content-rendering pipeline while also surfacing the aggregate unread message count as supporting context near the top of the page.
+The system SHALL provide a `Space` feed optimized for developer posts and prompt-discovery content, and it MUST render mixed discovery content through the shared content-rendering pipeline while exposing `为你推荐`, `提示工程`, `AI 工具`, and `动态` as the visible discovery filter row without showing a separate unread-summary card above the feed. The Space page header MUST include a settings action pill as the sole app-level settings entry point across the three primary tabs.
 
-#### Scenario: Space tab shows unread summary as supporting context
+#### Scenario: Space tab focuses on discovery content without unread summary chrome
 - **WHEN** the user opens the Space tab
-- **THEN** the page displays a compact unread summary panel near the top that reports the aggregate unread conversation count without displacing the feed as the page's primary content
+- **THEN** the page does not display a `未读信号` summary card or aggregate unread count panel above the feed
+
+#### Scenario: Space filter row restores four visible discovery entries
+- **WHEN** the user views the `Space` discovery rail
+- **THEN** the page shows `为你推荐`, `提示工程`, `AI 工具`, and `动态` in the filter row
 
 #### Scenario: Markdown developer post is rendered in the feed
 - **WHEN** a Space post contains Markdown headings, paragraphs, lists, or code blocks
@@ -123,6 +157,17 @@ The system SHALL provide a Space feed optimized for developer posts, and it MUST
 #### Scenario: MDX-compatible post document enters the renderer
 - **WHEN** a post is authored in the MDX-compatible content format defined by the app
 - **THEN** the renderer resolves the document through the shared parsing abstraction instead of bypassing the content pipeline
+
+#### Scenario: Space page provides the settings entry point
+- **WHEN** the Space page renders its page header
+- **THEN** the header includes a "Settings / 设置" pill action that navigates to the settings page
+
+### Requirement: Production-facing app surfaces avoid development-stage commentary
+The system SHALL present shipped Android UI copy as product-facing language, and it MUST NOT render development-stage notes, prototype annotations, or internal explanatory commentary directly inside production-facing app surfaces.
+
+#### Scenario: Space header avoids development commentary
+- **WHEN** the user opens the `Space` tab
+- **THEN** the visible page chrome does not show internal-facing helper copy such as `创作者动态` or long development-oriented explanatory sentences above the feed
 
 ### Requirement: Chat detail presents compact identity chrome and attributed message rows
 The system SHALL present chat detail with a compact top identity row that places the `<` back affordance immediately before the contact nickname, and it MUST render incoming and system message rows with an avatar before the message bubble plus a small sender label above the bubble while rendering outgoing self-authored messages as compact self-bubbles without redundant self identity chrome. Short outgoing text-only bubbles MUST adapt their width more closely to message content, while longer outgoing text and attachment-bearing outgoing rows MUST continue to preserve readable mobile wrapping and stable footer/timestamp placement. Incoming message timestamps MUST render inside the lower-right area of the incoming bubble so time remains secondary to message content for both directions.
@@ -207,3 +252,10 @@ The system SHALL provide a Settings page that includes preset providers for Tenc
 #### Scenario: User switches app theme
 - **WHEN** the user selects light mode or dark mode in Settings
 - **THEN** the app persists that theme preference and re-renders the supported surfaces using the selected appearance mode
+
+### Requirement: IM validation status is surfaced from Settings
+The system SHALL present live IM connection and validation status inside `Settings > IM Validation`, and it MUST place that status alongside the IM endpoint inputs used for emulator validation and troubleshooting.
+
+#### Scenario: User opens the IM Validation settings surface
+- **WHEN** the user navigates to `Settings > IM Validation`
+- **THEN** the screen shows the current live IM validation or connection status near the HTTP base URL, WebSocket URL, and development-user inputs
