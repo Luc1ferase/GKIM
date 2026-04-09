@@ -33,7 +33,7 @@ import androidx.navigation.NavHostController
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
 import com.gkim.im.android.core.designsystem.LocalAppLanguage
-import com.gkim.im.android.core.designsystem.PageHeader
+import com.gkim.im.android.core.designsystem.PrimaryShellHeader
 import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.Contact
 import com.gkim.im.android.core.model.ContactSortMode
@@ -83,7 +83,6 @@ fun ContactsRoute(navController: NavHostController, container: AppContainer) {
         uiState = uiState,
         onSortModeSelected = viewModel::setSortMode,
         onOpenContact = { contact -> navController.navigate("chat/${viewModel.openContact(contact)}") },
-        onOpenSettings = { navController.navigate("settings") },
     )
 }
 
@@ -92,7 +91,6 @@ private fun ContactsScreen(
     uiState: ContactsUiState,
     onSortModeSelected: (ContactSortMode) -> Unit,
     onOpenContact: (Contact) -> Unit,
-    onOpenSettings: () -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
     val sortOptions = listOf(
@@ -111,56 +109,31 @@ private fun ContactsScreen(
             .testTag("contacts-screen"),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        PageHeader(
-            eyebrow = appLanguage.pick("Address Mesh", "联系人网络"),
-            title = appLanguage.pick("Contacts", "联系人"),
-            description = appLanguage.pick(
-                "Sort by name or onboarding time, then jump straight into the corresponding message room.",
-                "按昵称或加入时间排序联系人，然后直接进入对应会话。",
-            ),
-            actionLabel = appLanguage.pick("Settings", "设置"),
-            onAction = onOpenSettings,
-        )
-
-        GlassCard {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(text = appLanguage.pick("SORT ORDER", "排序方式"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
-                    Text(
-                        text = appLanguage.pick("Choose one ordering for the contact lane.", "为联系人列表选择一种排序方式。"),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = AetherColors.OnSurfaceVariant,
-                    )
-                }
-                Box {
-                    Text(
-                        text = "$selectedSortLabel  v",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = AetherColors.OnSurface,
-                        modifier = Modifier
-                            .testTag("contact-sort-dropdown")
-                            .background(AetherColors.SurfaceContainerHigh, CircleShape)
-                            .clickable { isSortMenuExpanded = true }
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                    )
-                    DropdownMenu(
-                        expanded = isSortMenuExpanded,
-                        onDismissRequest = { isSortMenuExpanded = false },
-                    ) {
-                        sortOptions.forEach { (mode, label) ->
-                            DropdownMenuItem(
-                                modifier = Modifier.testTag("contact-sort-option-${mode.name}"),
-                                text = { Text(text = label) },
-                                onClick = {
-                                    onSortModeSelected(mode)
-                                    isSortMenuExpanded = false
-                                },
-                            )
-                        }
+        PrimaryShellHeader(title = appLanguage.pick("Contacts", "联系人")) {
+            Box {
+                Text(
+                    text = "$selectedSortLabel ▾",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurface,
+                    modifier = Modifier
+                        .testTag("contact-sort-dropdown")
+                        .background(AetherColors.SurfaceContainerHigh, CircleShape)
+                        .clickable { isSortMenuExpanded = true }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                )
+                DropdownMenu(
+                    expanded = isSortMenuExpanded,
+                    onDismissRequest = { isSortMenuExpanded = false },
+                ) {
+                    sortOptions.forEach { (mode, label) ->
+                        DropdownMenuItem(
+                            modifier = Modifier.testTag("contact-sort-option-${mode.name}"),
+                            text = { Text(text = label) },
+                            onClick = {
+                                onSortModeSelected(mode)
+                                isSortMenuExpanded = false
+                            },
+                        )
                     }
                 }
             }

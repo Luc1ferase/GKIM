@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import android.net.Uri
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -500,6 +501,44 @@ class GkimRootAppTest {
     }
 
     @Test
+    fun primaryTabsUseConsistentTopLevelHeadingScale() {
+        setApp(UiTestAppContainer())
+
+        val messagesBounds = topmostTextBounds("最近对话")
+
+        composeRule.onNodeWithText("联系人").performClick()
+        val contactsBounds = topmostTextBounds("联系人")
+
+        composeRule.onNodeWithText("空间").performClick()
+        val spaceBounds = topmostTextBounds("空间")
+
+        val messagesHeight = messagesBounds.bottom - messagesBounds.top
+        val contactsHeight = contactsBounds.bottom - contactsBounds.top
+        val spaceHeight = spaceBounds.bottom - spaceBounds.top
+
+        assertTrue("messagesHeight=$messagesHeight contactsHeight=$contactsHeight", kotlin.math.abs(messagesHeight - contactsHeight) <= 8f)
+        assertTrue("messagesHeight=$messagesHeight spaceHeight=$spaceHeight", kotlin.math.abs(messagesHeight - spaceHeight) <= 8f)
+        assertTrue("messagesTop=${messagesBounds.top} contactsTop=${contactsBounds.top}", kotlin.math.abs(messagesBounds.top - contactsBounds.top) <= 12f)
+        assertTrue("messagesTop=${messagesBounds.top} spaceTop=${spaceBounds.top}", kotlin.math.abs(messagesBounds.top - spaceBounds.top) <= 12f)
+    }
+
+    @Test
+    fun contactsScreenPlacesSortDropdownInsideTitleBand() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithText("联系人").performClick()
+
+        val titleBounds = topmostTextBounds("联系人")
+        val sortBounds = composeRule.onNodeWithTag("contact-sort-dropdown").fetchSemanticsNode().boundsInRoot
+        val firstRowBounds = composeRule.onNodeWithTag("contact-row-aria-thorne").fetchSemanticsNode().boundsInRoot
+        val topBandBottom = maxOf(titleBounds.bottom, sortBounds.bottom)
+        val listGap = firstRowBounds.top - topBandBottom
+
+        assertTrue("titleBottom=${titleBounds.bottom} sortTop=${sortBounds.top}", sortBounds.top < titleBounds.bottom)
+        assertTrue("listGap=$listGap", listGap <= 48f)
+    }
+
+    @Test
     fun settingsMenuPresentsFocusedEntriesAndAccountActionsSurface() {
         setApp(UiTestAppContainer())
 
@@ -634,6 +673,13 @@ class GkimRootAppTest {
         composeRule.onNodeWithText(text).fetchSemanticsNode()
         false
     }.getOrDefault(true)
+
+    private fun topmostTextBounds(text: String): androidx.compose.ui.geometry.Rect =
+        composeRule
+            .onAllNodesWithText(text, useUnmergedTree = true)
+            .fetchSemanticsNodes()
+            .minBy { it.boundsInRoot.top }
+            .boundsInRoot
 
     private fun incomingAvatarAndSenderStayAheadOfBubble(
         avatarRight: Float,

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -68,6 +69,29 @@ fun PageHeader(
         }
         if (!description.isNullOrBlank()) {
             Text(text = description, style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+fun PrimaryShellHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    trailingContent: @Composable (RowScope.() -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineLarge,
+            color = AetherColors.OnSurface,
+            modifier = Modifier.weight(1f),
+        )
+        if (trailingContent != null) {
+            trailingContent()
         }
     }
 }

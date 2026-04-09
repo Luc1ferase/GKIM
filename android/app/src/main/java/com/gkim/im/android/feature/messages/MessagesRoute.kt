@@ -29,7 +29,7 @@ import androidx.navigation.NavHostController
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
 import com.gkim.im.android.core.designsystem.LocalAppLanguage
-import com.gkim.im.android.core.designsystem.PillAction
+import com.gkim.im.android.core.designsystem.PrimaryShellHeader
 import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.Conversation
 import com.gkim.im.android.core.util.formatChatTimestamp
@@ -66,7 +66,6 @@ fun MessagesRoute(navController: NavHostController, container: AppContainer) {
     MessagesScreen(
         uiState = uiState,
         onOpenConversation = { navController.navigate("chat/$it") },
-        onOpenSettings = { navController.navigate("settings") },
     )
 }
 
@@ -74,7 +73,6 @@ fun MessagesRoute(navController: NavHostController, container: AppContainer) {
 private fun MessagesScreen(
     uiState: MessagesUiState,
     onOpenConversation: (String) -> Unit,
-    onOpenSettings: () -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
     Column(
@@ -85,16 +83,7 @@ private fun MessagesScreen(
             .testTag("messages-screen"),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = appLanguage.pick("Recent conversations", "最近对话"),
-                style = MaterialTheme.typography.titleLarge,
-                color = AetherColors.OnSurface,
-            )
+        PrimaryShellHeader(title = appLanguage.pick("Recent conversations", "最近对话")) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = if (appLanguage == com.gkim.im.android.core.model.AppLanguage.Chinese) {
@@ -105,7 +94,6 @@ private fun MessagesScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = AetherColors.OnSurfaceVariant,
                 )
-                PillAction(label = appLanguage.pick("Settings", "设置"), onClick = onOpenSettings)
             }
         }
 
@@ -211,4 +199,3 @@ private fun ConversationRow(conversation: Conversation, onClick: () -> Unit) {
         }
     }
 }
-
