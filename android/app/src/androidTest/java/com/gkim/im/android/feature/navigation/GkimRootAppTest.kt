@@ -179,6 +179,17 @@ class GkimRootAppTest {
     }
 
     @Test
+    fun spaceScreenUsesTitleOnlyProductionHeaderChrome() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithText("空间").performClick()
+
+        composeRule.onNodeWithTag("space-screen").fetchSemanticsNode()
+        assertTrue(textNodeMissing("创作者动态"))
+        assertTrue(textNodeMissing("开发者帖子与提示模板现在合并进同一个发现面，并统一使用同一种瀑布流浏览节奏。"))
+    }
+
+    @Test
     fun spacePromptCardsApplyTemplatesIntoStudioChat() {
         val container = UiTestAppContainer()
         setApp(container)

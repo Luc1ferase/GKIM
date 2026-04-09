@@ -40,9 +40,9 @@ fun GlassCard(
 
 @Composable
 fun PageHeader(
-    eyebrow: String,
+    eyebrow: String? = null,
     title: String,
-    description: String,
+    description: String? = null,
     modifier: Modifier = Modifier,
     leadingLabel: String? = null,
     onLeading: (() -> Unit)? = null,
@@ -50,11 +50,15 @@ fun PageHeader(
     onAction: (() -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (leadingLabel != null && onLeading != null) {
-                PillAction(label = leadingLabel, onClick = onLeading)
+        if ((leadingLabel != null && onLeading != null) || !eyebrow.isNullOrBlank()) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (leadingLabel != null && onLeading != null) {
+                    PillAction(label = leadingLabel, onClick = onLeading)
+                }
+                if (!eyebrow.isNullOrBlank()) {
+                    Text(text = eyebrow.uppercase(), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
+                }
             }
-            Text(text = eyebrow.uppercase(), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Text(text = title, style = MaterialTheme.typography.headlineLarge, color = AetherColors.OnSurface, modifier = Modifier.weight(1f))
@@ -62,7 +66,9 @@ fun PageHeader(
                 PillAction(label = actionLabel, onClick = onAction)
             }
         }
-        Text(text = description, style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurfaceVariant)
+        if (!description.isNullOrBlank()) {
+            Text(text = description, style = MaterialTheme.typography.bodyLarge, color = AetherColors.OnSurfaceVariant)
+        }
     }
 }
 

@@ -147,12 +147,7 @@ private fun SpaceScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         PageHeader(
-            eyebrow = appLanguage.pick("Builder Feed", "创作者动态"),
             title = appLanguage.pick("Space", "空间"),
-            description = appLanguage.pick(
-                "Developer posts and prompt templates now live in one discovery surface with the same waterfall browsing rhythm.",
-                "开发者帖子与提示模板现在合并进同一个发现面，并统一使用同一种瀑布流浏览节奏。",
-            ),
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
