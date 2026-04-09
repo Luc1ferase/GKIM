@@ -1,6 +1,11 @@
 package com.gkim.im.android.feature.navigation
 
+import android.content.Context
 import android.net.Uri
+import android.util.Size
+import android.view.Gravity
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.VideoView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -30,6 +36,7 @@ import com.gkim.im.android.R
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.core.designsystem.pick
+import kotlin.math.roundToInt
 
 @Composable
 internal fun WelcomeRoute(
@@ -58,30 +65,26 @@ internal fun WelcomeRoute(
                     ),
                 ),
         ) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(start = 20.dp, top = 88.dp)
-                    .clip(CircleShape)
-                    .background(AetherColors.Surface.copy(alpha = 0.12f))
-                    .padding(horizontal = 26.dp, vertical = 26.dp),
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 28.dp)
-                    .clip(CircleShape)
-                    .background(AetherColors.PrimaryContainer.copy(alpha = 0.18f))
-                    .padding(horizontal = 56.dp, vertical = 56.dp),
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 36.dp, bottom = 140.dp)
-                    .clip(RoundedCornerShape(36.dp))
-                    .background(AetherColors.Surface.copy(alpha = 0.1f))
-                    .padding(horizontal = 72.dp, vertical = 18.dp),
-            )
+            WelcomeAtmosphereAccentCatalog.visibleAccentSlots().forEach { accentSlot ->
+                when (accentSlot) {
+                    WelcomeAtmosphereAccentSlot.TopStartOrb -> AtmosphereAccent(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(start = 20.dp, top = 88.dp),
+                        backgroundColor = AetherColors.Surface.copy(alpha = 0.12f),
+                        horizontalPadding = 26.dp,
+                        verticalPadding = 26.dp,
+                    )
+                    WelcomeAtmosphereAccentSlot.CenterEndOrb -> AtmosphereAccent(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 28.dp),
+                        backgroundColor = AetherColors.PrimaryContainer.copy(alpha = 0.18f),
+                        horizontalPadding = 56.dp,
+                        verticalPadding = 56.dp,
+                    )
+                }
+            }
         }
 
         Column(
@@ -181,6 +184,33 @@ internal fun WelcomeRoute(
 }
 
 @Composable
+private fun AtmosphereAccent(
+    modifier: Modifier,
+    backgroundColor: Color,
+    horizontalPadding: androidx.compose.ui.unit.Dp,
+    verticalPadding: androidx.compose.ui.unit.Dp,
+) {
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(backgroundColor)
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+    )
+}
+
+internal enum class WelcomeAtmosphereAccentSlot {
+    TopStartOrb,
+    CenterEndOrb,
+}
+
+internal object WelcomeAtmosphereAccentCatalog {
+    fun visibleAccentSlots(): List<WelcomeAtmosphereAccentSlot> = listOf(
+        WelcomeAtmosphereAccentSlot.TopStartOrb,
+        WelcomeAtmosphereAccentSlot.CenterEndOrb,
+    )
+}
+
+@Composable
 private fun WelcomeVideoBackdrop() {
     val context = LocalContext.current
     AndroidView(
@@ -188,21 +218,99 @@ private fun WelcomeVideoBackdrop() {
             .fillMaxSize()
             .testTag("welcome-video"),
         factory = {
-            VideoView(it).apply {
-                setVideoURI(Uri.parse("android.resource://${context.packageName}/${R.raw.welcome_intro_1}"))
-                setOnPreparedListener { mediaPlayer ->
-                    mediaPlayer.isLooping = true
-                    mediaPlayer.setVolume(0f, 0f)
-                    start()
-                }
+            WelcomeVideoCoverContainer(it).apply {
+                bindToWelcomeVideo(
+                    Uri.parse("android.resource://${context.packageName}/${R.raw.welcome_intro_1}")
+                )
             }
         },
-        update = { videoView ->
-            if (!videoView.isPlaying) {
-                videoView.start()
-            }
+        update = { videoContainer ->
+            videoContainer.ensurePlaying()
         },
     )
+}
+
+internal object WelcomeVideoCoverLayoutCalculator {
+    fun calculateCoverSize(
+        videoWidthPx: Int,
+        videoHeightPx: Int,
+        viewportWidthPx: Int,
+        viewportHeightPx: Int,
+    ): Size {
+        if (videoWidthPx <= 0 || videoHeightPx <= 0 || viewportWidthPx <= 0 || viewportHeightPx <= 0) {
+            return Size(viewportWidthPx.coerceAtLeast(0), viewportHeightPx.coerceAtLeast(0))
+        }
+
+        val widthScale = viewportWidthPx.toFloat() / videoWidthPx.toFloat()
+        val heightScale = viewportHeightPx.toFloat() / videoHeightPx.toFloat()
+        val coverScale = maxOf(widthScale, heightScale)
+
+        return Size(
+            (videoWidthPx * coverScale).roundToInt(),
+            (videoHeightPx * coverScale).roundToInt(),
+        )
+    }
+}
+
+private class WelcomeVideoCoverContainer(
+    context: Context,
+) : FrameLayout(context) {
+    private val videoView = VideoView(context)
+    private var videoWidthPx: Int = 0
+    private var videoHeightPx: Int = 0
+
+    init {
+        clipChildren = true
+        clipToPadding = true
+        addView(
+            videoView,
+            LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                Gravity.CENTER,
+            ),
+        )
+    }
+
+    fun bindToWelcomeVideo(videoUri: Uri) {
+        videoView.setVideoURI(videoUri)
+        videoView.setOnPreparedListener { mediaPlayer ->
+            videoWidthPx = mediaPlayer.videoWidth
+            videoHeightPx = mediaPlayer.videoHeight
+            mediaPlayer.isLooping = true
+            mediaPlayer.setVolume(0f, 0f)
+            applyCoverLayout()
+            videoView.start()
+        }
+    }
+
+    fun ensurePlaying() {
+        applyCoverLayout()
+        if (!videoView.isPlaying) {
+            videoView.start()
+        }
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        applyCoverLayout()
+    }
+
+    private fun applyCoverLayout() {
+        val scaledSize = WelcomeVideoCoverLayoutCalculator.calculateCoverSize(
+            videoWidthPx = videoWidthPx,
+            videoHeightPx = videoHeightPx,
+            viewportWidthPx = width,
+            viewportHeightPx = height,
+        )
+        val layoutParams = videoView.layoutParams as LayoutParams
+        if (layoutParams.width != scaledSize.width || layoutParams.height != scaledSize.height) {
+            layoutParams.width = scaledSize.width
+            layoutParams.height = scaledSize.height
+            layoutParams.gravity = Gravity.CENTER
+            videoView.layoutParams = layoutParams
+        }
+    }
 }
 
 @Composable
