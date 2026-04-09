@@ -76,6 +76,17 @@ class GkimRootAppTest {
     }
 
     @Test
+    fun welcomeReferenceMockupAssetIsNotPackagedInRuntimeResources() {
+        val packagedDrawable = composeRule.activity.resources.getIdentifier(
+            "welcome_screen",
+            "drawable",
+            composeRule.activity.packageName,
+        )
+
+        assertEquals(0, packagedDrawable)
+    }
+
+    @Test
     fun rootShellDefaultsToChineseAndLightThemeOnFirstRun() {
         setApp(UiTestAppContainer())
 
