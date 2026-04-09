@@ -40,9 +40,13 @@ import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.core.model.AigcProvider
 import com.gkim.im.android.core.model.CustomProviderConfig
+import com.gkim.im.android.core.util.messagingIntegrationStatusLabel
 import com.gkim.im.android.data.local.PreferencesStore
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.repository.MessagingIntegrationPhase
+import com.gkim.im.android.data.repository.MessagingIntegrationState
+import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -57,6 +61,7 @@ internal data class SettingsUiState(
     val imWebSocketUrl: String = "",
     val imDevUserExternalId: String = "",
     val imValidationError: String? = null,
+    val messagingIntegrationState: MessagingIntegrationState = MessagingIntegrationState(),
     val appLanguage: AppLanguage = AppLanguage.English,
     val themeMode: AppThemeMode = AppThemeMode.Light,
 )
@@ -72,6 +77,7 @@ private enum class SettingsDestination {
 internal class SettingsViewModel(
     private val repository: AigcRepository,
     private val preferencesStore: PreferencesStore,
+    messagingRepository: MessagingRepository,
 ) : ViewModel() {
     private data class ProviderSettingsState(
         val providers: List<AigcProvider>,
@@ -105,7 +111,7 @@ internal class SettingsViewModel(
         )
     }
 
-    val uiState = combine(providerSettings, imValidationConfig) { providerSettings, validationConfig ->
+    val uiState = combine(providerSettings, imValidationConfig, messagingRepository.integrationState) { providerSettings, validationConfig, messagingIntegrationState ->
         val (imHttpBaseUrl, imWebSocketUrl, imDevUserExternalId) = validationConfig
         SettingsUiState(
             providers = providerSettings.providers,
@@ -115,6 +121,7 @@ internal class SettingsViewModel(
             imWebSocketUrl = imWebSocketUrl,
             imDevUserExternalId = imDevUserExternalId,
             imValidationError = validationErrorFor(imHttpBaseUrl, imWebSocketUrl, imDevUserExternalId),
+            messagingIntegrationState = messagingIntegrationState,
             appLanguage = providerSettings.appLanguage,
             themeMode = providerSettings.themeMode,
         )
@@ -128,6 +135,7 @@ internal class SettingsViewModel(
             imHttpBaseUrl = "http://127.0.0.1:18080/",
             imWebSocketUrl = "ws://127.0.0.1:18080/ws",
             imDevUserExternalId = "nox-dev",
+            messagingIntegrationState = messagingRepository.integrationState.value,
             appLanguage = AppLanguage.Chinese,
             themeMode = AppThemeMode.Light,
         ),
@@ -172,7 +180,7 @@ internal class SettingsViewModel(
 @Composable
 fun SettingsRoute(navController: NavHostController, container: AppContainer) {
     val viewModel = viewModel<SettingsViewModel>(factory = simpleViewModelFactory {
-        SettingsViewModel(container.aigcRepository, container.preferencesStore)
+        SettingsViewModel(container.aigcRepository, container.preferencesStore, container.messagingRepository)
     })
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var destination by rememberSaveable { mutableStateOf(SettingsDestination.Menu) }
@@ -530,9 +538,16 @@ private fun SettingsImValidationScreen(
                 label = { Text(appLanguage.pick("Dev User", "开发用户")) },
             )
             Text(
-                text = uiState.imValidationError ?: appLanguage.pick("Ready for IM validation", "已准备好进行 IM 验证"),
+                text = when {
+                    uiState.imValidationError != null -> uiState.imValidationError
+                    else -> messagingIntegrationStatusLabel(uiState.messagingIntegrationState, appLanguage)
+                },
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (uiState.imValidationError == null) AetherColors.Primary else AetherColors.OnSurfaceVariant,
+                color = when {
+                    uiState.imValidationError != null -> AetherColors.OnSurfaceVariant
+                    uiState.messagingIntegrationState.phase == MessagingIntegrationPhase.Error -> AetherColors.OnSurfaceVariant
+                    else -> AetherColors.Primary
+                },
                 modifier = Modifier.testTag("settings-im-validation-status"),
             )
         }

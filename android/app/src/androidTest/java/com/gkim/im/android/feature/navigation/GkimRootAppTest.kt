@@ -125,8 +125,10 @@ class GkimRootAppTest {
         assertTrue("headingTop=${headingBounds.top}", headingBounds.top < 160f)
         assertTrue(headingBounds.bottom <= firstRowBounds.top)
         assertTrue(!nodeExists("messages-unread-summary"))
+        assertTrue(!nodeExists("messages-integration-status"))
         assertTrue(textNodeMissing("Signal Lattice"))
         assertTrue(textNodeMissing("Recent conversations, unread momentum, and a direct path into AIGC-assisted chats."))
+        assertTrue(textNodeMissing("实时 IM"))
         composeRule.onNodeWithTag("messages-list").fetchSemanticsNode()
     }
 
@@ -542,7 +544,7 @@ class GkimRootAppTest {
     fun settingsMenuPresentsFocusedEntriesAndAccountActionsSurface() {
         setApp(UiTestAppContainer())
 
-        composeRule.onNodeWithText("设置").performClick()
+        openSettingsFromSpace()
 
         composeRule.onNodeWithTag("settings-menu-screen").fetchSemanticsNode()
         composeRule.onNodeWithTag("settings-menu-appearance").fetchSemanticsNode()
@@ -564,7 +566,7 @@ class GkimRootAppTest {
         val container = UiTestAppContainer()
         setApp(container)
 
-        composeRule.onNodeWithText("设置").performClick()
+        openSettingsFromSpace()
         composeRule.onNodeWithTag("settings-menu-ai-provider").performClick()
         composeRule.onNodeWithTag("settings-detail-ai-provider").fetchSemanticsNode()
         composeRule.onNodeWithTag("settings-provider-custom").performClick()
@@ -588,7 +590,7 @@ class GkimRootAppTest {
         val container = UiTestAppContainer()
         setApp(container)
 
-        composeRule.onNodeWithText("设置").performClick()
+        openSettingsFromSpace()
         composeRule.onNodeWithTag("settings-menu-appearance").performClick()
         composeRule.onNodeWithTag("settings-detail-appearance").fetchSemanticsNode()
         composeRule.onNodeWithTag("settings-language-chinese").performClick()
@@ -605,10 +607,10 @@ class GkimRootAppTest {
         composeRule.activity.runOnUiThread {
             composeRule.activity.onBackPressedDispatcher.onBackPressed()
         }
-        composeRule.waitUntil(5_000) { nodeExists("messages-screen") }
+        composeRule.waitUntil(5_000) { nodeExists("space-screen") }
 
         composeRule.onNodeWithTag("gkim-theme-Light").fetchSemanticsNode()
-        composeRule.onNodeWithText("消息").fetchSemanticsNode()
+        composeRule.onNodeWithTag("space-screen").fetchSemanticsNode()
     }
 
     @Test
@@ -616,7 +618,7 @@ class GkimRootAppTest {
         val container = UiTestAppContainer()
         setApp(container)
 
-        composeRule.onNodeWithText("设置").performClick()
+        openSettingsFromSpace()
         composeRule.onNodeWithTag("settings-menu-im-validation").performClick()
         composeRule.onNodeWithTag("settings-detail-im-validation").fetchSemanticsNode()
         composeRule.onNodeWithTag("settings-im-http-base-url").performTextReplacement("https://forward.example.com/")
@@ -629,7 +631,7 @@ class GkimRootAppTest {
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("已准备好进行 IM 验证").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-im-validation-status").assertTextContains("live IM 已连接")
 
         composeRule.onNodeWithTag("settings-im-dev-user").performTextClearance()
         composeRule.waitUntil(5_000) { container.preferencesStore.currentImDevUserExternalId.isEmpty() }
@@ -655,6 +657,11 @@ class GkimRootAppTest {
                 RootAuthStart.Unauthenticated -> nodeExists("welcome-screen")
             }
         }
+    }
+
+    private fun openSettingsFromSpace() {
+        composeRule.onNodeWithText("空间").performClick()
+        composeRule.onNodeWithText("设置").performClick()
     }
 
     private fun fakeMediaPickerControllerFactory(): MediaPickerControllerFactory = { onMediaSelected ->
