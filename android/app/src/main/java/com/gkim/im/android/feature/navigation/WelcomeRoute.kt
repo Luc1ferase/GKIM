@@ -2,16 +2,18 @@ package com.gkim.im.android.feature.navigation
 
 import android.net.Uri
 import android.widget.VideoView
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,10 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.gkim.im.android.R
@@ -43,26 +43,46 @@ internal fun WelcomeRoute(
             .background(AetherColors.Surface)
             .testTag("welcome-screen"),
     ) {
-        Image(
-            painter = painterResource(R.drawable.welcome_screen),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-        )
         WelcomeVideoBackdrop()
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .testTag("welcome-native-atmosphere")
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            AetherColors.OnSurface.copy(alpha = 0.28f),
-                            AetherColors.OnSurface.copy(alpha = 0.1f),
-                            AetherColors.OnSurface.copy(alpha = 0.62f),
+                            AetherColors.Surface.copy(alpha = 0.08f),
+                            AetherColors.Primary.copy(alpha = 0.16f),
+                            AetherColors.OnSurface.copy(alpha = 0.68f),
                         ),
                     ),
                 ),
-        )
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 20.dp, top = 88.dp)
+                    .clip(CircleShape)
+                    .background(AetherColors.Surface.copy(alpha = 0.12f))
+                    .padding(horizontal = 26.dp, vertical = 26.dp),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 28.dp)
+                    .clip(CircleShape)
+                    .background(AetherColors.PrimaryContainer.copy(alpha = 0.18f))
+                    .padding(horizontal = 56.dp, vertical = 56.dp),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 36.dp, bottom = 140.dp)
+                    .clip(RoundedCornerShape(36.dp))
+                    .background(AetherColors.Surface.copy(alpha = 0.1f))
+                    .padding(horizontal = 72.dp, vertical = 18.dp),
+            )
+        }
 
         Column(
             modifier = Modifier
@@ -72,6 +92,7 @@ internal fun WelcomeRoute(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(
+                modifier = Modifier.testTag("welcome-hero-content"),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -101,6 +122,21 @@ internal fun WelcomeRoute(
                     ),
                     style = MaterialTheme.typography.bodyLarge,
                     color = AetherColors.Surface.copy(alpha = 0.76f),
+                )
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxWidth(0.2f)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    AetherColors.Surface.copy(alpha = 0f),
+                                    AetherColors.Primary.copy(alpha = 0.85f),
+                                    AetherColors.Surface.copy(alpha = 0f),
+                                ),
+                            ),
+                        ),
                 )
             }
 

@@ -58,6 +58,8 @@ class GkimRootAppTest {
 
         composeRule.onNodeWithTag("welcome-screen").fetchSemanticsNode()
         composeRule.onNodeWithTag("welcome-video").fetchSemanticsNode()
+        composeRule.onNodeWithTag("welcome-native-atmosphere").fetchSemanticsNode()
+        composeRule.onNodeWithTag("welcome-hero-content").fetchSemanticsNode()
         composeRule.onNodeWithTag("welcome-login-button").fetchSemanticsNode()
         composeRule.onNodeWithTag("welcome-register-button").fetchSemanticsNode()
         assertTrue(!nodeExists("bottom-nav"))
