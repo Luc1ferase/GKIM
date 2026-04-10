@@ -17,9 +17,11 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,10 +35,12 @@ import androidx.navigation.NavHostController
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
 import com.gkim.im.android.core.designsystem.LocalAppLanguage
+import com.gkim.im.android.core.designsystem.PillAction
 import com.gkim.im.android.core.designsystem.PrimaryShellHeader
 import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.Contact
 import com.gkim.im.android.core.model.ContactSortMode
+import com.gkim.im.android.data.remote.im.FriendRequestViewDto
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.ContactsRepository
 import com.gkim.im.android.data.repository.MessagingRepository
@@ -44,6 +48,7 @@ import com.gkim.im.android.feature.shared.simpleViewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 internal data class ContactsUiState(
     val contacts: List<Contact> = emptyList(),
@@ -83,6 +88,8 @@ fun ContactsRoute(navController: NavHostController, container: AppContainer) {
         uiState = uiState,
         onSortModeSelected = viewModel::setSortMode,
         onOpenContact = { contact -> navController.navigate("chat/${viewModel.openContact(contact)}") },
+        onOpenSearch = { navController.navigate("user-search") },
+        container = container,
     )
 }
 
@@ -91,6 +98,8 @@ private fun ContactsScreen(
     uiState: ContactsUiState,
     onSortModeSelected: (ContactSortMode) -> Unit,
     onOpenContact: (Contact) -> Unit,
+    onOpenSearch: () -> Unit,
+    container: AppContainer,
 ) {
     val appLanguage = LocalAppLanguage.current
     val sortOptions = listOf(
@@ -100,6 +109,16 @@ private fun ContactsScreen(
     )
     val selectedSortLabel = sortOptions.first { it.first == uiState.sortMode }.second
     var isSortMenuExpanded by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var pendingRequests by remember { mutableStateOf<List<FriendRequestViewDto>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        val token = container.sessionStore.token ?: return@LaunchedEffect
+        val baseUrl = container.sessionStore.baseUrl ?: "http://127.0.0.1:18080/"
+        try {
+            pendingRequests = container.imBackendClient.listFriendRequests(baseUrl, token)
+        } catch (_: Exception) { }
+    }
 
     Column(
         modifier = Modifier
@@ -134,6 +153,53 @@ private fun ContactsScreen(
                                 isSortMenuExpanded = false
                             },
                         )
+                    }
+                }
+            }
+        }
+
+        PillAction(label = appLanguage.pick("Find People", "搜索用户"), onClick = onOpenSearch)
+
+        if (pendingRequests.isNotEmpty()) {
+            Text(
+                text = appLanguage.pick("Friend Requests (${pendingRequests.size})", "好友请求 (${pendingRequests.size})"),
+                style = MaterialTheme.typography.labelLarge,
+                color = AetherColors.Primary,
+                modifier = Modifier.testTag("contacts-friend-requests-header"),
+            )
+            pendingRequests.forEach { request ->
+                GlassCard(modifier = Modifier.testTag("friend-request-${request.id}")) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(text = request.fromUser.displayName, style = MaterialTheme.typography.titleMedium, color = AetherColors.OnSurface)
+                            Text(text = request.fromUser.avatarText, style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            PillAction(label = appLanguage.pick("Accept", "接受")) {
+                                val token = container.sessionStore.token ?: return@PillAction
+                                val baseUrl = container.sessionStore.baseUrl ?: "http://127.0.0.1:18080/"
+                                scope.launch {
+                                    try {
+                                        container.imBackendClient.acceptFriendRequest(baseUrl, token, request.id)
+                                        pendingRequests = pendingRequests.filter { it.id != request.id }
+                                    } catch (_: Exception) { }
+                                }
+                            }
+                            PillAction(label = appLanguage.pick("Reject", "拒绝")) {
+                                val token = container.sessionStore.token ?: return@PillAction
+                                val baseUrl = container.sessionStore.baseUrl ?: "http://127.0.0.1:18080/"
+                                scope.launch {
+                                    try {
+                                        container.imBackendClient.rejectFriendRequest(baseUrl, token, request.id)
+                                        pendingRequests = pendingRequests.filter { it.id != request.id }
+                                    } catch (_: Exception) { }
+                                }
+                            }
+                        }
                     }
                 }
             }

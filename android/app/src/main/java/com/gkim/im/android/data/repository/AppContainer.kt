@@ -7,9 +7,11 @@ import com.gkim.im.android.core.security.SecureKeyValueStore
 import com.gkim.im.android.data.local.AppDatabase
 import com.gkim.im.android.data.local.AppPreferencesStore
 import com.gkim.im.android.data.local.PreferencesStore
+import com.gkim.im.android.data.local.SessionStore
 import com.gkim.im.android.data.remote.api.AigcService
 import com.gkim.im.android.data.remote.api.FeedService
 import com.gkim.im.android.data.remote.api.ServiceFactory
+import com.gkim.im.android.data.remote.im.ImBackendClient
 import com.gkim.im.android.data.remote.im.ImBackendHttpClient
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
 import okhttp3.OkHttpClient
@@ -20,6 +22,8 @@ interface AppContainer {
     val feedRepository: FeedRepository
     val aigcRepository: AigcRepository
     val preferencesStore: PreferencesStore
+    val sessionStore: SessionStore
+    val imBackendClient: ImBackendClient
     val markdownParser: MarkdownDocumentParser
     val realtimeChatClient: RealtimeChatClient
 }
@@ -29,6 +33,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
     @Suppress("unused")
     private val database = AppDatabase.create(context)
     override val preferencesStore: PreferencesStore = AppPreferencesStore(context)
+    override val sessionStore: SessionStore = SessionStore(context)
     private val secureStore: SecureKeyValueStore = AndroidSecureKeyValueStore(context)
     private val retrofit = ServiceFactory.retrofit("https://api.example.com/", okHttpClient)
     @Suppress("unused")
@@ -36,7 +41,8 @@ class DefaultAppContainer(context: Context) : AppContainer {
     @Suppress("unused")
     private val feedService = retrofit.create(FeedService::class.java)
     private val fallbackMessagingRepository = InMemoryMessagingRepository(seedConversations)
-    private val imBackendClient = ImBackendHttpClient(okHttpClient)
+    private val imBackendClientImpl = ImBackendHttpClient(okHttpClient)
+    override val imBackendClient: ImBackendClient = imBackendClientImpl
 
     override val markdownParser = MarkdownDocumentParser()
     override val realtimeChatClient = RealtimeChatClient(okHttpClient, "wss://example.com/realtime")

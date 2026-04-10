@@ -1,8 +1,11 @@
 use anyhow::Result;
-use axum::{body::Body, http::Request};
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
 use gkim_im_backend::{app::build_router, config::AppConfig};
 use http_body_util::BodyExt;
-use serde_json::Value;
+use serde_json::{json, Value};
 use sqlx::{raw_sql, PgPool};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -10,6 +13,8 @@ use tower::util::ServiceExt;
 
 const BOOTSTRAP_MIGRATION_SQL: &str =
     include_str!("../migrations/202604080001_bootstrap_im_schema.sql");
+const AUTH_MIGRATION_SQL: &str =
+    include_str!("../migrations/202604100001_auth_and_friend_requests.sql");
 
 struct TestDatabase {
     admin_pool: PgPool,
@@ -33,6 +38,7 @@ impl TestDatabase {
         let database_url = database_url_for_db(&admin_url, &database_name);
         let pool = PgPool::connect(&database_url).await?;
         raw_sql(BOOTSTRAP_MIGRATION_SQL).execute(&pool).await?;
+        raw_sql(AUTH_MIGRATION_SQL).execute(&pool).await?;
 
         Ok(Some(Self {
             admin_pool,
@@ -196,12 +202,17 @@ async fn seed_bootstrap_data(pool: &PgPool) -> Result<String> {
     Ok(conversation_id)
 }
 
-async fn issue_dev_session_token(app: axum::Router) -> Result<String> {
+async fn issue_dev_session_token(app: axum::Router, external_id: &str) -> Result<String> {
     let response = app
         .oneshot(
             Request::post("/api/session/dev")
                 .header("content-type", "application/json")
-                .body(Body::from(r#"{"externalId":"nox-dev"}"#))
+                .body(Body::from(
+                    json!({
+                        "externalId": external_id
+                    })
+                    .to_string(),
+                ))
                 .unwrap(),
         )
         .await?;
@@ -209,6 +220,12 @@ async fn issue_dev_session_token(app: axum::Router) -> Result<String> {
     let body = response.into_body().collect().await?.to_bytes();
     let json: Value = serde_json::from_slice(&body)?;
     Ok(json["token"].as_str().unwrap_or_default().to_string())
+}
+
+async fn json_response(response: axum::response::Response) -> Result<(StatusCode, Value)> {
+    let status = response.status();
+    let body = response.into_body().collect().await?.to_bytes();
+    Ok((status, serde_json::from_slice(&body)?))
 }
 
 #[tokio::test]
@@ -230,7 +247,7 @@ async fn session_issue_and_bootstrap_endpoints_round_trip() -> Result<()> {
         database.pool.clone(),
     );
 
-    let token = issue_dev_session_token(app.clone()).await?;
+    let token = issue_dev_session_token(app.clone(), "nox-dev").await?;
     assert!(!token.is_empty());
 
     let response = app
@@ -304,7 +321,7 @@ async fn history_endpoint_requires_auth_and_supports_pagination() -> Result<()> 
         .await?;
     assert_eq!(unauthorized.status(), axum::http::StatusCode::UNAUTHORIZED);
 
-    let token = issue_dev_session_token(app.clone()).await?;
+    let token = issue_dev_session_token(app.clone(), "nox-dev").await?;
 
     let response = app
         .clone()
@@ -351,6 +368,381 @@ async fn history_endpoint_requires_auth_and_supports_pagination() -> Result<()> 
         older_json["messages"][0]["body"],
         "The orbital thread is stable."
     );
+
+    database.cleanup().await
+}
+
+#[tokio::test]
+async fn auth_and_friend_request_endpoints_round_trip() -> Result<()> {
+    let Some(database) = TestDatabase::new().await? else {
+        eprintln!("skipping auth/social HTTP test because GKIM_TEST_DATABASE_URL is not set");
+        return Ok(());
+    };
+
+    let app = build_router(
+        AppConfig {
+            service_name: "gkim-im-backend".to_string(),
+            bind_addr: "127.0.0.1:8080".to_string(),
+            database_url: "postgres://example".to_string(),
+            log_filter: "info".to_string(),
+        },
+        database.pool.clone(),
+    );
+
+    let (register_status, register_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::post("/api/auth/register")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        json!({
+                            "username": "nova_user",
+                            "password": "passw0rd!",
+                            "displayName": "Nova User"
+                        })
+                        .to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(register_status, StatusCode::OK);
+    let register_token = register_json["token"]
+        .as_str()
+        .expect("register token should exist")
+        .to_string();
+    assert_eq!(register_json["user"]["externalId"], "nova_user");
+
+    let (duplicate_status, duplicate_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::post("/api/auth/register")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        json!({
+                            "username": "Nova_User",
+                            "password": "passw0rd!",
+                            "displayName": "Duplicate"
+                        })
+                        .to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(duplicate_status, StatusCode::CONFLICT);
+    assert_eq!(duplicate_json["error"], "username_taken");
+
+    let (invalid_login_status, invalid_login_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::post("/api/auth/login")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        json!({
+                            "username": "nova_user",
+                            "password": "wrong-pass"
+                        })
+                        .to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(invalid_login_status, StatusCode::UNAUTHORIZED);
+    assert_eq!(invalid_login_json["error"], "unauthorized");
+
+    let (login_status, login_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::post("/api/auth/login")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        json!({
+                            "username": "nova_user",
+                            "password": "passw0rd!"
+                        })
+                        .to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(login_status, StatusCode::OK);
+    let login_token = login_json["token"]
+        .as_str()
+        .expect("login token should exist")
+        .to_string();
+    assert_eq!(login_json["user"]["externalId"], "nova_user");
+
+    let (initial_search_status, initial_search_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::get("/api/users/search?q=leo")
+                    .header("authorization", format!("Bearer {register_token}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(initial_search_status, StatusCode::OK);
+    let leo_result = initial_search_json
+        .as_array()
+        .and_then(|items| items.first())
+        .expect("search should return leo");
+    let leo_user_id = leo_result["id"]
+        .as_str()
+        .expect("leo user id should exist")
+        .to_string();
+    assert_eq!(leo_result["username"], "leo-vance");
+    assert_eq!(leo_result["contactStatus"], "none");
+
+    let (send_request_status, send_request_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::post("/api/friends/request")
+                    .header("authorization", format!("Bearer {login_token}"))
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        json!({
+                            "toUserId": leo_user_id
+                        })
+                        .to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(send_request_status, StatusCode::OK);
+    let request_id = send_request_json["id"]
+        .as_str()
+        .expect("request id should exist")
+        .to_string();
+    assert_eq!(send_request_json["status"], "pending");
+    assert_eq!(send_request_json["toUserExternalId"], "leo-vance");
+
+    let (pending_sent_status, pending_sent_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::get("/api/users/search?q=leo")
+                    .header("authorization", format!("Bearer {login_token}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(pending_sent_status, StatusCode::OK);
+    assert_eq!(pending_sent_json[0]["contactStatus"], "pending_sent");
+
+    let leo_token = issue_dev_session_token(app.clone(), "leo-vance").await?;
+
+    let (pending_received_status, pending_received_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::get("/api/users/search?q=nova")
+                    .header("authorization", format!("Bearer {leo_token}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(pending_received_status, StatusCode::OK);
+    assert_eq!(
+        pending_received_json[0]["contactStatus"],
+        "pending_received"
+    );
+
+    let (list_status, list_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::get("/api/friends/requests")
+                    .header("authorization", format!("Bearer {leo_token}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(list_status, StatusCode::OK);
+    assert_eq!(list_json.as_array().map(|items| items.len()), Some(1));
+    assert_eq!(list_json[0]["fromUser"]["externalId"], "nova_user");
+
+    let (accept_status, accept_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::post(format!("/api/friends/requests/{request_id}/accept"))
+                    .header("authorization", format!("Bearer {leo_token}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(accept_status, StatusCode::OK);
+    assert_eq!(accept_json["status"], "accepted");
+
+    let (contact_status, contact_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::get("/api/users/search?q=leo")
+                    .header("authorization", format!("Bearer {login_token}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(contact_status, StatusCode::OK);
+    assert_eq!(contact_json[0]["contactStatus"], "contact");
+
+    database.cleanup().await
+}
+
+#[tokio::test]
+async fn rejecting_friend_request_restores_non_contact_search_state() -> Result<()> {
+    let Some(database) = TestDatabase::new().await? else {
+        eprintln!(
+            "skipping friend-request rejection HTTP test because GKIM_TEST_DATABASE_URL is not set"
+        );
+        return Ok(());
+    };
+
+    let app = build_router(
+        AppConfig {
+            service_name: "gkim-im-backend".to_string(),
+            bind_addr: "127.0.0.1:8080".to_string(),
+            database_url: "postgres://example".to_string(),
+            log_filter: "info".to_string(),
+        },
+        database.pool.clone(),
+    );
+
+    let (register_status, register_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::post("/api/auth/register")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        json!({
+                            "username": "orbit_user",
+                            "password": "passw0rd!",
+                            "displayName": "Orbit User"
+                        })
+                        .to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(register_status, StatusCode::OK);
+    let orbit_token = register_json["token"]
+        .as_str()
+        .expect("register token should exist")
+        .to_string();
+
+    let (search_status, search_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::get("/api/users/search?q=clara")
+                    .header("authorization", format!("Bearer {orbit_token}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(search_status, StatusCode::OK);
+    let clara_user_id = search_json[0]["id"]
+        .as_str()
+        .expect("clara user id should exist")
+        .to_string();
+
+    let (send_status, send_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::post("/api/friends/request")
+                    .header("authorization", format!("Bearer {orbit_token}"))
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        json!({
+                            "toUserId": clara_user_id
+                        })
+                        .to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(send_status, StatusCode::OK);
+    let request_id = send_json["id"]
+        .as_str()
+        .expect("request id should exist")
+        .to_string();
+
+    let clara_token = app
+        .clone()
+        .oneshot(
+            Request::post("/api/session/dev")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"externalId":"clara-wu"}"#))
+                .unwrap(),
+        )
+        .await?;
+    let (_, clara_session_json) = json_response(clara_token).await?;
+    let clara_bearer = clara_session_json["token"]
+        .as_str()
+        .expect("clara token should exist");
+
+    let (reject_status, reject_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::post(format!("/api/friends/requests/{request_id}/reject"))
+                    .header("authorization", format!("Bearer {clara_bearer}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(reject_status, StatusCode::OK);
+    assert_eq!(reject_json["status"], "rejected");
+
+    let (post_reject_status, post_reject_json) = json_response(
+        app.clone()
+            .oneshot(
+                Request::get("/api/users/search?q=clara")
+                    .header("authorization", format!("Bearer {orbit_token}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await?,
+    )
+    .await?;
+    assert_eq!(post_reject_status, StatusCode::OK);
+    assert_eq!(post_reject_json[0]["contactStatus"], "none");
+
+    let (pending_status, pending_json) = json_response(
+        app.oneshot(
+            Request::get("/api/friends/requests")
+                .header("authorization", format!("Bearer {clara_bearer}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await?,
+    )
+    .await?;
+    assert_eq!(pending_status, StatusCode::OK);
+    assert_eq!(pending_json.as_array().map(|items| items.len()), Some(0));
 
     database.cleanup().await
 }

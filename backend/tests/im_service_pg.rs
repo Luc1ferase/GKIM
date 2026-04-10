@@ -1,11 +1,13 @@
 use anyhow::Result;
-use gkim_im_backend::im::service::ImService;
+use gkim_im_backend::{im::service::ImService, social::SocialService};
 use sqlx::{raw_sql, PgPool};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const BOOTSTRAP_MIGRATION_SQL: &str =
     include_str!("../migrations/202604080001_bootstrap_im_schema.sql");
+const AUTH_MIGRATION_SQL: &str =
+    include_str!("../migrations/202604100001_auth_and_friend_requests.sql");
 
 struct TestDatabase {
     admin_pool: PgPool,
@@ -29,6 +31,7 @@ impl TestDatabase {
         let database_url = database_url_for_db(&admin_url, &database_name);
         let pool = PgPool::connect(&database_url).await?;
         raw_sql(BOOTSTRAP_MIGRATION_SQL).execute(&pool).await?;
+        raw_sql(AUTH_MIGRATION_SQL).execute(&pool).await?;
 
         Ok(Some(Self {
             admin_pool,
@@ -325,6 +328,79 @@ async fn history_for_user_returns_paginated_message_history() -> Result<()> {
     assert_eq!(older_page.messages.len(), 1);
     assert_eq!(older_page.messages[0].id, message_1);
     assert_eq!(older_page.messages[0].body, "Message one");
+
+    database.cleanup().await
+}
+
+#[tokio::test]
+async fn send_direct_message_requires_mutual_contacts_and_succeeds_after_friend_acceptance(
+) -> Result<()> {
+    let Some(database) = TestDatabase::new().await? else {
+        eprintln!(
+            "skipping contact-gating postgres test because GKIM_TEST_DATABASE_URL is not set"
+        );
+        return Ok(());
+    };
+
+    let service = ImService::new(database.pool.clone());
+    let social_service = SocialService::new(database.pool.clone());
+    let leo_id = user_id(&database.pool, "leo-vance").await?;
+    let aria_id = user_id(&database.pool, "aria-thorne").await?;
+
+    let send_error = service
+        .send_direct_message(
+            "leo-vance",
+            "aria-thorne",
+            Some("client-gated-before-accept"),
+            "Need approval",
+        )
+        .await
+        .expect_err("non-contacts should not be able to message");
+    assert!(
+        send_error
+            .to_string()
+            .contains("mutual contacts before messaging"),
+        "unexpected error: {send_error}"
+    );
+
+    let request = social_service
+        .send_friend_request(&leo_id, &aria_id)
+        .await
+        .expect("friend request should be created");
+    let accepted = social_service
+        .accept_friend_request(&request.id, &aria_id)
+        .await
+        .expect("friend request should be accepted");
+    assert_eq!(accepted.status, "accepted");
+
+    let sent = service
+        .send_direct_message(
+            "leo-vance",
+            "aria-thorne",
+            Some("client-gated-after-accept"),
+            "Need approval",
+        )
+        .await
+        .expect("mutual contacts should be able to message");
+    assert_eq!(sent.recipient_external_id, "aria-thorne");
+    assert_eq!(sent.recipient_unread_count, 1);
+    assert_eq!(sent.message.body, "Need approval");
+
+    let bundle = service.bootstrap_for_user("aria-thorne").await?;
+    let conversation = bundle
+        .conversations
+        .iter()
+        .find(|conversation| conversation.contact.external_id == "leo-vance")
+        .expect("accepted contact should appear in aria bootstrap");
+    assert_eq!(conversation.unread_count, 1);
+    assert_eq!(
+        conversation
+            .last_message
+            .as_ref()
+            .expect("last message should exist")
+            .body,
+        "Need approval"
+    );
 
     database.cleanup().await
 }

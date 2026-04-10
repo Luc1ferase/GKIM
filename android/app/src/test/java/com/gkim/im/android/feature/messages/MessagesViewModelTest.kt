@@ -1,14 +1,10 @@
 package com.gkim.im.android.feature.messages
 
-import com.gkim.im.android.data.repository.MessagingIntegrationPhase
-import com.gkim.im.android.data.repository.MessagingIntegrationState
-import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.data.repository.InMemoryMessagingRepository
+import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.data.repository.seedConversations
 import com.gkim.im.android.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -39,14 +35,10 @@ class MessagesViewModelTest {
     }
 
     @Test
-    fun `messages view model exposes integration state from live repository`() = runTest(mainDispatcherRule.dispatcher) {
+    fun `messages view model uses repository supplied conversations when wrapped by a custom repository`() = runTest(mainDispatcherRule.dispatcher) {
         val viewModel = MessagesViewModel(
             FakeMessagingRepository(
-                initialIntegrationState = MessagingIntegrationState(
-                    phase = MessagingIntegrationPhase.Error,
-                    activeUserExternalId = "nox-dev",
-                    message = "bootstrap offline",
-                )
+                delegate = InMemoryMessagingRepository(seedConversations.take(1))
             )
         )
         val collector = launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -55,18 +47,14 @@ class MessagesViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(MessagingIntegrationPhase.Error, viewModel.uiState.value.integrationState.phase)
-        assertEquals("bootstrap offline", viewModel.uiState.value.integrationState.message)
+        assertEquals(1, viewModel.uiState.value.conversations.size)
+        assertEquals(2, viewModel.uiState.value.totalUnread)
+        assertEquals("room-leo", viewModel.uiState.value.conversations.single().id)
 
         collector.cancel()
     }
 
     private class FakeMessagingRepository(
         private val delegate: MessagingRepository = InMemoryMessagingRepository(seedConversations),
-        initialIntegrationState: MessagingIntegrationState,
-    ) : MessagingRepository by delegate {
-        private val integrationStateValue = MutableStateFlow(initialIntegrationState)
-
-        override val integrationState: StateFlow<MessagingIntegrationState> = integrationStateValue
-    }
+    ) : MessagingRepository by delegate
 }

@@ -1,7 +1,9 @@
+use crate::auth::{AuthResponse, AuthService, LoginError, RegisterError};
 use crate::config::AppConfig;
 use crate::im::service::ImService;
 use crate::session::{SessionIssue, SessionService};
-use crate::ws::{serve_socket, ConnectionHub};
+use crate::social::{FriendRequestError, FriendRequestView, SocialService, UserSearchResult};
+use crate::ws::{serve_socket, ConnectionHub, GatewayEvent};
 use axum::{
     extract::{ws::WebSocketUpgrade, Path, Query, State},
     http::{HeaderMap, StatusCode},
@@ -16,6 +18,8 @@ use sqlx::PgPool;
 struct AppState {
     service_name: String,
     session_service: SessionService,
+    auth_service: AuthService,
+    social_service: SocialService,
     im_service: ImService,
     connection_hub: ConnectionHub,
 }
@@ -51,6 +55,33 @@ struct DevSessionRequest {
 struct HistoryQuery {
     limit: Option<u32>,
     before: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RegisterRequest {
+    username: String,
+    password: String,
+    display_name: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LoginRequest {
+    username: String,
+    password: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SearchQuery {
+    q: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FriendRequestBody {
+    to_user_id: String,
 }
 
 impl AppError {
@@ -105,6 +136,19 @@ pub fn build_router(config: AppConfig, pool: PgPool) -> Router {
         .route("/health", get(health_handler))
         .route("/ws", get(websocket_gateway))
         .route("/api/session/dev", post(issue_dev_session))
+        .route("/api/auth/register", post(register_handler))
+        .route("/api/auth/login", post(login_handler))
+        .route("/api/users/search", get(search_users_handler))
+        .route("/api/friends/request", post(send_friend_request_handler))
+        .route("/api/friends/requests", get(list_friend_requests_handler))
+        .route(
+            "/api/friends/requests/:request_id/accept",
+            post(accept_friend_request_handler),
+        )
+        .route(
+            "/api/friends/requests/:request_id/reject",
+            post(reject_friend_request_handler),
+        )
         .route("/api/bootstrap", get(get_bootstrap))
         .route(
             "/api/conversations/:conversation_id/messages",
@@ -113,6 +157,8 @@ pub fn build_router(config: AppConfig, pool: PgPool) -> Router {
         .with_state(AppState {
             service_name: config.service_name,
             session_service: SessionService::new(pool.clone()),
+            auth_service: AuthService::new(pool.clone()),
+            social_service: SocialService::new(pool.clone()),
             im_service: ImService::new(pool),
             connection_hub: ConnectionHub::default(),
         })
@@ -162,6 +208,189 @@ async fn issue_dev_session(
         })?;
 
     Ok(Json(session))
+}
+
+async fn register_handler(
+    State(state): State<AppState>,
+    Json(request): Json<RegisterRequest>,
+) -> Result<Json<AuthResponse>, AppError> {
+    state
+        .auth_service
+        .register(&request.username, &request.password, &request.display_name)
+        .await
+        .map(Json)
+        .map_err(|e| match e {
+            RegisterError::UsernameTaken => AppError {
+                status: StatusCode::CONFLICT,
+                error: "username_taken",
+                message: "username is already taken".to_string(),
+            },
+            RegisterError::Validation(msg) => AppError::bad_request(msg),
+            RegisterError::Internal(err) => AppError::internal(format!("register: {err}")),
+        })
+}
+
+async fn login_handler(
+    State(state): State<AppState>,
+    Json(request): Json<LoginRequest>,
+) -> Result<Json<AuthResponse>, AppError> {
+    state
+        .auth_service
+        .login(&request.username, &request.password)
+        .await
+        .map(Json)
+        .map_err(|e| match e {
+            LoginError::InvalidCredentials => {
+                AppError::unauthorized("invalid username or password")
+            }
+            LoginError::Internal(err) => AppError::internal(format!("login: {err}")),
+        })
+}
+
+async fn search_users_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<SearchQuery>,
+) -> Result<Json<Vec<UserSearchResult>>, AppError> {
+    let user = authenticated_user(&state, &headers).await?;
+    if query.q.trim().is_empty() {
+        return Ok(Json(vec![]));
+    }
+    let results = state
+        .social_service
+        .search_users(&user.id, &query.q)
+        .await
+        .map_err(|e| AppError::internal(format!("search users: {e}")))?;
+    Ok(Json(results))
+}
+
+async fn send_friend_request_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<FriendRequestBody>,
+) -> Result<Json<FriendRequestView>, AppError> {
+    let user = authenticated_user(&state, &headers).await?;
+    let view = state
+        .social_service
+        .send_friend_request(&user.id, &body.to_user_id)
+        .await
+        .map_err(|e| match e {
+            FriendRequestError::AlreadyContacts => AppError {
+                status: StatusCode::CONFLICT,
+                error: "already_contacts",
+                message: "users are already contacts".to_string(),
+            },
+            FriendRequestError::DuplicateRequest => AppError {
+                status: StatusCode::CONFLICT,
+                error: "duplicate_request",
+                message: "a pending friend request already exists".to_string(),
+            },
+            FriendRequestError::NotFound | FriendRequestError::NotPending => {
+                AppError::not_found("friend request not found")
+            }
+            FriendRequestError::Internal(err) => {
+                AppError::internal(format!("send friend request: {err}"))
+            }
+        })?;
+
+    // Push WS event to the recipient
+    state
+        .connection_hub
+        .send_to_user(
+            &view.to_user_external_id,
+            GatewayEvent::FriendRequestReceived {
+                request_id: view.id.clone(),
+                from_user: view.from_user.clone(),
+            },
+        )
+        .await;
+
+    Ok(Json(view))
+}
+
+async fn list_friend_requests_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<FriendRequestView>>, AppError> {
+    let user = authenticated_user(&state, &headers).await?;
+    let requests = state
+        .social_service
+        .list_pending_requests(&user.id)
+        .await
+        .map_err(|e| AppError::internal(format!("list friend requests: {e}")))?;
+    Ok(Json(requests))
+}
+
+async fn accept_friend_request_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(request_id): Path<String>,
+) -> Result<Json<FriendRequestView>, AppError> {
+    let user = authenticated_user(&state, &headers).await?;
+    let view = state
+        .social_service
+        .accept_friend_request(&request_id, &user.id)
+        .await
+        .map_err(|e| match e {
+            FriendRequestError::NotFound => {
+                AppError::not_found("friend request not found or not addressed to you")
+            }
+            FriendRequestError::NotPending => AppError {
+                status: StatusCode::CONFLICT,
+                error: "not_pending",
+                message: "friend request is no longer pending".to_string(),
+            },
+            _ => AppError::internal(format!("accept friend request: {e:?}")),
+        })?;
+
+    state
+        .connection_hub
+        .send_to_user(
+            &view.from_user.external_id,
+            GatewayEvent::FriendRequestAccepted {
+                request_id: view.id.clone(),
+                by_user: user.clone(),
+            },
+        )
+        .await;
+
+    Ok(Json(view))
+}
+
+async fn reject_friend_request_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(request_id): Path<String>,
+) -> Result<Json<FriendRequestView>, AppError> {
+    let user = authenticated_user(&state, &headers).await?;
+    let view = state
+        .social_service
+        .reject_friend_request(&request_id, &user.id)
+        .await
+        .map_err(|e| match e {
+            FriendRequestError::NotFound => {
+                AppError::not_found("friend request not found or not addressed to you")
+            }
+            FriendRequestError::NotPending => AppError {
+                status: StatusCode::CONFLICT,
+                error: "not_pending",
+                message: "friend request is no longer pending".to_string(),
+            },
+            _ => AppError::internal(format!("reject friend request: {e:?}")),
+        })?;
+
+    state
+        .connection_hub
+        .send_to_user(
+            &view.from_user.external_id,
+            GatewayEvent::FriendRequestRejected {
+                request_id: view.id.clone(),
+                by_user_id: user.id.clone(),
+            },
+        )
+        .await;
+
+    Ok(Json(view))
 }
 
 async fn get_bootstrap(

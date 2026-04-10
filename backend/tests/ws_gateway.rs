@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use futures_util::{SinkExt, StreamExt};
 use gkim_im_backend::{
     app::build_router, config::AppConfig, im::service::ImService, session::SessionService,
@@ -16,6 +16,8 @@ use tokio_tungstenite::{
 
 const BOOTSTRAP_MIGRATION_SQL: &str =
     include_str!("../migrations/202604080001_bootstrap_im_schema.sql");
+const AUTH_MIGRATION_SQL: &str =
+    include_str!("../migrations/202604100001_auth_and_friend_requests.sql");
 
 struct TestDatabase {
     admin_pool: PgPool,
@@ -39,6 +41,7 @@ impl TestDatabase {
         let database_url = database_url_for_db(&admin_url, &database_name);
         let pool = PgPool::connect(&database_url).await?;
         raw_sql(BOOTSTRAP_MIGRATION_SQL).execute(&pool).await?;
+        raw_sql(AUTH_MIGRATION_SQL).execute(&pool).await?;
 
         Ok(Some(Self {
             admin_pool,
@@ -107,6 +110,15 @@ async fn next_json_event(socket: &mut TestSocket) -> Result<Value> {
 async fn wait_for_event_type(socket: &mut TestSocket, event_type: &str) -> Result<Value> {
     loop {
         let event = next_json_event(socket).await?;
+        if event["type"] == "error" {
+            let code = event["code"].as_str().unwrap_or("unknown");
+            let message = event["message"]
+                .as_str()
+                .unwrap_or("unknown websocket error");
+            return Err(anyhow!(
+                "received websocket error while waiting for `{event_type}`: {code}: {message}"
+            ));
+        }
         if event["type"] == event_type {
             return Ok(event);
         }

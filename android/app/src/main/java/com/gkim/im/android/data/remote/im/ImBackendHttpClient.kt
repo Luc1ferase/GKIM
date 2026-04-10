@@ -19,6 +19,27 @@ private interface ImBackendService {
     @POST("api/session/dev")
     suspend fun issueDevSession(@Body request: DevSessionRequestDto): DevSessionResponseDto
 
+    @POST("api/auth/register")
+    suspend fun register(@Body request: RegisterRequestDto): AuthResponseDto
+
+    @POST("api/auth/login")
+    suspend fun login(@Body request: LoginRequestDto): AuthResponseDto
+
+    @GET("api/users/search")
+    suspend fun searchUsers(@Header("Authorization") authorization: String, @Query("q") query: String): List<UserSearchResultDto>
+
+    @POST("api/friends/request")
+    suspend fun sendFriendRequest(@Header("Authorization") authorization: String, @Body request: FriendRequestBodyDto): FriendRequestViewDto
+
+    @GET("api/friends/requests")
+    suspend fun listFriendRequests(@Header("Authorization") authorization: String): List<FriendRequestViewDto>
+
+    @POST("api/friends/requests/{requestId}/accept")
+    suspend fun acceptFriendRequest(@Header("Authorization") authorization: String, @Path("requestId") requestId: String): FriendRequestViewDto
+
+    @POST("api/friends/requests/{requestId}/reject")
+    suspend fun rejectFriendRequest(@Header("Authorization") authorization: String, @Path("requestId") requestId: String): FriendRequestViewDto
+
     @GET("api/bootstrap")
     suspend fun loadBootstrap(@Header("Authorization") authorization: String): BootstrapBundleDto
 
@@ -36,6 +57,27 @@ class ImBackendHttpClient(
 ) : ImBackendClient {
     override suspend fun issueDevSession(baseUrl: String, externalId: String): DevSessionResponseDto =
         serviceFor(baseUrl).issueDevSession(DevSessionRequestDto(externalId = externalId))
+
+    override suspend fun register(baseUrl: String, username: String, password: String, displayName: String): AuthResponseDto =
+        serviceFor(baseUrl).register(RegisterRequestDto(username = username, password = password, displayName = displayName))
+
+    override suspend fun login(baseUrl: String, username: String, password: String): AuthResponseDto =
+        serviceFor(baseUrl).login(LoginRequestDto(username = username, password = password))
+
+    override suspend fun searchUsers(baseUrl: String, token: String, query: String): List<UserSearchResultDto> =
+        serviceFor(baseUrl).searchUsers(bearerToken(token), query)
+
+    override suspend fun sendFriendRequest(baseUrl: String, token: String, toUserId: String): FriendRequestViewDto =
+        serviceFor(baseUrl).sendFriendRequest(bearerToken(token), FriendRequestBodyDto(toUserId = toUserId))
+
+    override suspend fun listFriendRequests(baseUrl: String, token: String): List<FriendRequestViewDto> =
+        serviceFor(baseUrl).listFriendRequests(bearerToken(token))
+
+    override suspend fun acceptFriendRequest(baseUrl: String, token: String, requestId: String): FriendRequestViewDto =
+        serviceFor(baseUrl).acceptFriendRequest(bearerToken(token), requestId)
+
+    override suspend fun rejectFriendRequest(baseUrl: String, token: String, requestId: String): FriendRequestViewDto =
+        serviceFor(baseUrl).rejectFriendRequest(bearerToken(token), requestId)
 
     override suspend fun loadBootstrap(baseUrl: String, token: String): BootstrapBundleDto =
         serviceFor(baseUrl).loadBootstrap(bearerToken(token))

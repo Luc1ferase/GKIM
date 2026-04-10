@@ -72,6 +72,24 @@ pub enum GatewayEvent {
     #[serde(rename = "error")]
     #[serde(rename_all = "camelCase")]
     Error { code: String, message: String },
+    #[serde(rename = "friend_request.received")]
+    #[serde(rename_all = "camelCase")]
+    FriendRequestReceived {
+        request_id: String,
+        from_user: UserProfile,
+    },
+    #[serde(rename = "friend_request.accepted")]
+    #[serde(rename_all = "camelCase")]
+    FriendRequestAccepted {
+        request_id: String,
+        by_user: UserProfile,
+    },
+    #[serde(rename = "friend_request.rejected")]
+    #[serde(rename_all = "camelCase")]
+    FriendRequestRejected {
+        request_id: String,
+        by_user_id: String,
+    },
 }
 
 #[derive(Debug, Deserialize)]

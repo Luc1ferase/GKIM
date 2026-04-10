@@ -2,6 +2,13 @@ package com.gkim.im.android.data.remote.im
 
 interface ImBackendClient {
     suspend fun issueDevSession(baseUrl: String, externalId: String): DevSessionResponseDto
+    suspend fun register(baseUrl: String, username: String, password: String, displayName: String): AuthResponseDto
+    suspend fun login(baseUrl: String, username: String, password: String): AuthResponseDto
+    suspend fun searchUsers(baseUrl: String, token: String, query: String): List<UserSearchResultDto>
+    suspend fun sendFriendRequest(baseUrl: String, token: String, toUserId: String): FriendRequestViewDto
+    suspend fun listFriendRequests(baseUrl: String, token: String): List<FriendRequestViewDto>
+    suspend fun acceptFriendRequest(baseUrl: String, token: String, requestId: String): FriendRequestViewDto
+    suspend fun rejectFriendRequest(baseUrl: String, token: String, requestId: String): FriendRequestViewDto
     suspend fun loadBootstrap(baseUrl: String, token: String): BootstrapBundleDto
     suspend fun loadHistory(
         baseUrl: String,

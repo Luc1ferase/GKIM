@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextReplacement
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.gkim.im.android.core.media.MediaPickerController
 import com.gkim.im.android.core.media.MediaPickerControllerFactory
@@ -21,6 +22,18 @@ import com.gkim.im.android.core.model.AttachmentType
 import com.gkim.im.android.core.model.MediaInput
 import com.gkim.im.android.core.rendering.MarkdownDocumentParser
 import com.gkim.im.android.core.util.formatChatTimestamp
+import com.gkim.im.android.data.local.SessionStore
+import com.gkim.im.android.data.remote.im.AuthResponseDto
+import com.gkim.im.android.data.remote.im.BackendUserDto
+import com.gkim.im.android.data.remote.im.BootstrapBundleDto
+import com.gkim.im.android.data.remote.im.ContactProfileDto
+import com.gkim.im.android.data.remote.im.ConversationSummaryDto
+import com.gkim.im.android.data.remote.im.FriendRequestViewDto
+import com.gkim.im.android.data.remote.im.ImBackendClient
+import com.gkim.im.android.data.remote.im.ImBackendHttpClient
+import com.gkim.im.android.data.remote.im.MessageHistoryPageDto
+import com.gkim.im.android.data.remote.im.MessageRecordDto
+import com.gkim.im.android.data.remote.im.UserSearchResultDto
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
@@ -74,6 +87,91 @@ class GkimRootAppTest {
 
         composeRule.onNodeWithTag("bottom-nav").fetchSemanticsNode()
         composeRule.onNodeWithText("消息").fetchSemanticsNode()
+    }
+
+    @Test
+    fun registerRouteSubmitsCredentialsPersistsSessionAndEntersShell() {
+        val backendClient = RecordingImBackendClient()
+        val container = UiTestAppContainer(imBackendClient = backendClient)
+        setApp(container, initialAuthStart = RootAuthStart.Unauthenticated)
+
+        composeRule.onNodeWithTag("welcome-register-button").performClick()
+        composeRule.onNodeWithTag("register-screen").fetchSemanticsNode()
+        composeRule.onNodeWithTag("register-username").performTextReplacement("nova_user")
+        composeRule.onNodeWithTag("register-display-name").performTextReplacement("Nova User")
+        composeRule.onNodeWithTag("register-password").performTextReplacement("passw0rd!")
+        composeRule.onNodeWithTag("register-submit").performClick()
+
+        composeRule.waitUntil(5_000) {
+            backendClient.registerCalls.size == 1 && nodeExists("bottom-nav")
+        }
+
+        val registerCall = backendClient.registerCalls.single()
+        assertEquals("nova_user", registerCall.username)
+        assertEquals("Nova User", registerCall.displayName)
+        assertEquals("auth-token-register", container.sessionStore.token)
+        assertEquals("nova_user", container.sessionStore.username)
+    }
+
+    @Test
+    fun loginRouteShowsInlineErrorWhenBackendRejectsCredentials() {
+        val backendClient = RecordingImBackendClient(
+            loginFailure = IllegalStateException("401 unauthorized"),
+        )
+        val container = UiTestAppContainer(imBackendClient = backendClient)
+        setApp(container, initialAuthStart = RootAuthStart.Unauthenticated)
+
+        composeRule.onNodeWithTag("welcome-login-button").performClick()
+        composeRule.onNodeWithTag("login-screen").fetchSemanticsNode()
+        composeRule.onNodeWithTag("login-username").performTextReplacement("nova_user")
+        composeRule.onNodeWithTag("login-password").performTextReplacement("wrong-pass")
+        composeRule.onNodeWithTag("login-submit").performClick()
+
+        composeRule.waitUntil(5_000) {
+            backendClient.loginCalls.size == 1 && nodeExists("login-error")
+        }
+
+        composeRule.onNodeWithTag("login-error").assertTextContains("用户名或密码错误")
+        assertTrue(!nodeExists("bottom-nav"))
+        assertTrue(container.sessionStore.token.isNullOrBlank())
+    }
+
+    @Test
+    fun storedSessionRestoresAuthenticatedShellAfterBootstrapValidation() {
+        val backendClient = RecordingImBackendClient()
+        val container = UiTestAppContainer(imBackendClient = backendClient)
+        container.sessionStore.baseUrl = "http://127.0.0.1:18080/"
+        container.sessionStore.token = "persisted-token"
+        container.sessionStore.username = "nox-dev"
+
+        setApp(container, initialAuthStart = RootAuthStart.Unauthenticated)
+
+        composeRule.waitUntil(5_000) {
+            backendClient.bootstrapTokens.contains("persisted-token") && nodeExists("bottom-nav")
+        }
+
+        assertEquals(listOf("persisted-token"), backendClient.bootstrapTokens)
+    }
+
+    @Test
+    fun invalidStoredSessionFallsBackToWelcomeAndClearsSession() {
+        val backendClient = RecordingImBackendClient(
+            bootstrapFailure = IllegalStateException("session expired"),
+        )
+        val container = UiTestAppContainer(imBackendClient = backendClient)
+        container.sessionStore.baseUrl = "http://127.0.0.1:18080/"
+        container.sessionStore.token = "stale-token"
+        container.sessionStore.username = "nox-dev"
+
+        setApp(container, initialAuthStart = RootAuthStart.Unauthenticated)
+
+        composeRule.waitUntil(5_000) {
+            backendClient.bootstrapTokens.contains("stale-token") && nodeExists("welcome-screen")
+        }
+
+        assertTrue(container.sessionStore.token.isNullOrBlank())
+        assertTrue(container.sessionStore.username.isNullOrBlank())
+        assertTrue(!nodeExists("bottom-nav"))
     }
 
     @Test
@@ -656,6 +754,82 @@ class GkimRootAppTest {
         composeRule.onNodeWithText("IM validation config is incomplete or invalid.").fetchSemanticsNode()
     }
 
+    @Test
+    fun contactsScreenLoadsPendingRequestsAndAcceptsThem() {
+        val backendClient = RecordingImBackendClient(
+            pendingRequests = mutableListOf(
+                FriendRequestViewDto(
+                    id = "request-1",
+                    fromUser = BackendUserDto(
+                        id = "user-nova",
+                        externalId = "nova_user",
+                        displayName = "Nova User",
+                        title = "",
+                        avatarText = "NU",
+                    ),
+                    toUserId = "user-nox",
+                    toUserExternalId = "nox-dev",
+                    status = "pending",
+                    createdAt = "2026-04-10T09:00:00Z",
+                )
+            ),
+        )
+        val container = UiTestAppContainer(imBackendClient = backendClient)
+        container.sessionStore.baseUrl = "http://127.0.0.1:18080/"
+        container.sessionStore.token = "session-token"
+        container.sessionStore.username = "nox-dev"
+
+        setApp(container)
+
+        composeRule.onNodeWithText("联系人").performClick()
+        composeRule.onNodeWithTag("contacts-friend-requests-header").fetchSemanticsNode()
+        composeRule.onNodeWithTag("friend-request-request-1").fetchSemanticsNode()
+        composeRule.onNodeWithText("接受").performClick()
+
+        composeRule.waitUntil(5_000) {
+            backendClient.acceptedRequestIds.contains("request-1") &&
+                !nodeExists("friend-request-request-1")
+        }
+    }
+
+    @Test
+    fun userSearchFlowShowsResultsAndMarksPendingAfterAdd() {
+        val backendClient = RecordingImBackendClient(
+            searchResults = mutableListOf(
+                UserSearchResultDto(
+                    id = "user-leo",
+                    username = "leo-vance",
+                    displayName = "Leo Vance",
+                    avatarText = "LV",
+                    contactStatus = "none",
+                )
+            ),
+        )
+        val container = UiTestAppContainer(imBackendClient = backendClient)
+        container.sessionStore.baseUrl = "http://127.0.0.1:18080/"
+        container.sessionStore.token = "session-token"
+        container.sessionStore.username = "nox-dev"
+
+        setApp(container)
+
+        composeRule.onNodeWithText("联系人").performClick()
+        composeRule.onNodeWithText("搜索用户").performClick()
+        composeRule.onNodeWithTag("user-search-screen").fetchSemanticsNode()
+        composeRule.onNodeWithTag("user-search-input").performTextReplacement("leo")
+
+        composeRule.waitUntil(5_000) {
+            backendClient.searchQueries.contains("leo") && nodeExists("search-result-user-leo")
+        }
+
+        composeRule.onNodeWithText("添加").performClick()
+
+        composeRule.waitUntil(5_000) {
+            backendClient.sentFriendRequestIds.contains("user-leo")
+        }
+
+        composeRule.onNodeWithText("已发送").fetchSemanticsNode()
+    }
+
     private fun setApp(
         container: UiTestAppContainer,
         mediaPickerControllerFactory: MediaPickerControllerFactory? = null,
@@ -671,7 +845,7 @@ class GkimRootAppTest {
         composeRule.waitUntil(5_000) {
             when (initialAuthStart) {
                 RootAuthStart.Authenticated -> nodeExists("bottom-nav")
-                RootAuthStart.Unauthenticated -> nodeExists("welcome-screen")
+                RootAuthStart.Unauthenticated -> nodeExists("welcome-screen") || nodeExists("bottom-nav")
             }
         }
     }
@@ -762,15 +936,217 @@ private fun adaptiveWidthConversations(): List<com.gkim.im.android.core.model.Co
 private class UiTestAppContainer(
     conversations: List<com.gkim.im.android.core.model.Conversation> = seedConversations,
     override val messagingRepository: MessagingRepository = InMemoryMessagingRepository(conversations),
+    override val imBackendClient: ImBackendClient = RecordingImBackendClient(),
 ) : AppContainer {
+    private val okHttpClient = OkHttpClient.Builder().build()
     override val preferencesStore = UiTestPreferencesStore()
+    override val sessionStore: SessionStore =
+        SessionStore(ApplicationProvider.getApplicationContext())
     private val secureStore = UiInMemorySecureStore()
+
+    init {
+        sessionStore.clear()
+        sessionStore.baseUrl = null
+    }
 
     override val contactsRepository: ContactsRepository = DefaultContactsRepository(seedContacts, preferencesStore, Dispatchers.Main)
     override val feedRepository: FeedRepository = DefaultFeedRepository(seedPosts, seedPrompts, Dispatchers.Main)
     override val aigcRepository: AigcRepository = DefaultAigcRepository(presetProviders, preferencesStore, secureStore, Dispatchers.Main)
     override val markdownParser: MarkdownDocumentParser = MarkdownDocumentParser()
-    override val realtimeChatClient: RealtimeChatClient = RealtimeChatClient(OkHttpClient.Builder().build(), "wss://example.com/realtime")
+    override val realtimeChatClient: RealtimeChatClient =
+        RealtimeChatClient(okHttpClient, "wss://example.com/realtime")
+}
+
+private data class RegisterCall(
+    val baseUrl: String,
+    val username: String,
+    val password: String,
+    val displayName: String,
+)
+
+private data class LoginCall(
+    val baseUrl: String,
+    val username: String,
+    val password: String,
+)
+
+private class RecordingImBackendClient(
+    private val registerFailure: Throwable? = null,
+    private val loginFailure: Throwable? = null,
+    private val bootstrapFailure: Throwable? = null,
+    val searchResults: MutableList<UserSearchResultDto> = mutableListOf(),
+    val pendingRequests: MutableList<FriendRequestViewDto> = mutableListOf(),
+) : ImBackendClient {
+    val registerCalls = mutableListOf<RegisterCall>()
+    val loginCalls = mutableListOf<LoginCall>()
+    val bootstrapTokens = mutableListOf<String>()
+    val searchQueries = mutableListOf<String>()
+    val sentFriendRequestIds = mutableListOf<String>()
+    val acceptedRequestIds = mutableListOf<String>()
+    val rejectedRequestIds = mutableListOf<String>()
+
+    override suspend fun issueDevSession(baseUrl: String, externalId: String): com.gkim.im.android.data.remote.im.DevSessionResponseDto {
+        return com.gkim.im.android.data.remote.im.DevSessionResponseDto(
+            token = "dev-session-token",
+            expiresAt = "2026-04-15T10:00:00Z",
+            user = backendUser(id = "user-$externalId", externalId = externalId, displayName = externalId),
+        )
+    }
+
+    override suspend fun register(
+        baseUrl: String,
+        username: String,
+        password: String,
+        displayName: String,
+    ): AuthResponseDto {
+        registerCalls += RegisterCall(baseUrl, username, password, displayName)
+        registerFailure?.let { throw it }
+        return AuthResponseDto(
+            token = "auth-token-register",
+            expiresAt = "2026-04-15T10:00:00Z",
+            user = backendUser(id = "user-$username", externalId = username, displayName = displayName),
+        )
+    }
+
+    override suspend fun login(
+        baseUrl: String,
+        username: String,
+        password: String,
+    ): AuthResponseDto {
+        loginCalls += LoginCall(baseUrl, username, password)
+        loginFailure?.let { throw it }
+        return AuthResponseDto(
+            token = "auth-token-login",
+            expiresAt = "2026-04-15T10:00:00Z",
+            user = backendUser(id = "user-$username", externalId = username, displayName = username),
+        )
+    }
+
+    override suspend fun searchUsers(
+        baseUrl: String,
+        token: String,
+        query: String,
+    ): List<UserSearchResultDto> {
+        searchQueries += query
+        return searchResults.toList()
+    }
+
+    override suspend fun sendFriendRequest(
+        baseUrl: String,
+        token: String,
+        toUserId: String,
+    ): FriendRequestViewDto {
+        sentFriendRequestIds += toUserId
+        return FriendRequestViewDto(
+            id = "request-${sentFriendRequestIds.size}",
+            fromUser = backendUser(id = "user-nox", externalId = "nox-dev", displayName = "Nox Dev"),
+            toUserId = toUserId,
+            toUserExternalId = "target-user",
+            status = "pending",
+            createdAt = "2026-04-10T09:00:00Z",
+        )
+    }
+
+    override suspend fun listFriendRequests(
+        baseUrl: String,
+        token: String,
+    ): List<FriendRequestViewDto> = pendingRequests.toList()
+
+    override suspend fun acceptFriendRequest(
+        baseUrl: String,
+        token: String,
+        requestId: String,
+    ): FriendRequestViewDto {
+        acceptedRequestIds += requestId
+        val request = pendingRequests.first { it.id == requestId }
+        pendingRequests.removeAll { it.id == requestId }
+        return request.copy(status = "accepted")
+    }
+
+    override suspend fun rejectFriendRequest(
+        baseUrl: String,
+        token: String,
+        requestId: String,
+    ): FriendRequestViewDto {
+        rejectedRequestIds += requestId
+        val request = pendingRequests.first { it.id == requestId }
+        pendingRequests.removeAll { it.id == requestId }
+        return request.copy(status = "rejected")
+    }
+
+    override suspend fun loadBootstrap(
+        baseUrl: String,
+        token: String,
+    ): BootstrapBundleDto {
+        bootstrapTokens += token
+        bootstrapFailure?.let { throw it }
+        return BootstrapBundleDto(
+            user = backendUser(id = "user-nox", externalId = "nox-dev", displayName = "Nox Dev"),
+            contacts = listOf(
+                ContactProfileDto(
+                    userId = "user-leo",
+                    externalId = "leo-vance",
+                    displayName = "Leo Vance",
+                    title = "Realtime Systems",
+                    avatarText = "LV",
+                    addedAt = "2026-04-08T08:58:00Z",
+                )
+            ),
+            conversations = listOf(
+                ConversationSummaryDto(
+                    conversationId = "conversation-1",
+                    contact = ContactProfileDto(
+                        userId = "user-leo",
+                        externalId = "leo-vance",
+                        displayName = "Leo Vance",
+                        title = "Realtime Systems",
+                        avatarText = "LV",
+                        addedAt = "2026-04-08T08:58:00Z",
+                    ),
+                    unreadCount = 1,
+                    lastMessage = MessageRecordDto(
+                        id = "message-1",
+                        conversationId = "conversation-1",
+                        senderUserId = "user-leo",
+                        senderExternalId = "leo-vance",
+                        kind = "text",
+                        body = "Hello Nox",
+                        createdAt = "2026-04-08T09:00:00Z",
+                        deliveredAt = "2026-04-08T09:00:01Z",
+                        readAt = null,
+                    ),
+                )
+            ),
+        )
+    }
+
+    override suspend fun loadHistory(
+        baseUrl: String,
+        token: String,
+        conversationId: String,
+        limit: Int,
+        before: String?,
+    ): MessageHistoryPageDto {
+        return MessageHistoryPageDto(
+            conversationId = conversationId,
+            hasMore = false,
+            messages = emptyList(),
+        )
+    }
+
+    private fun backendUser(
+        id: String,
+        externalId: String,
+        displayName: String,
+    ): BackendUserDto {
+        return BackendUserDto(
+            id = id,
+            externalId = externalId,
+            displayName = displayName,
+            title = "",
+            avatarText = externalId.take(2).uppercase(),
+        )
+    }
 }
 
 private class RecordingMessagingRepository(

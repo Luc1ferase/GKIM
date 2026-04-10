@@ -3,7 +3,9 @@ package com.gkim.im.android.feature.settings
 import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.data.repository.DefaultAigcRepository
+import com.gkim.im.android.data.repository.InMemoryMessagingRepository
 import com.gkim.im.android.data.repository.presetProviders
+import com.gkim.im.android.data.repository.seedConversations
 import com.gkim.im.android.testing.FakePreferencesStore
 import com.gkim.im.android.testing.InMemorySecureKeyValueStore
 import com.gkim.im.android.testing.MainDispatcherRule
@@ -29,7 +31,7 @@ class SettingsViewModelTest {
         val preferencesStore = FakePreferencesStore()
         val secureStore = InMemorySecureKeyValueStore()
         val repository = DefaultAigcRepository(presetProviders, preferencesStore, secureStore, dispatcher)
-        val viewModel = SettingsViewModel(repository, preferencesStore)
+        val viewModel = SettingsViewModel(repository, preferencesStore, InMemoryMessagingRepository(seedConversations))
         val collector = launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect { }
         }
@@ -59,7 +61,7 @@ class SettingsViewModelTest {
         val preferencesStore = FakePreferencesStore()
         val secureStore = InMemorySecureKeyValueStore()
         val repository = DefaultAigcRepository(presetProviders, preferencesStore, secureStore, dispatcher)
-        val viewModel = SettingsViewModel(repository, preferencesStore)
+        val viewModel = SettingsViewModel(repository, preferencesStore, InMemoryMessagingRepository(seedConversations))
         val collector = launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect { }
         }
@@ -81,7 +83,7 @@ class SettingsViewModelTest {
         )
         val secureStore = InMemorySecureKeyValueStore()
         val repository = DefaultAigcRepository(presetProviders, preferencesStore, secureStore, dispatcher)
-        val viewModel = SettingsViewModel(repository, preferencesStore)
+        val viewModel = SettingsViewModel(repository, preferencesStore, InMemoryMessagingRepository(seedConversations))
         val collector = launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect { }
         }
@@ -113,7 +115,7 @@ class SettingsViewModelTest {
         )
         val secureStore = InMemorySecureKeyValueStore()
         val repository = DefaultAigcRepository(presetProviders, preferencesStore, secureStore, dispatcher)
-        val viewModel = SettingsViewModel(repository, preferencesStore)
+        val viewModel = SettingsViewModel(repository, preferencesStore, InMemoryMessagingRepository(seedConversations))
         val collector = launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect { }
         }

@@ -237,9 +237,28 @@ impl ImRepository {
             return Err(anyhow!("sender and recipient must be different users"));
         }
 
+        // Enforce mutual-contact gate: both users must be contacts
+        let mutual_contacts = sqlx::query_scalar::<_, bool>(
+            "select exists(
+                select 1 from contacts c1
+                join contacts c2 on c2.user_id = c1.contact_user_id and c2.contact_user_id = c1.user_id
+                where c1.user_id = ($1)::uuid and c1.contact_user_id = ($2)::uuid
+            )",
+        )
+        .bind(&sender.id)
+        .bind(&recipient.id)
+        .fetch_one(&mut *tx)
+        .await
+        .context("check mutual contact status")?;
+
+        if !mutual_contacts {
+            return Err(anyhow!(
+                "users must be mutual contacts before messaging; send a friend request first"
+            ));
+        }
+
         let conversation_id =
             find_or_create_direct_conversation_tx(&mut tx, &sender.id, &recipient.id).await?;
-        ensure_contact_pair_tx(&mut tx, &sender.id, &recipient.id).await?;
         ensure_member_tx(&mut tx, &conversation_id, &sender.id, &recipient.id).await?;
         ensure_member_tx(&mut tx, &conversation_id, &recipient.id, &sender.id).await?;
 
@@ -548,25 +567,6 @@ async fn find_or_create_direct_conversation_tx(
     .fetch_one(&mut **tx)
     .await
     .context("create direct conversation")
-}
-
-async fn ensure_contact_pair_tx(
-    tx: &mut Transaction<'_, Postgres>,
-    user_a_id: &str,
-    user_b_id: &str,
-) -> Result<()> {
-    sqlx::query(
-        "insert into contacts (user_id, contact_user_id)
-         values (($1)::uuid, ($2)::uuid), (($2)::uuid, ($1)::uuid)
-         on conflict (user_id, contact_user_id) do nothing",
-    )
-    .bind(user_a_id)
-    .bind(user_b_id)
-    .execute(&mut **tx)
-    .await
-    .context("ensure reciprocal contacts")?;
-
-    Ok(())
 }
 
 async fn ensure_member_tx(

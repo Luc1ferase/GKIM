@@ -38,10 +38,13 @@ import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.feature.chat.ChatRoute
+import com.gkim.im.android.feature.auth.LoginRoute
+import com.gkim.im.android.feature.auth.RegisterRoute
 import com.gkim.im.android.feature.contacts.ContactsRoute
 import com.gkim.im.android.feature.messages.MessagesRoute
 import com.gkim.im.android.feature.settings.SettingsRoute
 import com.gkim.im.android.feature.shared.AppScaffold
+import com.gkim.im.android.feature.social.UserSearchRoute
 import com.gkim.im.android.feature.space.SpaceRoute
 
 private data class RootDestination(val route: String, val label: String, val icon: @Composable () -> Unit)
@@ -72,7 +75,21 @@ fun GkimRootApp(
     LaunchedEffect(initialAuthStart) {
         authState = when (initialAuthStart) {
             RootAuthStart.Authenticated -> RootAuthState.Authenticated
-            RootAuthStart.Unauthenticated -> RootAuthState.Unauthenticated
+            RootAuthStart.Unauthenticated -> {
+                val storedToken = resolvedContainer.sessionStore.token
+                if (storedToken.isNullOrBlank()) {
+                    RootAuthState.Unauthenticated
+                } else {
+                    val baseUrl = resolvedContainer.sessionStore.baseUrl ?: "http://127.0.0.1:18080/"
+                    try {
+                        resolvedContainer.imBackendClient.loadBootstrap(baseUrl, storedToken)
+                        RootAuthState.Authenticated
+                    } catch (_: Exception) {
+                        resolvedContainer.sessionStore.clear()
+                        RootAuthState.Unauthenticated
+                    }
+                }
+            }
         }
     }
 
@@ -85,10 +102,31 @@ fun GkimRootApp(
                         .testTag("root-auth-loading"),
                 )
 
-                RootAuthState.Unauthenticated -> WelcomeRoute(
-                    onLogin = { authState = RootAuthState.Authenticated },
-                    onRegister = { authState = RootAuthState.Authenticated },
-                )
+                RootAuthState.Unauthenticated -> {
+                    val authNavController = rememberNavController()
+                    NavHost(navController = authNavController, startDestination = "welcome") {
+                        composable("welcome") {
+                            WelcomeRoute(
+                                onLogin = { authNavController.navigate("login") },
+                                onRegister = { authNavController.navigate("register") },
+                            )
+                        }
+                        composable("login") {
+                            LoginRoute(
+                                container = resolvedContainer,
+                                onLoggedIn = { authState = RootAuthState.Authenticated },
+                                onBack = { authNavController.popBackStack() },
+                            )
+                        }
+                        composable("register") {
+                            RegisterRoute(
+                                container = resolvedContainer,
+                                onRegistered = { authState = RootAuthState.Authenticated },
+                                onBack = { authNavController.popBackStack() },
+                            )
+                        }
+                    }
+                }
 
                 RootAuthState.Authenticated -> {
                     AppScaffold(
@@ -113,6 +151,12 @@ fun GkimRootApp(
                                     )
                                 }
                                 composable("settings") { SettingsRoute(resolvedNavController, resolvedContainer) }
+                                composable("user-search") {
+                                    UserSearchRoute(
+                                        container = resolvedContainer,
+                                        onBack = { resolvedNavController.popBackStack() },
+                                    )
+                                }
                             }
                         }
                     }

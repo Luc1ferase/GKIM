@@ -76,6 +76,50 @@ data class DevSessionResponseDto(
 )
 
 @Serializable
+data class AuthResponseDto(
+    val token: String,
+    val expiresAt: String,
+    val user: BackendUserDto,
+)
+
+@Serializable
+data class RegisterRequestDto(
+    val username: String,
+    val password: String,
+    val displayName: String,
+)
+
+@Serializable
+data class LoginRequestDto(
+    val username: String,
+    val password: String,
+)
+
+@Serializable
+data class UserSearchResultDto(
+    val id: String,
+    val username: String,
+    val displayName: String,
+    val avatarText: String,
+    val contactStatus: String,
+)
+
+@Serializable
+data class FriendRequestBodyDto(
+    val toUserId: String,
+)
+
+@Serializable
+data class FriendRequestViewDto(
+    val id: String,
+    val fromUser: BackendUserDto,
+    val toUserId: String,
+    val toUserExternalId: String,
+    val status: String,
+    val createdAt: String,
+)
+
+@Serializable
 data class BootstrapBundleDto(
     val user: BackendUserDto,
     val contacts: List<ContactProfileDto>,
@@ -174,6 +218,24 @@ sealed interface ImGatewayEvent {
         val code: String,
         val message: String,
     ) : ImGatewayEvent
+
+    @Serializable
+    data class FriendRequestReceived(
+        val requestId: String,
+        val fromUser: BackendUserDto,
+    ) : ImGatewayEvent
+
+    @Serializable
+    data class FriendRequestAccepted(
+        val requestId: String,
+        val byUser: BackendUserDto,
+    ) : ImGatewayEvent
+
+    @Serializable
+    data class FriendRequestRejected(
+        val requestId: String,
+        val byUserId: String,
+    ) : ImGatewayEvent
 }
 
 object ImGatewayEventParser {
@@ -189,6 +251,9 @@ object ImGatewayEventParser {
             "message.delivered" -> json.decodeFromJsonElement<ImGatewayEvent.MessageDelivered>(element)
             "message.read" -> json.decodeFromJsonElement<ImGatewayEvent.MessageRead>(element)
             "error" -> json.decodeFromJsonElement<ImGatewayEvent.Error>(element)
+            "friend_request.received" -> json.decodeFromJsonElement<ImGatewayEvent.FriendRequestReceived>(element)
+            "friend_request.accepted" -> json.decodeFromJsonElement<ImGatewayEvent.FriendRequestAccepted>(element)
+            "friend_request.rejected" -> json.decodeFromJsonElement<ImGatewayEvent.FriendRequestRejected>(element)
             else -> throw IllegalArgumentException("Unsupported gateway event type")
         }
     }

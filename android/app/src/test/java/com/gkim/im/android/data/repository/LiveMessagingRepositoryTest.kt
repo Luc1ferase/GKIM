@@ -5,10 +5,13 @@ import com.gkim.im.android.data.remote.im.BootstrapBundleDto
 import com.gkim.im.android.data.remote.im.ContactProfileDto
 import com.gkim.im.android.data.remote.im.ConversationSummaryDto
 import com.gkim.im.android.data.remote.im.DevSessionResponseDto
+import com.gkim.im.android.data.remote.im.AuthResponseDto
+import com.gkim.im.android.data.remote.im.FriendRequestViewDto
 import com.gkim.im.android.data.remote.im.ImBackendClient
 import com.gkim.im.android.data.remote.im.ImGatewayEvent
 import com.gkim.im.android.data.remote.im.MessageHistoryPageDto
 import com.gkim.im.android.data.remote.im.MessageRecordDto
+import com.gkim.im.android.data.remote.im.UserSearchResultDto
 import com.gkim.im.android.data.remote.realtime.RealtimeGateway
 import com.gkim.im.android.core.model.Contact
 import com.gkim.im.android.testing.FakePreferencesStore
@@ -255,52 +258,94 @@ class LiveMessagingRepositoryTest {
             )
         }
 
+        override suspend fun register(
+            baseUrl: String,
+            username: String,
+            password: String,
+            displayName: String,
+        ): AuthResponseDto = authResponse(username, displayName)
+
+        override suspend fun login(
+            baseUrl: String,
+            username: String,
+            password: String,
+        ): AuthResponseDto = authResponse(username, username)
+
+        override suspend fun searchUsers(
+            baseUrl: String,
+            token: String,
+            query: String,
+        ): List<UserSearchResultDto> = emptyList()
+
+        override suspend fun sendFriendRequest(
+            baseUrl: String,
+            token: String,
+            toUserId: String,
+        ): FriendRequestViewDto = friendRequestView(toUserId = toUserId)
+
+        override suspend fun listFriendRequests(
+            baseUrl: String,
+            token: String,
+        ): List<FriendRequestViewDto> = emptyList()
+
+        override suspend fun acceptFriendRequest(
+            baseUrl: String,
+            token: String,
+            requestId: String,
+        ): FriendRequestViewDto = friendRequestView(status = "accepted")
+
+        override suspend fun rejectFriendRequest(
+            baseUrl: String,
+            token: String,
+            requestId: String,
+        ): FriendRequestViewDto = friendRequestView(status = "rejected")
+
         override suspend fun loadBootstrap(baseUrl: String, token: String): BootstrapBundleDto {
             bootstrapFailure?.let { throw it }
             return BootstrapBundleDto(
-            user = BackendUserDto(
-                id = "user-nox",
-                externalId = "nox-dev",
-                displayName = "Nox Dev",
-                title = "IM Milestone Owner",
-                avatarText = "NX",
-            ),
-            contacts = listOf(
-                ContactProfileDto(
-                    userId = "user-leo",
-                    externalId = "leo-vance",
-                    displayName = "Leo Vance",
-                    title = "Realtime Systems",
-                    avatarText = "LV",
-                    addedAt = "2026-04-08T08:58:00Z",
-                )
-            ),
-            conversations = listOf(
-                ConversationSummaryDto(
-                    conversationId = "conversation-1",
-                    contact = ContactProfileDto(
+                user = BackendUserDto(
+                    id = "user-nox",
+                    externalId = "nox-dev",
+                    displayName = "Nox Dev",
+                    title = "IM Milestone Owner",
+                    avatarText = "NX",
+                ),
+                contacts = listOf(
+                    ContactProfileDto(
                         userId = "user-leo",
                         externalId = "leo-vance",
                         displayName = "Leo Vance",
                         title = "Realtime Systems",
                         avatarText = "LV",
                         addedAt = "2026-04-08T08:58:00Z",
-                    ),
-                    unreadCount = 2,
-                    lastMessage = MessageRecordDto(
-                        id = "message-1",
+                    )
+                ),
+                conversations = listOf(
+                    ConversationSummaryDto(
                         conversationId = "conversation-1",
-                        senderUserId = "user-leo",
-                        senderExternalId = "leo-vance",
-                        kind = "text",
-                        body = "Hello Nox",
-                        createdAt = "2026-04-08T09:00:00Z",
-                        deliveredAt = "2026-04-08T09:00:01Z",
-                        readAt = null,
+                        contact = ContactProfileDto(
+                            userId = "user-leo",
+                            externalId = "leo-vance",
+                            displayName = "Leo Vance",
+                            title = "Realtime Systems",
+                            avatarText = "LV",
+                            addedAt = "2026-04-08T08:58:00Z",
+                        ),
+                        unreadCount = 2,
+                        lastMessage = MessageRecordDto(
+                            id = "message-1",
+                            conversationId = "conversation-1",
+                            senderUserId = "user-leo",
+                            senderExternalId = "leo-vance",
+                            kind = "text",
+                            body = "Hello Nox",
+                            createdAt = "2026-04-08T09:00:00Z",
+                            deliveredAt = "2026-04-08T09:00:01Z",
+                            readAt = null,
+                        ),
                     ),
                 )
-            ),
-        )
+            )
         }
 
         override suspend fun loadHistory(
@@ -339,6 +384,40 @@ class LiveMessagingRepositoryTest {
                         readAt = null,
                     ),
                 ),
+            )
+        }
+
+        private fun authResponse(externalId: String, displayName: String): AuthResponseDto {
+            return AuthResponseDto(
+                token = "auth-token-1",
+                expiresAt = "2026-04-15T10:00:00Z",
+                user = BackendUserDto(
+                    id = "user-$externalId",
+                    externalId = externalId,
+                    displayName = displayName,
+                    title = "",
+                    avatarText = externalId.take(2).uppercase(),
+                ),
+            )
+        }
+
+        private fun friendRequestView(
+            toUserId: String = "user-leo",
+            status: String = "pending",
+        ): FriendRequestViewDto {
+            return FriendRequestViewDto(
+                id = "request-1",
+                fromUser = BackendUserDto(
+                    id = "user-nox",
+                    externalId = "nox-dev",
+                    displayName = "Nox Dev",
+                    title = "IM Milestone Owner",
+                    avatarText = "NX",
+                ),
+                toUserId = toUserId,
+                toUserExternalId = "leo-vance",
+                status = status,
+                createdAt = "2026-04-08T09:00:00Z",
             )
         }
     }

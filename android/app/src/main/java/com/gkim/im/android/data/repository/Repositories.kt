@@ -562,6 +562,9 @@ class LiveMessagingRepository(
             }
 
             is com.gkim.im.android.data.remote.im.ImGatewayEvent.Pong -> Unit
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.FriendRequestReceived -> Unit // TODO: handle in friend request UI
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.FriendRequestAccepted -> Unit // TODO: handle in friend request UI
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.FriendRequestRejected -> Unit // TODO: handle in friend request UI
         }
     }
 
