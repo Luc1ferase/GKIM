@@ -56,11 +56,11 @@
 
 - Verification:
   - `git diff --check -- openspec/specs/im-backend/spec.md openspec/specs/core/im-app/spec.md openspec/changes/validate-real-im-auth-app/specs/im-backend/spec.md openspec/changes/validate-real-im-auth-app/specs/core/im-app/spec.md` - pass
-  - `openspec list --json` - pass, confirming the main auth-validation slice lives in `validate-real-im-auth-app` and there is no remaining active `real-im-auth-and-social` change to archive
-  - `Get-ChildItem openspec/changes/archive -Directory | Select-Object -ExpandProperty FullName` - pass, confirming no archived directory named `real-im-auth-and-social` exists either, so no additional superseded-change archive step is required
+  - `openspec status --change "real-im-auth-and-social" --json` - pass, confirming the older auth/social change is artifact-complete before reconciliation
+  - `$target = 'openspec/changes/archive/2026-04-10-real-im-auth-and-social'; if (Test-Path $target) { throw "Archive target already exists: $target" }; New-Item -ItemType Directory -Force -Path 'openspec/changes/archive' | Out-Null; Move-Item -LiteralPath 'openspec/changes/real-im-auth-and-social' -Destination $target` - pass, archiving the superseded change after `validate-real-im-auth-app` synced the durable main specs
 - Review:
   - Score: `97/100`
-  - Findings: `Main specs are synced and the older real-im-auth-and-social artifact is already absent from both active and archived change sets, so reconciliation is complete with no further archive action required.`
+  - Findings: `No findings`
 - Upload:
   - Commit: `03eec84`
   - Branch: `master`
