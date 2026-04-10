@@ -6,11 +6,10 @@
 
 | 层级 | 技术 | 定位 |
 |---|---|---|
-| **Android 客户端** | Kotlin · Jetpack Compose · Material 3 · Navigation Compose · Room · DataStore · EncryptedSharedPreferences · Retrofit 2 · OkHttp 4 · WebSocket | 主交付客户端 |
+| **Android 客户端** | Kotlin · Jetpack Compose · Material 3 · Navigation Compose · Room · DataStore · EncryptedSharedPreferences · Retrofit 2 · OkHttp 4 · WebSocket | 原生移动端 |
 | **Rust 后端** | Rust 2021 · Axum 0.7 · Tokio · PostgreSQL (SQLx) · Argon2 · Docker | HTTP + WebSocket 即时通信服务 |
-| **UniApp 原型** | Vue 3 · TypeScript · Vite · Pinia · UnoCSS · markdown-it | 早期跨端原型，用于设计探索和信息架构沉淀 |
 
-项目采用三层渐进式架构：先用 UniApp 跨端方案快速验证界面和交互结构，再将主交付路线收敛到 Android 原生以保证产品能力落地，后端选择 Rust 以适配 IM 场景对高并发、长连接和状态一致性的要求。
+客户端选择 Android 原生以保证 IM 场景对交互流畅度、状态管理和实时连接的要求；后端选择 Rust 以适配高并发、长连接和状态一致性的需求。
 
 ## 核心功能
 
@@ -51,7 +50,7 @@ proposal → design → tasks → 实现 → 验证 → 打分 → 证据记录 
 - 所有变更从 `openspec/changes/` 中的提案开始，每个变更包含 proposal、design、tasks 和可选的 spec delta
 - 每个实现任务必须经过验证、Review、质量打分（最低 95 分）和证据记录后才能标记完成
 - 已归档 17 个变更，4 个变更进行中
-- 主��范位于 `openspec/specs/core/im-app/spec.md`
+- 主规范位于 `openspec/specs/core/im-app/spec.md`
 
 详见 [`openspec/config.yaml`](openspec/config.yaml) 和 [`docs/DELIVERY_WORKFLOW.md`](docs/DELIVERY_WORKFLOW.md)。
 
@@ -68,10 +67,6 @@ GKIM/
 │   ├── src/          #   Axum 路由、Auth、Social、IM Service、WebSocket Hub
 │   ├── migrations/   #   PostgreSQL Schema 迁移
 │   └── tests/        #   集成测试
-├── src/              # UniApp Vue3 原型（设计探索）
-│   ├── pages/        #   Messages、Contacts、Chat、Space、Workshop、Settings
-│   ├── api/aigc/     #   多提供商适配注册表
-│   └── composables/  #   useAIGC、useCreativeWorkshop
 ├── openspec/         # 规格驱动交付框架
 │   ├── changes/      #   活跃 + 归档变更
 │   └── specs/        #   核心规范、质量门禁、后端规范
@@ -85,14 +80,6 @@ GKIM/
 
 **Android 客户端**：详见 [`android/README.md`](android/README.md)
 
-**UniApp 原型**：
-
-```bash
-pnpm install
-pnpm dev:h5     # 浏览器预览
-pnpm test       # 运行测试
-```
-
 ## 测试
 
 | 层级 | 工具 | 覆盖范围 |
@@ -100,4 +87,3 @@ pnpm test       # 运行测试
 | Rust 后端 | cargo test | HTTP API、WebSocket 网关、Schema 迁移集成测试 |
 | Android 单元测试 | JUnit + Coroutines Test | Repository、ViewModel、IM Client、Markdown 解析 |
 | Android 仪器测试 | Espresso + Compose UI Test | 导航、欢迎视频布局、IM 后端端到端验证 |
-| UniApp 原型 | Vitest | AIGC Composable、Workshop、Markdown 渲染、排序工具 |
