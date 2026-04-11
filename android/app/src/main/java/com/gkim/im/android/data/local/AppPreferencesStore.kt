@@ -7,6 +7,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.core.model.ContactSortMode
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -62,11 +64,11 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
     }
 
     override val imHttpBaseUrl: Flow<String> = context.preferencesStore.data.map { prefs ->
-        prefs[imHttpBaseUrlKey] ?: "http://127.0.0.1:18080/"
+        prefs[imHttpBaseUrlKey] ?: DEFAULT_IM_HTTP_BASE_URL
     }
 
     override val imWebSocketUrl: Flow<String> = context.preferencesStore.data.map { prefs ->
-        prefs[imWebSocketUrlKey] ?: "ws://127.0.0.1:18080/ws"
+        prefs[imWebSocketUrlKey] ?: DEFAULT_IM_WEBSOCKET_URL
     }
 
     override val imDevUserExternalId: Flow<String> = context.preferencesStore.data.map { prefs ->

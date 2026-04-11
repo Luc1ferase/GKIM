@@ -37,6 +37,7 @@ import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.remote.im.resolveImHttpEndpoint
 import com.gkim.im.android.feature.chat.ChatRoute
 import com.gkim.im.android.feature.auth.LoginRoute
 import com.gkim.im.android.feature.auth.RegisterRoute
@@ -80,9 +81,10 @@ fun GkimRootApp(
                 if (storedToken.isNullOrBlank()) {
                     RootAuthState.Unauthenticated
                 } else {
-                    val baseUrl = resolvedContainer.sessionStore.baseUrl ?: "http://127.0.0.1:18080/"
+                    val endpoint = resolvedContainer.resolveImHttpEndpoint()
                     try {
-                        resolvedContainer.imBackendClient.loadBootstrap(baseUrl, storedToken)
+                        resolvedContainer.imBackendClient.loadBootstrap(endpoint.baseUrl, storedToken)
+                        resolvedContainer.sessionStore.baseUrl = endpoint.baseUrl
                         RootAuthState.Authenticated
                     } catch (_: Exception) {
                         resolvedContainer.sessionStore.clear()

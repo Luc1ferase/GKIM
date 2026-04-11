@@ -33,6 +33,7 @@ import com.gkim.im.android.core.designsystem.PillAction
 import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.data.remote.im.UserSearchResultDto
 import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.remote.im.resolveImHttpEndpoint
 import kotlinx.coroutines.launch
 
 @Composable
@@ -72,10 +73,10 @@ fun UserSearchRoute(container: AppContainer, onBack: () -> Unit) {
                 if (newQuery.trim().length >= 2) {
                     isSearching = true
                     val token = container.sessionStore.token ?: return@OutlinedTextField
-                    val baseUrl = container.sessionStore.baseUrl ?: "http://127.0.0.1:18080/"
                     scope.launch {
+                        val endpoint = container.resolveImHttpEndpoint()
                         try {
-                            results = container.imBackendClient.searchUsers(baseUrl, token, newQuery.trim())
+                            results = container.imBackendClient.searchUsers(endpoint.baseUrl, token, newQuery.trim())
                         } catch (_: Exception) { }
                         isSearching = false
                     }
@@ -145,10 +146,10 @@ private fun SearchResultCard(
                     label = appLanguage.pick("Add", "添加"),
                     onClick = {
                         val token = container.sessionStore.token ?: return@PillAction
-                        val baseUrl = container.sessionStore.baseUrl ?: "http://127.0.0.1:18080/"
                         scope.launch {
+                            val endpoint = container.resolveImHttpEndpoint()
                             try {
-                                container.imBackendClient.sendFriendRequest(baseUrl, token, user.id)
+                                container.imBackendClient.sendFriendRequest(endpoint.baseUrl, token, user.id)
                                 status = "pending_sent"
                             } catch (_: Exception) { }
                         }

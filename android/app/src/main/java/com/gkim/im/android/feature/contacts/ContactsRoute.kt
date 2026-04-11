@@ -44,6 +44,7 @@ import com.gkim.im.android.data.remote.im.FriendRequestViewDto
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.ContactsRepository
 import com.gkim.im.android.data.repository.MessagingRepository
+import com.gkim.im.android.data.remote.im.resolveImHttpEndpoint
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -114,9 +115,9 @@ private fun ContactsScreen(
 
     LaunchedEffect(Unit) {
         val token = container.sessionStore.token ?: return@LaunchedEffect
-        val baseUrl = container.sessionStore.baseUrl ?: "http://127.0.0.1:18080/"
+        val endpoint = container.resolveImHttpEndpoint()
         try {
-            pendingRequests = container.imBackendClient.listFriendRequests(baseUrl, token)
+            pendingRequests = container.imBackendClient.listFriendRequests(endpoint.baseUrl, token)
         } catch (_: Exception) { }
     }
 
@@ -181,20 +182,20 @@ private fun ContactsScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             PillAction(label = appLanguage.pick("Accept", "接受")) {
                                 val token = container.sessionStore.token ?: return@PillAction
-                                val baseUrl = container.sessionStore.baseUrl ?: "http://127.0.0.1:18080/"
                                 scope.launch {
+                                    val endpoint = container.resolveImHttpEndpoint()
                                     try {
-                                        container.imBackendClient.acceptFriendRequest(baseUrl, token, request.id)
+                                        container.imBackendClient.acceptFriendRequest(endpoint.baseUrl, token, request.id)
                                         pendingRequests = pendingRequests.filter { it.id != request.id }
                                     } catch (_: Exception) { }
                                 }
                             }
                             PillAction(label = appLanguage.pick("Reject", "拒绝")) {
                                 val token = container.sessionStore.token ?: return@PillAction
-                                val baseUrl = container.sessionStore.baseUrl ?: "http://127.0.0.1:18080/"
                                 scope.launch {
+                                    val endpoint = container.resolveImHttpEndpoint()
                                     try {
-                                        container.imBackendClient.rejectFriendRequest(baseUrl, token, request.id)
+                                        container.imBackendClient.rejectFriendRequest(endpoint.baseUrl, token, request.id)
                                         pendingRequests = pendingRequests.filter { it.id != request.id }
                                     } catch (_: Exception) { }
                                 }

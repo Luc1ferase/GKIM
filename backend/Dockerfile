@@ -25,6 +25,7 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY --from=build /tmp/target/release/gkim-im-backend /usr/local/bin/gkim-im-backend
+COPY migrations ./migrations
 
 ENV APP_SERVICE_NAME=gkim-im-backend
 ENV APP_BIND_ADDR=0.0.0.0:8080

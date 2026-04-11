@@ -12,6 +12,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
 import com.gkim.im.android.data.remote.im.ImBackendHttpClient
 import com.gkim.im.android.data.remote.im.ImGatewayEvent
 import com.gkim.im.android.data.repository.AppContainer
@@ -32,8 +34,8 @@ class LiveImBackendValidationTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
-    private val httpBaseUrl = "http://127.0.0.1:18080/"
-    private val webSocketUrl = "ws://127.0.0.1:18080/ws"
+    private val httpBaseUrl = DEFAULT_IM_HTTP_BASE_URL
+    private val webSocketUrl = DEFAULT_IM_WEBSOCKET_URL
 
     private lateinit var backendClient: ImBackendHttpClient
     private lateinit var counterpartGateway: com.gkim.im.android.data.remote.realtime.RealtimeChatClient

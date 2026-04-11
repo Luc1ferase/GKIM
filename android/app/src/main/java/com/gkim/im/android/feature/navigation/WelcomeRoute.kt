@@ -44,6 +44,7 @@ internal fun WelcomeRoute(
     onRegister: () -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
+    val (surfaceScrimAlpha, primaryScrimAlpha, onSurfaceScrimAlpha) = WelcomeVideoOverlayStyle.scrimAlphas()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -58,9 +59,9 @@ internal fun WelcomeRoute(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            AetherColors.Surface.copy(alpha = 0.08f),
-                            AetherColors.Primary.copy(alpha = 0.16f),
-                            AetherColors.OnSurface.copy(alpha = 0.68f),
+                            AetherColors.Surface.copy(alpha = surfaceScrimAlpha),
+                            AetherColors.Primary.copy(alpha = primaryScrimAlpha),
+                            AetherColors.OnSurface.copy(alpha = onSurfaceScrimAlpha),
                         ),
                     ),
                 ),
@@ -150,8 +151,8 @@ internal fun WelcomeRoute(
             ) {
                 Text(
                     text = appLanguage.pick(
-                        "Preview seam: login/register currently unlock the shell while the full auth forms land in the next slice.",
-                        "开发预览说明：当前“登录 / 注册”会先接入应用壳层，下一任务再补齐真实认证表单。",
+                        "Use your account credentials to enter the live IM shell and keep the onboarding motion visible behind the native UI.",
+                        "使用账号凭据进入实时 IM 壳层，并让开屏动效持续在原生界面后方保持可见。",
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = AetherColors.Surface.copy(alpha = 0.7f),
@@ -208,6 +209,10 @@ internal object WelcomeAtmosphereAccentCatalog {
         WelcomeAtmosphereAccentSlot.TopStartOrb,
         WelcomeAtmosphereAccentSlot.CenterEndOrb,
     )
+}
+
+internal object WelcomeVideoOverlayStyle {
+    fun scrimAlphas(): List<Float> = listOf(0.03f, 0.09f, 0.36f)
 }
 
 @Composable
@@ -273,7 +278,6 @@ private class WelcomeVideoCoverContainer(
     }
 
     fun bindToWelcomeVideo(videoUri: Uri) {
-        videoView.setVideoURI(videoUri)
         videoView.setOnPreparedListener { mediaPlayer ->
             videoWidthPx = mediaPlayer.videoWidth
             videoHeightPx = mediaPlayer.videoHeight
@@ -282,6 +286,7 @@ private class WelcomeVideoCoverContainer(
             applyCoverLayout()
             videoView.start()
         }
+        videoView.setVideoURI(videoUri)
     }
 
     fun ensurePlaying() {

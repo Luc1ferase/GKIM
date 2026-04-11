@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context, Result};
-use gkim_im_backend::{app::build_router, config::AppConfig};
+use gkim_im_backend::{app::build_router, config::AppConfig, migrations::apply_runtime_migrations};
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing::info;
@@ -14,6 +14,9 @@ async fn main() -> Result<()> {
         .connect(&config.database_url)
         .await
         .context("connect postgres pool")?;
+    apply_runtime_migrations(&pool)
+        .await
+        .context("apply runtime migrations")?;
 
     let listener = TcpListener::bind(&config.bind_addr)
         .await

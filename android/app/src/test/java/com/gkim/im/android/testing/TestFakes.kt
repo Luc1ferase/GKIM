@@ -5,6 +5,8 @@ import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.core.model.ContactSortMode
 import com.gkim.im.android.core.security.SecureKeyValueStore
 import com.gkim.im.android.data.local.PreferencesStore
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,8 +16,8 @@ class FakePreferencesStore(
     initialProviderId: String = "hunyuan",
     initialBaseUrl: String = "https://api.example.com/v1",
     initialModel: String = "gpt-image-1",
-    initialImHttpBaseUrl: String = "http://127.0.0.1:18080/",
-    initialImWebSocketUrl: String = "ws://127.0.0.1:18080/ws",
+    initialImHttpBaseUrl: String = DEFAULT_IM_HTTP_BASE_URL,
+    initialImWebSocketUrl: String = DEFAULT_IM_WEBSOCKET_URL,
     initialImDevUserExternalId: String = "nox-dev",
     initialLanguage: AppLanguage = AppLanguage.Chinese,
     initialThemeMode: AppThemeMode = AppThemeMode.Light,

@@ -42,6 +42,8 @@ import com.gkim.im.android.core.model.AigcProvider
 import com.gkim.im.android.core.model.CustomProviderConfig
 import com.gkim.im.android.core.util.messagingIntegrationStatusLabel
 import com.gkim.im.android.data.local.PreferencesStore
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.MessagingIntegrationPhase
@@ -132,8 +134,8 @@ internal class SettingsViewModel(
             providers = repository.providers.value,
             activeProviderId = repository.activeProviderId.value,
             customProvider = repository.customProvider.value,
-            imHttpBaseUrl = "http://127.0.0.1:18080/",
-            imWebSocketUrl = "ws://127.0.0.1:18080/ws",
+            imHttpBaseUrl = DEFAULT_IM_HTTP_BASE_URL,
+            imWebSocketUrl = DEFAULT_IM_WEBSOCKET_URL,
             imDevUserExternalId = "nox-dev",
             messagingIntegrationState = messagingRepository.integrationState.value,
             appLanguage = AppLanguage.Chinese,

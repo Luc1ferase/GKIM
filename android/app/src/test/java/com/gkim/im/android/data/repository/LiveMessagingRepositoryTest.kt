@@ -8,6 +8,7 @@ import com.gkim.im.android.data.remote.im.DevSessionResponseDto
 import com.gkim.im.android.data.remote.im.AuthResponseDto
 import com.gkim.im.android.data.remote.im.FriendRequestViewDto
 import com.gkim.im.android.data.remote.im.ImBackendClient
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
 import com.gkim.im.android.data.remote.im.ImGatewayEvent
 import com.gkim.im.android.data.remote.im.MessageHistoryPageDto
 import com.gkim.im.android.data.remote.im.MessageRecordDto
@@ -56,7 +57,7 @@ class LiveMessagingRepositoryTest {
         assertEquals("nox-dev", repository.integrationState.value.activeUserExternalId)
         assertEquals("session-token-1", backendClient.issuedToken)
         assertEquals("session-token-1", realtimeGateway.connectedToken)
-        assertEquals("ws://127.0.0.1:18080/ws", realtimeGateway.connectedEndpoint)
+        assertEquals(DEFAULT_IM_WEBSOCKET_URL, realtimeGateway.connectedEndpoint)
         assertEquals(1, repository.conversations.value.size)
         assertEquals("conversation-1", repository.conversations.value.single().id)
         assertEquals("leo-vance", repository.conversations.value.single().contactId)

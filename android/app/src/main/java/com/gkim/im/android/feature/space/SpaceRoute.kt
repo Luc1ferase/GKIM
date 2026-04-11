@@ -125,6 +125,7 @@ fun SpaceRoute(navController: NavHostController, container: AppContainer) {
     SpaceScreen(
         uiState = uiState,
         onSelectFilter = viewModel::selectFilter,
+        onOpenSettings = { navController.navigate("settings") },
         onApplyPrompt = { prompt ->
             container.aigcRepository.updateDraft(DraftAigcRequest(prompt = prompt.prompt))
             navController.navigate("chat/studio")
@@ -136,6 +137,7 @@ fun SpaceRoute(navController: NavHostController, container: AppContainer) {
 private fun SpaceScreen(
     uiState: SpaceUiState,
     onSelectFilter: (SpaceDiscoveryFilter) -> Unit,
+    onOpenSettings: () -> Unit,
     onApplyPrompt: (WorkshopPrompt) -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
@@ -148,6 +150,8 @@ private fun SpaceScreen(
     ) {
         PageHeader(
             title = appLanguage.pick("Space", "空间"),
+            actionLabel = appLanguage.pick("Settings", "设置"),
+            onAction = onOpenSettings,
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

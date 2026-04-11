@@ -19,6 +19,8 @@
 1. Copy `backend/.env.example` to `backend/.env.local`.
 2. Fill in the local secret values without committing that file.
 3. Start the service with your shell env loaded and call `/health`.
+4. The backend now auto-applies checked-in SQL migrations on startup, including legacy bootstrap-only
+   databases that predate the auth migration ledger.
 
 Example PowerShell:
 
@@ -56,7 +58,18 @@ Then verify the published health endpoint from the host:
 Invoke-WebRequest http://127.0.0.1:18080/health | Select-Object -ExpandProperty Content
 ```
 
+When validating from the Android emulator, do not point the client at `127.0.0.1:18080`.
+Inside the emulator that loopback address resolves to the device itself, not to the host-published
+backend. Use the host bridge endpoints instead:
+
+```text
+HTTP: http://10.0.2.2:18080/
+WS:   ws://10.0.2.2:18080/ws
+```
+
 This local image is also intended to become the deployable server image later, so keep the runtime env contract based on `.env.local` / deployment secrets rather than baking secrets into the image.
+The image must continue shipping the `migrations/` directory because startup now reconciles the
+runtime schema before serving requests.
 
 ## Ubuntu bootstrap and debug
 

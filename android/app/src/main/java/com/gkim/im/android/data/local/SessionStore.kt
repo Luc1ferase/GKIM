@@ -40,6 +40,7 @@ class SessionStore(context: Context) {
         prefs.edit()
             .remove(KEY_TOKEN)
             .remove(KEY_USERNAME)
+            .remove(KEY_BASE_URL)
             .apply()
     }
 

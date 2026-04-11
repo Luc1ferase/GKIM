@@ -2,6 +2,8 @@ package com.gkim.im.android.feature.settings
 
 import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AppThemeMode
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
 import com.gkim.im.android.data.repository.DefaultAigcRepository
 import com.gkim.im.android.data.repository.InMemoryMessagingRepository
 import com.gkim.im.android.data.repository.presetProviders
@@ -109,8 +111,8 @@ class SettingsViewModelTest {
     fun `settings view model exposes and updates IM backend validation inputs`() = runTest(mainDispatcherRule.dispatcher) {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val preferencesStore = FakePreferencesStore(
-            initialImHttpBaseUrl = "http://127.0.0.1:18080/",
-            initialImWebSocketUrl = "ws://127.0.0.1:18080/ws",
+            initialImHttpBaseUrl = DEFAULT_IM_HTTP_BASE_URL,
+            initialImWebSocketUrl = DEFAULT_IM_WEBSOCKET_URL,
             initialImDevUserExternalId = "nox-dev",
         )
         val secureStore = InMemorySecureKeyValueStore()
@@ -122,8 +124,8 @@ class SettingsViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals("http://127.0.0.1:18080/", viewModel.uiState.value.imHttpBaseUrl)
-        assertEquals("ws://127.0.0.1:18080/ws", viewModel.uiState.value.imWebSocketUrl)
+        assertEquals(DEFAULT_IM_HTTP_BASE_URL, viewModel.uiState.value.imHttpBaseUrl)
+        assertEquals(DEFAULT_IM_WEBSOCKET_URL, viewModel.uiState.value.imWebSocketUrl)
         assertEquals("nox-dev", viewModel.uiState.value.imDevUserExternalId)
         assertEquals(null, viewModel.uiState.value.imValidationError)
 

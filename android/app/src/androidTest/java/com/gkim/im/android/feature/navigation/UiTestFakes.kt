@@ -5,6 +5,8 @@ import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.core.model.ContactSortMode
 import com.gkim.im.android.core.security.SecureKeyValueStore
 import com.gkim.im.android.data.local.PreferencesStore
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,8 +16,8 @@ internal class UiTestPreferencesStore : PreferencesStore {
     private val activeProviderIdState = MutableStateFlow("hunyuan")
     private val customBaseUrlState = MutableStateFlow("https://api.example.com/v1")
     private val customModelState = MutableStateFlow("gpt-image-1")
-    private val imHttpBaseUrlState = MutableStateFlow("http://127.0.0.1:18080/")
-    private val imWebSocketUrlState = MutableStateFlow("ws://127.0.0.1:18080/ws")
+    private val imHttpBaseUrlState = MutableStateFlow(DEFAULT_IM_HTTP_BASE_URL)
+    private val imWebSocketUrlState = MutableStateFlow(DEFAULT_IM_WEBSOCKET_URL)
     private val imDevUserExternalIdState = MutableStateFlow("nox-dev")
     private val appLanguageState = MutableStateFlow(AppLanguage.Chinese)
     private val appThemeModeState = MutableStateFlow(AppThemeMode.Light)

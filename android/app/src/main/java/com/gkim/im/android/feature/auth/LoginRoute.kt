@@ -1,6 +1,7 @@
 package com.gkim.im.android.feature.auth
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -29,6 +30,8 @@ import com.gkim.im.android.core.designsystem.GradientPrimaryButton
 import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.remote.im.authFailureMessage
+import com.gkim.im.android.data.remote.im.resolveImHttpEndpoint
 import kotlinx.coroutines.launch
 
 @Composable
@@ -98,16 +101,16 @@ fun LoginRoute(
                 if (isLoading) return@GradientPrimaryButton
                 isLoading = true
                 errorMessage = null
-                val baseUrl = container.sessionStore.baseUrl ?: "http://127.0.0.1:18080/"
                 scope.launch {
+                    val endpoint = container.resolveImHttpEndpoint()
                     try {
-                        val response = container.imBackendClient.login(baseUrl, username.trim(), password)
+                        val response = container.imBackendClient.login(endpoint.baseUrl, username.trim(), password)
                         container.sessionStore.token = response.token
                         container.sessionStore.username = response.user.externalId
-                        container.sessionStore.baseUrl = baseUrl
+                        container.sessionStore.baseUrl = endpoint.baseUrl
                         onLoggedIn()
                     } catch (e: Exception) {
-                        errorMessage = appLanguage.pick("Invalid username or password", "用户名或密码错误")
+                        errorMessage = authFailureMessage(appLanguage, endpoint, e)
                         isLoading = false
                     }
                 }
@@ -122,6 +125,7 @@ fun LoginRoute(
             color = AetherColors.Primary,
             modifier = Modifier
                 .testTag("login-back")
+                .clickable(onClick = onBack)
                 .padding(vertical = 8.dp),
         )
     }

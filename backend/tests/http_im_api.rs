@@ -3,7 +3,7 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use gkim_im_backend::{app::build_router, config::AppConfig};
+use gkim_im_backend::{app::build_router, config::AppConfig, migrations::apply_runtime_migrations};
 use http_body_util::BodyExt;
 use serde_json::{json, Value};
 use sqlx::{raw_sql, PgPool};
@@ -24,6 +24,14 @@ struct TestDatabase {
 
 impl TestDatabase {
     async fn new() -> Result<Option<Self>> {
+        Self::new_with_schema(true).await
+    }
+
+    async fn new_bootstrap_only() -> Result<Option<Self>> {
+        Self::new_with_schema(false).await
+    }
+
+    async fn new_with_schema(include_auth_migration: bool) -> Result<Option<Self>> {
         let Ok(admin_url) = std::env::var("GKIM_TEST_DATABASE_URL") else {
             return Ok(None);
         };
@@ -38,7 +46,9 @@ impl TestDatabase {
         let database_url = database_url_for_db(&admin_url, &database_name);
         let pool = PgPool::connect(&database_url).await?;
         raw_sql(BOOTSTRAP_MIGRATION_SQL).execute(&pool).await?;
-        raw_sql(AUTH_MIGRATION_SQL).execute(&pool).await?;
+        if include_auth_migration {
+            raw_sql(AUTH_MIGRATION_SQL).execute(&pool).await?;
+        }
 
         Ok(Some(Self {
             admin_pool,
@@ -602,6 +612,49 @@ async fn auth_and_friend_request_endpoints_round_trip() -> Result<()> {
     .await?;
     assert_eq!(contact_status, StatusCode::OK);
     assert_eq!(contact_json[0]["contactStatus"], "contact");
+
+    database.cleanup().await
+}
+
+#[tokio::test]
+async fn runtime_migrations_upgrade_bootstrap_only_database_before_register_requests() -> Result<()> {
+    let Some(database) = TestDatabase::new_bootstrap_only().await? else {
+        eprintln!("skipping runtime migration test because GKIM_TEST_DATABASE_URL is not set");
+        return Ok(());
+    };
+
+    apply_runtime_migrations(&database.pool).await?;
+
+    let app = build_router(
+        AppConfig {
+            service_name: "gkim-im-backend".to_string(),
+            bind_addr: "127.0.0.1:8080".to_string(),
+            database_url: "postgres://example".to_string(),
+            log_filter: "info".to_string(),
+        },
+        database.pool.clone(),
+    );
+
+    let (register_status, register_json) = json_response(
+        app.oneshot(
+            Request::post("/api/auth/register")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    json!({
+                        "username": "runtime_upgrade_user",
+                        "password": "passw0rd!",
+                        "displayName": "Runtime Upgrade"
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await?,
+    )
+    .await?;
+
+    assert_eq!(register_status, StatusCode::OK);
+    assert_eq!(register_json["user"]["externalId"], "runtime_upgrade_user");
 
     database.cleanup().await
 }

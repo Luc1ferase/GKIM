@@ -1,6 +1,7 @@
 package com.gkim.im.android.feature.auth
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -29,6 +30,8 @@ import com.gkim.im.android.core.designsystem.GradientPrimaryButton
 import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.remote.im.authFailureMessage
+import com.gkim.im.android.data.remote.im.resolveImHttpEndpoint
 import kotlinx.coroutines.launch
 
 @Composable
@@ -109,13 +112,13 @@ fun RegisterRoute(
                 if (isLoading) return@GradientPrimaryButton
                 isLoading = true
                 errorMessage = null
-                val baseUrl = container.sessionStore.baseUrl ?: "http://127.0.0.1:18080/"
                 scope.launch {
+                    val endpoint = container.resolveImHttpEndpoint()
                     try {
-                        val response = container.imBackendClient.register(baseUrl, username.trim(), password, displayName.trim())
+                        val response = container.imBackendClient.register(endpoint.baseUrl, username.trim(), password, displayName.trim())
                         container.sessionStore.token = response.token
                         container.sessionStore.username = response.user.externalId
-                        container.sessionStore.baseUrl = baseUrl
+                        container.sessionStore.baseUrl = endpoint.baseUrl
                         onRegistered()
                     } catch (e: Exception) {
                         val msg = e.message ?: "Registration failed"
@@ -124,7 +127,7 @@ fun RegisterRoute(
                         } else if (msg.contains("400")) {
                             appLanguage.pick("Invalid input — check username (3-20 chars), password (8+ chars), and display name", "输入无效 — 请检查用户名(3-20字符)、密码(8+字符)和显示名称")
                         } else {
-                            msg
+                            authFailureMessage(appLanguage, endpoint, e)
                         }
                         isLoading = false
                     }
@@ -140,6 +143,7 @@ fun RegisterRoute(
             color = AetherColors.Primary,
             modifier = Modifier
                 .testTag("register-back")
+                .clickable(onClick = onBack)
                 .padding(vertical = 8.dp)
                 .let { mod ->
                     mod

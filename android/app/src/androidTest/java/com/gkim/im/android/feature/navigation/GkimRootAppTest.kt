@@ -80,13 +80,13 @@ class GkimRootAppTest {
     }
 
     @Test
-    fun welcomeLoginActionEntersAuthenticatedShellPreview() {
+    fun welcomeLoginActionOpensLoginRouteInsteadOfPreviewShell() {
         setApp(UiTestAppContainer(), initialAuthStart = RootAuthStart.Unauthenticated)
 
         composeRule.onNodeWithTag("welcome-login-button").performClick()
 
-        composeRule.onNodeWithTag("bottom-nav").fetchSemanticsNode()
-        composeRule.onNodeWithText("消息").fetchSemanticsNode()
+        composeRule.onNodeWithTag("login-screen").fetchSemanticsNode()
+        assertTrue(!nodeExists("bottom-nav"))
     }
 
     @Test
@@ -134,6 +134,32 @@ class GkimRootAppTest {
         composeRule.onNodeWithTag("login-error").assertTextContains("用户名或密码错误")
         assertTrue(!nodeExists("bottom-nav"))
         assertTrue(container.sessionStore.token.isNullOrBlank())
+    }
+
+    @Test
+    fun loginBackAffordanceReturnsToWelcomeSurface() {
+        setApp(UiTestAppContainer(), initialAuthStart = RootAuthStart.Unauthenticated)
+
+        composeRule.onNodeWithTag("welcome-login-button").performClick()
+        composeRule.onNodeWithTag("login-screen").fetchSemanticsNode()
+
+        composeRule.onNodeWithTag("login-back").performClick()
+
+        composeRule.waitUntil(5_000) { nodeExists("welcome-screen") }
+        assertTrue(!nodeExists("login-screen"))
+    }
+
+    @Test
+    fun registerBackAffordanceReturnsToWelcomeSurface() {
+        setApp(UiTestAppContainer(), initialAuthStart = RootAuthStart.Unauthenticated)
+
+        composeRule.onNodeWithTag("welcome-register-button").performClick()
+        composeRule.onNodeWithTag("register-screen").fetchSemanticsNode()
+
+        composeRule.onNodeWithTag("register-back").performClick()
+
+        composeRule.waitUntil(5_000) { nodeExists("welcome-screen") }
+        assertTrue(!nodeExists("register-screen"))
     }
 
     @Test
@@ -273,6 +299,15 @@ class GkimRootAppTest {
         composeRule.onNodeWithTag("space-filter-activity").fetchSemanticsNode()
         assertTrue(!nodeExists("space-unread-summary"))
         assertTrue(textNodeMissing("未读信号"))
+    }
+
+    @Test
+    fun spaceScreenHeaderShowsSettingsEntryPoint() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithText("空间").performClick()
+
+        composeRule.onNodeWithText("设置").fetchSemanticsNode()
     }
 
     @Test
