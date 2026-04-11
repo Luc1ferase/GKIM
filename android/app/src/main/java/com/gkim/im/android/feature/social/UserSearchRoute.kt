@@ -43,6 +43,7 @@ fun UserSearchRoute(container: AppContainer, onBack: () -> Unit) {
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<UserSearchResultDto>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
+    var feedbackMessage by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -70,6 +71,7 @@ fun UserSearchRoute(container: AppContainer, onBack: () -> Unit) {
             value = query,
             onValueChange = { newQuery ->
                 query = newQuery
+                feedbackMessage = null
                 if (newQuery.trim().length >= 2) {
                     isSearching = true
                     val token = container.sessionStore.token ?: return@OutlinedTextField
@@ -77,7 +79,12 @@ fun UserSearchRoute(container: AppContainer, onBack: () -> Unit) {
                         val endpoint = container.resolveImHttpEndpoint()
                         try {
                             results = container.imBackendClient.searchUsers(endpoint.baseUrl, token, newQuery.trim())
-                        } catch (_: Exception) { }
+                        } catch (_: Exception) {
+                            feedbackMessage = appLanguage.pick(
+                                "Search failed. Check the backend connection and try again.",
+                                "搜索失败，请检查后端连接后重试。",
+                            )
+                        }
                         isSearching = false
                     }
                 } else {
@@ -89,9 +96,23 @@ fun UserSearchRoute(container: AppContainer, onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth().testTag("user-search-input"),
         )
 
+        feedbackMessage?.let { message ->
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = AetherColors.OnSurfaceVariant,
+                modifier = Modifier.testTag("user-search-feedback"),
+            )
+        }
+
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.testTag("user-search-results")) {
             items(results, key = { it.id }) { user ->
-                SearchResultCard(user = user, container = container, scope = scope)
+                SearchResultCard(
+                    user = user,
+                    container = container,
+                    scope = scope,
+                    onFeedback = { feedbackMessage = it },
+                )
             }
         }
     }
@@ -102,6 +123,7 @@ private fun SearchResultCard(
     user: UserSearchResultDto,
     container: AppContainer,
     scope: kotlinx.coroutines.CoroutineScope,
+    onFeedback: (String?) -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
     var status by remember(user.id) { mutableStateOf(user.contactStatus) }
@@ -151,7 +173,20 @@ private fun SearchResultCard(
                             try {
                                 container.imBackendClient.sendFriendRequest(endpoint.baseUrl, token, user.id)
                                 status = "pending_sent"
-                            } catch (_: Exception) { }
+                                onFeedback(
+                                    appLanguage.pick(
+                                        "Friend request sent.",
+                                        "好友请求已发送。",
+                                    )
+                                )
+                            } catch (_: Exception) {
+                                onFeedback(
+                                    appLanguage.pick(
+                                        "Failed to send request. Check the backend connection and try again.",
+                                        "发送失败，请检查连接后重试。",
+                                    )
+                                )
+                            }
                         }
                     },
                 )

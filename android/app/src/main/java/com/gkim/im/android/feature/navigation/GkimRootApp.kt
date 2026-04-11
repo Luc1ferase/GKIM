@@ -1,5 +1,6 @@
 package com.gkim.im.android.feature.navigation
 
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -43,6 +44,12 @@ import com.gkim.im.android.feature.auth.LoginRoute
 import com.gkim.im.android.feature.auth.RegisterRoute
 import com.gkim.im.android.feature.contacts.ContactsRoute
 import com.gkim.im.android.feature.messages.MessagesRoute
+import com.gkim.im.android.feature.qr.QrScanRoute
+import com.gkim.im.android.feature.qr.QrScanRoutePath
+import com.gkim.im.android.feature.qr.QrScanResultRoute
+import com.gkim.im.android.feature.qr.QrScannerControllerFactory
+import com.gkim.im.android.feature.qr.QrResultRoutePattern
+import com.gkim.im.android.feature.qr.qrResultRoute
 import com.gkim.im.android.feature.settings.SettingsRoute
 import com.gkim.im.android.feature.shared.AppScaffold
 import com.gkim.im.android.feature.social.UserSearchRoute
@@ -65,6 +72,7 @@ fun GkimRootApp(
     container: AppContainer? = null,
     navController: NavHostController? = null,
     mediaPickerControllerFactory: MediaPickerControllerFactory? = null,
+    qrScannerControllerFactory: QrScannerControllerFactory? = null,
     initialAuthStart: RootAuthStart = RootAuthStart.Unauthenticated,
 ) {
     val resolvedContainer = container ?: (LocalContext.current.applicationContext as GkimApplication).container
@@ -156,6 +164,21 @@ fun GkimRootApp(
                                 composable("user-search") {
                                     UserSearchRoute(
                                         container = resolvedContainer,
+                                        onBack = { resolvedNavController.popBackStack() },
+                                    )
+                                }
+                                composable(QrScanRoutePath) {
+                                    QrScanRoute(
+                                        onBack = { resolvedNavController.popBackStack() },
+                                        onPayloadScanned = { payload ->
+                                            resolvedNavController.navigate(qrResultRoute(payload))
+                                        },
+                                        qrScannerControllerFactory = qrScannerControllerFactory,
+                                    )
+                                }
+                                composable(QrResultRoutePattern) { backStackEntry ->
+                                    QrScanResultRoute(
+                                        payload = Uri.decode(backStackEntry.arguments?.getString("payload").orEmpty()),
                                         onBack = { resolvedNavController.popBackStack() },
                                     )
                                 }

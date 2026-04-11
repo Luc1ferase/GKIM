@@ -2,6 +2,10 @@ package com.gkim.im.android.feature.navigation
 
 import androidx.activity.ComponentActivity
 import android.net.Uri
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.Text
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -51,6 +55,8 @@ import com.gkim.im.android.data.repository.seedContacts
 import com.gkim.im.android.data.repository.seedConversations
 import com.gkim.im.android.data.repository.seedPosts
 import com.gkim.im.android.data.repository.seedPrompts
+import com.gkim.im.android.feature.qr.QrScannerController
+import com.gkim.im.android.feature.qr.QrScannerControllerFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -271,6 +277,92 @@ class GkimRootAppTest {
         assertTrue(textNodeMissing("Recent conversations, unread momentum, and a direct path into AIGC-assisted chats."))
         assertTrue(textNodeMissing("实时 IM"))
         composeRule.onNodeWithTag("messages-list").fetchSemanticsNode()
+    }
+
+    @Test
+    fun messagesHeaderUsesQuickActionsInsteadOfPassiveConversationCountCopy() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithTag("messages-quick-actions-trigger").fetchSemanticsNode()
+        assertTrue(textNodeMissing("3 个活跃会话"))
+        assertTrue(textNodeMissing("3 active"))
+
+        composeRule.onNodeWithTag("messages-quick-actions-trigger").performClick()
+
+        composeRule.onNodeWithTag("messages-quick-actions-menu").fetchSemanticsNode()
+        composeRule.onNodeWithTag("messages-action-add-friend").fetchSemanticsNode()
+        composeRule.onNodeWithTag("messages-action-scan-qr").fetchSemanticsNode()
+    }
+
+    @Test
+    fun messagesQuickActionAddFriendOpensUserSearchFlow() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithTag("messages-quick-actions-trigger").performClick()
+        composeRule.onNodeWithTag("messages-action-add-friend").performClick()
+
+        composeRule.onNodeWithTag("user-search-screen").fetchSemanticsNode()
+    }
+
+    @Test
+    fun messagesQuickActionAddFriendBackReturnsToMessages() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithTag("messages-quick-actions-trigger").performClick()
+        composeRule.onNodeWithTag("messages-action-add-friend").performClick()
+        composeRule.onNodeWithTag("user-search-back").performClick()
+
+        composeRule.waitUntil(5_000) { nodeExists("messages-screen") }
+        assertTrue(!nodeExists("user-search-screen"))
+    }
+
+    @Test
+    fun messagesQuickActionScanQrOpensQrScanFlow() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithTag("messages-quick-actions-trigger").performClick()
+        composeRule.onNodeWithTag("messages-action-scan-qr").performClick()
+
+        composeRule.onNodeWithTag("qr-scan-screen").fetchSemanticsNode()
+    }
+
+    @Test
+    fun messagesQuickActionScanQrShowsDecodedPayloadWithoutSideEffects() {
+        val backendClient = RecordingImBackendClient()
+        val container = UiTestAppContainer(imBackendClient = backendClient)
+
+        setApp(
+            container,
+            qrScannerControllerFactory = fakeQrScannerControllerFactory("gkim://friend?user=nova"),
+        )
+
+        composeRule.onNodeWithTag("messages-quick-actions-trigger").performClick()
+        composeRule.onNodeWithTag("messages-action-scan-qr").performClick()
+        composeRule.onNodeWithTag("qr-scan-detect-test").performClick()
+
+        composeRule.onNodeWithTag("qr-result-screen").fetchSemanticsNode()
+        composeRule.onNodeWithTag("qr-result-payload").assertTextContains("gkim://friend?user=nova")
+        assertTrue(backendClient.sentFriendRequestIds.isEmpty())
+    }
+
+    @Test
+    fun qrQuickActionBackStackReturnsToMessagesAfterViewingResult() {
+        setApp(
+            UiTestAppContainer(),
+            qrScannerControllerFactory = fakeQrScannerControllerFactory("gkim://friend?user=nova"),
+        )
+
+        composeRule.onNodeWithTag("messages-quick-actions-trigger").performClick()
+        composeRule.onNodeWithTag("messages-action-scan-qr").performClick()
+        composeRule.onNodeWithTag("qr-scan-detect-test").performClick()
+        composeRule.onNodeWithText("返回").performClick()
+
+        composeRule.waitUntil(5_000) { nodeExists("qr-scan-screen") }
+
+        composeRule.onNodeWithText("返回").performClick()
+
+        composeRule.waitUntil(5_000) { nodeExists("messages-screen") }
+        assertTrue(!nodeExists("qr-result-screen"))
     }
 
     @Test
@@ -865,15 +957,56 @@ class GkimRootAppTest {
         composeRule.onNodeWithText("已发送").fetchSemanticsNode()
     }
 
+    @Test
+    fun messagesLaunchedAddFriendFlowShowsErrorWhenRequestFails() {
+        val backendClient = RecordingImBackendClient(
+            sendFriendRequestFailure = IllegalStateException("backend unavailable"),
+            searchResults = mutableListOf(
+                UserSearchResultDto(
+                    id = "user-leo",
+                    username = "leo-vance",
+                    displayName = "Leo Vance",
+                    avatarText = "LV",
+                    contactStatus = "none",
+                )
+            ),
+        )
+        val container = UiTestAppContainer(imBackendClient = backendClient)
+        container.sessionStore.baseUrl = "http://127.0.0.1:18080/"
+        container.sessionStore.token = "session-token"
+        container.sessionStore.username = "nox-dev"
+
+        setApp(container)
+
+        composeRule.onNodeWithTag("messages-quick-actions-trigger").performClick()
+        composeRule.onNodeWithTag("messages-action-add-friend").performClick()
+        composeRule.onNodeWithTag("user-search-input").performTextReplacement("leo")
+
+        composeRule.waitUntil(5_000) {
+            backendClient.searchQueries.contains("leo") && nodeExists("search-result-user-leo")
+        }
+
+        composeRule.onNodeWithText("添加").performClick()
+
+        composeRule.waitUntil(5_000) {
+            backendClient.sentFriendRequestIds.contains("user-leo") && textExists("发送失败")
+        }
+
+        assertTrue(textExists("发送失败"))
+        assertTrue(textNodeMissing("已发送"))
+    }
+
     private fun setApp(
         container: UiTestAppContainer,
         mediaPickerControllerFactory: MediaPickerControllerFactory? = null,
+        qrScannerControllerFactory: QrScannerControllerFactory? = null,
         initialAuthStart: RootAuthStart = RootAuthStart.Authenticated,
     ) {
         composeRule.setContent {
             GkimRootApp(
                 container = container,
                 mediaPickerControllerFactory = mediaPickerControllerFactory,
+                qrScannerControllerFactory = qrScannerControllerFactory,
                 initialAuthStart = initialAuthStart,
             )
         }
@@ -897,8 +1030,28 @@ class GkimRootAppTest {
         )
     }
 
+    private fun fakeQrScannerControllerFactory(payload: String): QrScannerControllerFactory = { onPayloadScanned ->
+        QrScannerController(
+            hasCameraPermission = true,
+            requestPermission = {},
+            previewContent = { modifier ->
+                Text(
+                    text = "Trigger QR detection",
+                    modifier = modifier
+                        .testTag("qr-scan-detect-test")
+                        .clickable { onPayloadScanned(payload) },
+                )
+            },
+        )
+    }
+
     private fun nodeExists(tag: String): Boolean = runCatching {
         composeRule.onNodeWithTag(tag).fetchSemanticsNode()
+        true
+    }.getOrDefault(false)
+
+    private fun textExists(text: String): Boolean = runCatching {
+        composeRule.onNodeWithText(text, substring = true).fetchSemanticsNode()
         true
     }.getOrDefault(false)
 
@@ -1009,6 +1162,7 @@ private class RecordingImBackendClient(
     private val registerFailure: Throwable? = null,
     private val loginFailure: Throwable? = null,
     private val bootstrapFailure: Throwable? = null,
+    private val sendFriendRequestFailure: Throwable? = null,
     val searchResults: MutableList<UserSearchResultDto> = mutableListOf(),
     val pendingRequests: MutableList<FriendRequestViewDto> = mutableListOf(),
 ) : ImBackendClient {
@@ -1072,6 +1226,7 @@ private class RecordingImBackendClient(
         toUserId: String,
     ): FriendRequestViewDto {
         sentFriendRequestIds += toUserId
+        sendFriendRequestFailure?.let { throw it }
         return FriendRequestViewDto(
             id = "request-${sentFriendRequestIds.size}",
             fromUser = backendUser(id = "user-nox", externalId = "nox-dev", displayName = "Nox Dev"),
