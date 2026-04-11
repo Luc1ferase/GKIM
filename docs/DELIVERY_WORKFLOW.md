@@ -209,3 +209,109 @@ Upload
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
+
+### Task 1.1: Replace the Messages header's passive active-conversation count with a `+` quick-action trigger and anchored dropdown menu that exposes `Add friend / 加好友` and `Scan QR code / 扫描二维码`.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesHeaderUsesQuickActionsInsteadOfPassiveConversationCountCopy,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendOpensUserSearchFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendBackReturnsToMessages,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrOpensQrScanFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrShowsDecodedPayloadWithoutSideEffects,com.gkim.im.android.feature.navigation.GkimRootAppTest#qrQuickActionBackStackReturnsToMessagesAfterViewingResult,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesLaunchedAddFriendFlowShowsErrorWhenRequestFails,com.gkim.im.android.feature.navigation.GkimRootAppTest#userSearchFlowShowsResultsAndMarksPendingAfterAdd" --stacktrace`` - pass (`8` focused Messages quick-action, QR, and add-friend instrumentation checks passed on `codex_api34`)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `d70d4e8`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 1.2: Extend authenticated navigation so the Messages quick actions can open the existing user-search flow plus new QR scan/result routes while preserving expected back-stack behavior.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesHeaderUsesQuickActionsInsteadOfPassiveConversationCountCopy,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendOpensUserSearchFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendBackReturnsToMessages,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrOpensQrScanFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrShowsDecodedPayloadWithoutSideEffects,com.gkim.im.android.feature.navigation.GkimRootAppTest#qrQuickActionBackStackReturnsToMessagesAfterViewingResult,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesLaunchedAddFriendFlowShowsErrorWhenRequestFails,com.gkim.im.android.feature.navigation.GkimRootAppTest#userSearchFlowShowsResultsAndMarksPendingAfterAdd" --stacktrace`` - pass (Messages quick actions opened `user-search` and `qr-scan`, and both add-friend / QR flows returned to the expected prior screen on back)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `d70d4e8`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.1: Add the Android camera/barcode dependencies and implement a dedicated QR scan screen with permission-aware camera preview, decode handling, and clean cancel/back behavior.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesHeaderUsesQuickActionsInsteadOfPassiveConversationCountCopy,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendOpensUserSearchFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendBackReturnsToMessages,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrOpensQrScanFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrShowsDecodedPayloadWithoutSideEffects,com.gkim.im.android.feature.navigation.GkimRootAppTest#qrQuickActionBackStackReturnsToMessagesAfterViewingResult,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesLaunchedAddFriendFlowShowsErrorWhenRequestFails,com.gkim.im.android.feature.navigation.GkimRootAppTest#userSearchFlowShowsResultsAndMarksPendingAfterAdd" --stacktrace`` - pass (the QR scan route compiled with CameraX/ML Kit dependencies, rendered a dedicated scan screen, and supported scan-flow back navigation)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `d70d4e8`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.2: Implement a passive QR result surface that shows the decoded payload content without auto-navigation, account mutation, or external-link side effects.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesHeaderUsesQuickActionsInsteadOfPassiveConversationCountCopy,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendOpensUserSearchFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendBackReturnsToMessages,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrOpensQrScanFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrShowsDecodedPayloadWithoutSideEffects,com.gkim.im.android.feature.navigation.GkimRootAppTest#qrQuickActionBackStackReturnsToMessagesAfterViewingResult,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesLaunchedAddFriendFlowShowsErrorWhenRequestFails,com.gkim.im.android.feature.navigation.GkimRootAppTest#userSearchFlowShowsResultsAndMarksPendingAfterAdd" --stacktrace`` - pass (decoded QR content rendered on a dedicated result screen and the test confirmed no friend-request side effect occurred)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `d70d4e8`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 3.1: Route the Messages `Add friend / 加好友` action into the live user-search/request flow so it reuses the existing backend-backed social workflow instead of a local demo path.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesHeaderUsesQuickActionsInsteadOfPassiveConversationCountCopy,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendOpensUserSearchFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendBackReturnsToMessages,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrOpensQrScanFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrShowsDecodedPayloadWithoutSideEffects,com.gkim.im.android.feature.navigation.GkimRootAppTest#qrQuickActionBackStackReturnsToMessagesAfterViewingResult,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesLaunchedAddFriendFlowShowsErrorWhenRequestFails,com.gkim.im.android.feature.navigation.GkimRootAppTest#userSearchFlowShowsResultsAndMarksPendingAfterAdd" --stacktrace`` - pass (Messages quick action entered the authenticated user-search/request flow and kept the pending state visible)
+  - ``powershell (Invoke-RestMethod against http://127.0.0.1:18080 for /api/auth/register, /api/users/search, /api/friends/request, /api/friends/requests, and /api/friends/requests/:id/accept)`` - pass (`qa0411140023a -> qa0411140023b` moved through `none -> pending_sent / pending_received -> contact` on the local Docker backend)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `d70d4e8`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 3.2: Tighten the Messages-launched add-friend UX so backend request success, pending state, and request failure remain visible and truthful when testing with different real accounts.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesHeaderUsesQuickActionsInsteadOfPassiveConversationCountCopy,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendOpensUserSearchFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendBackReturnsToMessages,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrOpensQrScanFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrShowsDecodedPayloadWithoutSideEffects,com.gkim.im.android.feature.navigation.GkimRootAppTest#qrQuickActionBackStackReturnsToMessagesAfterViewingResult,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesLaunchedAddFriendFlowShowsErrorWhenRequestFails,com.gkim.im.android.feature.navigation.GkimRootAppTest#userSearchFlowShowsResultsAndMarksPendingAfterAdd" --stacktrace`` - pass (the Messages-launched path now keeps `pending` visible after success and surfaces a truthful inline failure message when request sending fails)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `d70d4e8`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 4.1: Add or refresh focused Android UI/instrumentation coverage for the Messages `+` menu, add-friend routing, QR scan/result navigation, and no-side-effect result behavior.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesHeaderUsesQuickActionsInsteadOfPassiveConversationCountCopy,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendOpensUserSearchFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendBackReturnsToMessages,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrOpensQrScanFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrShowsDecodedPayloadWithoutSideEffects,com.gkim.im.android.feature.navigation.GkimRootAppTest#qrQuickActionBackStackReturnsToMessagesAfterViewingResult,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesLaunchedAddFriendFlowShowsErrorWhenRequestFails,com.gkim.im.android.feature.navigation.GkimRootAppTest#userSearchFlowShowsResultsAndMarksPendingAfterAdd" --stacktrace`` - pass (`8` focused regression cases covered the menu, add-friend entry, QR result display, and back-stack behavior)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `d70d4e8`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 4.2: Run focused local verification for cross-account friend add plus QR payload display, then capture verification/review/score/upload evidence updates in `docs/DELIVERY_WORKFLOW.md`.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesHeaderUsesQuickActionsInsteadOfPassiveConversationCountCopy,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendOpensUserSearchFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionAddFriendBackReturnsToMessages,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrOpensQrScanFlow,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesQuickActionScanQrShowsDecodedPayloadWithoutSideEffects,com.gkim.im.android.feature.navigation.GkimRootAppTest#qrQuickActionBackStackReturnsToMessagesAfterViewingResult,com.gkim.im.android.feature.navigation.GkimRootAppTest#messagesLaunchedAddFriendFlowShowsErrorWhenRequestFails,com.gkim.im.android.feature.navigation.GkimRootAppTest#userSearchFlowShowsResultsAndMarksPendingAfterAdd" --stacktrace`` - pass (`8` focused Android checks passed on `codex_api34`)
+  - ``powershell (Invoke-RestMethod against http://127.0.0.1:18080 for /api/auth/register, /api/users/search, /api/friends/request, /api/friends/requests, and /api/friends/requests/:id/accept)`` - pass (fresh local accounts verified the real backend friend-request lifecycle end-to-end on the Docker-published `127.0.0.1:18080`)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `d70d4e8`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
