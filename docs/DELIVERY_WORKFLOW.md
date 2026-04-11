@@ -84,3 +84,128 @@ Upload
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
+
+## Apply session records
+
+### Task 1.1: Add or refresh Android instrumentation coverage that reproduces the missing Space settings entry and the inert login/register back affordances before the UI fixes land.
+
+- Verification:
+  - ``./gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#welcomeLoginActionOpensLoginRouteInsteadOfPreviewShell,com.gkim.im.android.feature.navigation.GkimRootAppTest#loginBackAffordanceReturnsToWelcomeSurface,com.gkim.im.android.feature.navigation.GkimRootAppTest#registerBackAffordanceReturnsToWelcomeSurface,com.gkim.im.android.feature.navigation.GkimRootAppTest#spaceScreenHeaderShowsSettingsEntryPoint" --stacktrace`` - pass (`4` targeted regression cases passed on `codex_api34`)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `b7ebbfd`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 1.2: Add focused welcome-video and endpoint-resolution diagnostics or tests so playback regressions and auth-target selection regressions can be detected without relying on manual guesswork alone.
+
+- Verification:
+  - ``./gradlew.bat :app:testDebugUnitTest --tests "com.gkim.im.android.data.remote.im.ImHttpEndpointResolverTest" --tests "com.gkim.im.android.data.remote.im.AuthFailureMessageTest" :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.WelcomeVideoOverlayStyleTest#overlayScrimLeavesMoreVideoVisibleForDemoPlayback" --stacktrace`` - pass (`resolver`, `authFailureMessage`, and welcome overlay diagnostics passed)
+  - ``adb exec-out screencap -p > tmp-frame-c.png`` / ``adb exec-out screencap -p > tmp-frame-d.png`` - pass (fresh welcome captures produced different SHA-256 hashes: `753B71...2191F` vs `B28681...2DB44`)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `b7ebbfd`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.1: Restore the Space header settings pill so the shell once again exposes a visible, tappable route into `settings` from the Space page.
+
+- Verification:
+  - ``./gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#spaceScreenHeaderShowsSettingsEntryPoint,com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsMenuPresentsFocusedEntriesAndAccountActionsSurface" --stacktrace`` - pass (Space header settings entry remained visible and navigable)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `b7ebbfd`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.2: Wire the login and registration back affordances to the existing root-auth callbacks and verify that both flows return to the welcome surface.
+
+- Verification:
+  - ``./gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#loginBackAffordanceReturnsToWelcomeSurface,com.gkim.im.android.feature.navigation.GkimRootAppTest#registerBackAffordanceReturnsToWelcomeSurface" --stacktrace`` - pass (both auth back affordances returned to the welcome surface)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `b7ebbfd`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 2.3: Recover the welcome-screen video playback presentation so the approved `welcome_intro_1` asset remains visibly active after the current cover-scaling and scrim treatment.
+
+- Verification:
+  - ``./gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.WelcomeVideoOverlayStyleTest#overlayScrimLeavesMoreVideoVisibleForDemoPlayback" --stacktrace`` - pass (overlay scrim contract stayed within the approved visibility window)
+  - ``adb exec-out screencap -p > tmp-frame-c.png`` / ``adb exec-out screencap -p > tmp-frame-d.png`` - pass (fresh welcome captures produced different SHA-256 hashes after a two-second gap, indicating visible motion)
+- Review:
+  - Score: `95/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `b7ebbfd`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 3.1: Introduce a shared HTTP base URL resolver that prefers authenticated session state but otherwise falls back to the persisted IM Validation HTTP endpoint, then update login/register/bootstrap/contacts/search callers to use it instead of hardcoded `127.0.0.1:18080` defaults.
+
+- Verification:
+  - ``./gradlew.bat :app:testDebugUnitTest --tests "com.gkim.im.android.data.remote.im.ImHttpEndpointResolverTest" :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.LiveAuthEndpointValidationTest#emulatorCanRegisterLoginAndBootstrapThroughPublishedHostBridgeEndpoint" --stacktrace`` - pass (shared resolver stayed aligned with the emulator-facing published endpoint and the emulator completed register/login/bootstrap through `10.0.2.2:18080`)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `b7ebbfd`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 3.2: Improve auth/connectivity diagnostics so failed login or registration attempts can distinguish “wrong client URL selected” from “backend unreachable at the selected endpoint.”
+
+- Verification:
+  - ``./gradlew.bat :app:testDebugUnitTest --tests "com.gkim.im.android.data.remote.im.AuthFailureMessageTest" :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#loginRouteShowsInlineErrorWhenBackendRejectsCredentials" --stacktrace`` - pass (auth failures now surface targeted inline diagnostics instead of a generic localhost-style failure)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `b7ebbfd`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 4.1: Validate that the published auth API target chosen for emulator testing is actually host-reachable, and update backend-side bind/guidance or validation notes if the current target still relies on device-local localhost assumptions.
+
+- Verification:
+  - ``docker logs gkim-im-backend-local --tail 50`` - pass (runtime migration bridge seeded the legacy bootstrap row and the backend reached `backend listener ready`)
+  - ``curl.exe -H "Content-Type: application/json" -d "{\"username\":\"codex_diag_user_2\",\"password\":\"passw0rd!\",\"displayName\":\"Codex Diag\"}" http://127.0.0.1:18080/api/auth/register`` - pass (`200 OK` from the host-published backend after migration repair)
+  - ``docker run --rm -e PGPASSWORD=*** postgres:16-alpine psql ... -c "select version, description, success from _sqlx_migrations order by version;"`` - pass (runtime database shows both `202604080001` and `202604100001` as applied)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `b7ebbfd`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
+
+### Task 4.2: Re-run focused Android and backend verification for the restored settings path, welcome playback, auth back navigation, and configured API connectivity, then capture verification/review/score/evidence updates in `docs/DELIVERY_WORKFLOW.md`.
+
+- Verification:
+  - ``cargo test --test http_im_api`` - pass (`5` backend HTTP regression tests passed, including the legacy bootstrap-only migration upgrade path)
+  - ``./gradlew.bat :app:testDebugUnitTest --tests "com.gkim.im.android.data.remote.im.ImHttpEndpointResolverTest" --tests "com.gkim.im.android.data.remote.im.AuthFailureMessageTest" :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#welcomeLoginActionOpensLoginRouteInsteadOfPreviewShell,com.gkim.im.android.feature.navigation.GkimRootAppTest#loginBackAffordanceReturnsToWelcomeSurface,com.gkim.im.android.feature.navigation.GkimRootAppTest#registerBackAffordanceReturnsToWelcomeSurface,com.gkim.im.android.feature.navigation.GkimRootAppTest#spaceScreenHeaderShowsSettingsEntryPoint,com.gkim.im.android.feature.navigation.GkimRootAppTest#settingsMenuPresentsFocusedEntriesAndAccountActionsSurface,com.gkim.im.android.feature.navigation.GkimRootAppTest#loginRouteShowsInlineErrorWhenBackendRejectsCredentials,com.gkim.im.android.feature.navigation.WelcomeVideoOverlayStyleTest#overlayScrimLeavesMoreVideoVisibleForDemoPlayback,com.gkim.im.android.feature.navigation.LiveAuthEndpointValidationTest#emulatorCanRegisterLoginAndBootstrapThroughPublishedHostBridgeEndpoint" --stacktrace`` - pass (`8` focused Android checks passed on `codex_api34`)
+  - ``./gradlew.bat :app:installDebug`` - pass (debug app installed to the emulator before fresh welcome-motion capture)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `b7ebbfd`
+  - Branch: `master`
+  - Push: `origin/master`
+- Result: `accepted`
