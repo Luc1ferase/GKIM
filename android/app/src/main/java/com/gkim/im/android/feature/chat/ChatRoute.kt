@@ -39,6 +39,8 @@ import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
+import com.gkim.im.android.core.media.GeneratedImageSaveResult
+import com.gkim.im.android.core.media.GeneratedImageSaver
 import com.gkim.im.android.core.designsystem.PillAction
 import com.gkim.im.android.core.media.MediaPickerControllerFactory
 import com.gkim.im.android.core.media.rememberMediaPickerController
@@ -50,12 +52,16 @@ import com.gkim.im.android.core.model.ChatMessage
 import com.gkim.im.android.core.model.Conversation
 import com.gkim.im.android.core.model.DraftAigcRequest
 import com.gkim.im.android.core.model.MediaInput
+import com.gkim.im.android.core.model.MessageAttachment
 import com.gkim.im.android.core.model.MessageDirection
+import com.gkim.im.android.core.model.TaskStatus
 import com.gkim.im.android.core.util.formatChatTimestamp
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -65,20 +71,28 @@ private data class ChatUiState(
     val activeProvider: AigcProvider? = null,
     val latestTask: AigcTask? = null,
     val draftRequest: DraftAigcRequest = DraftAigcRequest(),
+    val generationActionFeedback: String? = null,
+)
+
+internal data class GenerationFeedback(
+    val statusLine: String,
+    val showPreview: Boolean,
 )
 
 private class ChatViewModel(
     conversationId: String,
     private val messagingRepository: MessagingRepository,
     private val aigcRepository: AigcRepository,
+    private val generatedImageSaver: GeneratedImageSaver,
 ) : ViewModel() {
     private val resolvedConversationId = if (conversationId.isBlank() || conversationId == "studio") messagingRepository.ensureStudioRoom().id else conversationId
+    private val generationActionFeedback = MutableStateFlow<String?>(null)
 
     init {
         messagingRepository.loadConversationHistory(resolvedConversationId)
     }
 
-    val uiState = combine(
+    private val baseUiState = combine(
         messagingRepository.conversation(resolvedConversationId),
         aigcRepository.providers,
         aigcRepository.activeProviderId,
@@ -91,17 +105,58 @@ private class ChatViewModel(
             latestTask = history.firstOrNull(),
             draftRequest = draftRequest,
         )
+    }
+
+    val uiState = combine(baseUiState, generationActionFeedback) { baseState, actionFeedback ->
+        baseState.copy(generationActionFeedback = actionFeedback)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())
 
-    fun sendMessage(body: String) {
-        if (body.isBlank()) return
-        messagingRepository.sendMessage(resolvedConversationId, body)
+    fun sendMessage(body: String, attachmentInput: MediaInput? = null) {
+        if (body.isBlank() && attachmentInput == null) return
+        messagingRepository.sendMessage(
+            conversationId = resolvedConversationId,
+            body = body,
+            attachment = attachmentInput?.asMessageAttachment(),
+        )
+        generationActionFeedback.value = null
     }
 
     fun runAigc(mode: AigcMode, prompt: String, mediaInput: MediaInput?) {
         if (prompt.isBlank()) return
-        val task = aigcRepository.generate(mode, prompt, mediaInput)
-        messagingRepository.appendAigcResult(resolvedConversationId, task)
+        viewModelScope.launch {
+            val task = aigcRepository.generate(mode, prompt, mediaInput)
+            if (task.status == TaskStatus.Succeeded) {
+                messagingRepository.appendAigcResult(resolvedConversationId, task)
+            }
+        }
+    }
+
+    fun saveGeneratedImage(task: AigcTask) {
+        val preview = task.outputPreview
+        if (preview.isNullOrBlank()) {
+            generationActionFeedback.value = "No generated image is available to save yet."
+            return
+        }
+        viewModelScope.launch {
+            generationActionFeedback.value = when (val result = generatedImageSaver.saveImage(preview, task.prompt)) {
+                is GeneratedImageSaveResult.Success -> "Saved generated image locally."
+                is GeneratedImageSaveResult.Failure -> result.message
+            }
+        }
+    }
+
+    fun sendGeneratedImage(task: AigcTask) {
+        val attachment = task.asGeneratedMessageAttachment()
+        if (attachment == null) {
+            generationActionFeedback.value = "No generated image is available to send yet."
+            return
+        }
+        messagingRepository.sendMessage(
+            conversationId = resolvedConversationId,
+            body = "",
+            attachment = attachment,
+        )
+        generationActionFeedback.value = "Generated image sent to the conversation."
     }
 }
 
@@ -113,13 +168,22 @@ fun ChatRoute(
     mediaPickerControllerFactory: MediaPickerControllerFactory? = null,
 ) {
     val viewModel = viewModel<ChatViewModel>(factory = simpleViewModelFactory {
-        ChatViewModel(conversationId, container.messagingRepository, container.aigcRepository)
+        ChatViewModel(
+            conversationId = conversationId,
+            messagingRepository = container.messagingRepository,
+            aigcRepository = container.aigcRepository,
+            generatedImageSaver = container.generatedImageSaver,
+        )
     })
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var prompt by remember { mutableStateOf("") }
-    var selectedMedia by remember { mutableStateOf<MediaInput?>(null) }
+    var chatAttachmentMedia by remember { mutableStateOf<MediaInput?>(null) }
+    var generationSourceMedia by remember { mutableStateOf<MediaInput?>(null) }
     var isSecondaryMenuOpen by remember { mutableStateOf(false) }
-    val mediaPicker = mediaPickerControllerFactory?.invoke { selectedMedia = it } ?: rememberMediaPickerController { selectedMedia = it }
+    val chatAttachmentPicker = mediaPickerControllerFactory?.invoke { chatAttachmentMedia = it }
+        ?: rememberMediaPickerController { chatAttachmentMedia = it }
+    val generationSourcePicker = mediaPickerControllerFactory?.invoke { generationSourceMedia = it }
+        ?: rememberMediaPickerController { generationSourceMedia = it }
 
     LaunchedEffect(uiState.draftRequest.prompt) {
         if (uiState.draftRequest.prompt.isNotBlank()) {
@@ -127,23 +191,27 @@ fun ChatRoute(
         }
     }
     LaunchedEffect(uiState.draftRequest.mediaInput) {
-        uiState.draftRequest.mediaInput?.let { selectedMedia = it }
+        uiState.draftRequest.mediaInput?.let { generationSourceMedia = it }
     }
 
     ChatScreen(
         uiState = uiState,
         prompt = prompt,
-        selectedMedia = selectedMedia,
+        chatAttachmentMedia = chatAttachmentMedia,
+        generationSourceMedia = generationSourceMedia,
         isSecondaryMenuOpen = isSecondaryMenuOpen,
         onPromptChanged = { prompt = it },
         onBack = { navController.popBackStack() },
         onToggleSecondaryMenu = { isSecondaryMenuOpen = !isSecondaryMenuOpen },
-        onPickImage = mediaPicker.pickImage,
-        onPickVideo = mediaPicker.pickVideo,
+        onPickChatImage = chatAttachmentPicker.pickImage,
+        onPickGenerationImage = generationSourcePicker.pickImage,
+        onPickGenerationVideo = generationSourcePicker.pickVideo,
         onSendMessage = {
-            if (prompt.isBlank()) return@ChatScreen
-            viewModel.sendMessage(prompt)
+            if (prompt.isBlank() && chatAttachmentMedia == null) return@ChatScreen
+            viewModel.sendMessage(prompt, chatAttachmentMedia)
             prompt = ""
+            chatAttachmentMedia = null
+            isSecondaryMenuOpen = false
         },
         onRunMode = { mode ->
             if (prompt.isBlank()) return@ChatScreen
@@ -151,11 +219,13 @@ fun ChatRoute(
                 AigcMode.TextToImage -> null
                 AigcMode.ImageToImage,
                 AigcMode.VideoToVideo,
-                -> selectedMedia
+                -> generationSourceMedia
             }
             viewModel.runAigc(mode, prompt, mediaInput)
             isSecondaryMenuOpen = false
         },
+        onSaveGeneratedImage = viewModel::saveGeneratedImage,
+        onSendGeneratedImage = viewModel::sendGeneratedImage,
     )
 }
 
@@ -163,18 +233,24 @@ fun ChatRoute(
 private fun ChatScreen(
     uiState: ChatUiState,
     prompt: String,
-    selectedMedia: MediaInput?,
+    chatAttachmentMedia: MediaInput?,
+    generationSourceMedia: MediaInput?,
     isSecondaryMenuOpen: Boolean,
     onPromptChanged: (String) -> Unit,
     onBack: () -> Unit,
     onToggleSecondaryMenu: () -> Unit,
-    onPickImage: () -> Unit,
-    onPickVideo: () -> Unit,
+    onPickChatImage: () -> Unit,
+    onPickGenerationImage: () -> Unit,
+    onPickGenerationVideo: () -> Unit,
     onSendMessage: () -> Unit,
     onRunMode: (AigcMode) -> Unit,
+    onSaveGeneratedImage: (AigcTask) -> Unit,
+    onSendGeneratedImage: (AigcTask) -> Unit,
 ) {
     val timelineMessages = uiState.conversation?.messages.orEmpty()
     val timelineState = rememberLazyListState()
+    val visibleModes = visibleAigcModes(uiState.activeProvider)
+    val readyModes = readyAigcModes(uiState.activeProvider, generationSourceMedia?.type)
 
     LaunchedEffect(timelineMessages.size, uiState.latestTask?.id) {
         val totalItems = timelineMessages.size + if (uiState.latestTask != null) 1 else 0
@@ -216,7 +292,12 @@ private fun ChatScreen(
                 }
                 uiState.latestTask?.let { task ->
                     item(key = "latest-task-${task.id}") {
-                        LatestGenerationCard(task = task)
+                        LatestGenerationCard(
+                            task = task,
+                            actionFeedback = uiState.generationActionFeedback,
+                            onSaveGeneratedImage = onSaveGeneratedImage,
+                            onSendGeneratedImage = onSendGeneratedImage,
+                        )
                     }
                 }
             }
@@ -239,8 +320,22 @@ private fun ChatScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = AetherColors.OnSurfaceVariant,
                     )
-                    selectedMedia?.let { mediaInput ->
-                        val selectedLabel = if (mediaInput.type == AttachmentType.Image) "Image ready" else "Video ready"
+                    chatAttachmentMedia?.let { mediaInput ->
+                        Text(
+                            text = if (mediaInput.type == AttachmentType.Image) "Image message ready" else "Video message ready",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AetherColors.OnSurface,
+                            modifier = Modifier
+                                .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(999.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .testTag("chat-chat-attachment-ready"),
+                        )
+                    }
+                    generationSourceMedia?.let { mediaInput ->
+                        val selectedLabel = when (mediaInput.type) {
+                            AttachmentType.Image -> "Image-to-image source ready"
+                            AttachmentType.Video -> "Video-to-video source ready"
+                        }
                         Text(
                             text = selectedLabel,
                             style = MaterialTheme.typography.bodyMedium,
@@ -248,40 +343,70 @@ private fun ChatScreen(
                             modifier = Modifier
                                 .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(999.dp))
                                 .padding(horizontal = 12.dp, vertical = 8.dp)
-                                .testTag("chat-selected-media"),
+                                .testTag("chat-generation-source-ready"),
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         ActionChip(
-                            label = "Pick image",
-                            testTag = "chat-action-pick-image",
+                            label = "Send image message",
+                            testTag = "chat-action-send-image-message",
                             modifier = Modifier.weight(1f),
-                            onClick = onPickImage,
+                            onClick = onPickChatImage,
                         )
+                        if (AigcMode.ImageToImage in visibleModes) {
+                            ActionChip(
+                                label = "Choose image source",
+                                testTag = "chat-action-choose-image-source",
+                                modifier = Modifier.weight(1f),
+                                onClick = onPickGenerationImage,
+                            )
+                        }
+                    }
+                    if (AigcMode.VideoToVideo in visibleModes) {
                         ActionChip(
-                            label = "Pick video",
-                            testTag = "chat-action-pick-video",
-                            modifier = Modifier.weight(1f),
-                            onClick = onPickVideo,
+                            label = "Choose video source",
+                            testTag = "chat-action-choose-video-source",
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = onPickGenerationVideo,
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ActionChip(
-                            label = "Text to image",
-                            testTag = "chat-action-text-to-image",
-                            modifier = Modifier.weight(1f),
-                        ) { onRunMode(AigcMode.TextToImage) }
-                        ActionChip(
-                            label = "Image to image",
-                            testTag = "chat-action-image-to-image",
-                            modifier = Modifier.weight(1f),
-                        ) { onRunMode(AigcMode.ImageToImage) }
+                        if (AigcMode.TextToImage in visibleModes) {
+                            ActionChip(
+                                label = "Text to image",
+                                testTag = "chat-action-text-to-image",
+                                modifier = Modifier.weight(1f),
+                            ) { onRunMode(AigcMode.TextToImage) }
+                        }
+                        if (AigcMode.ImageToImage in readyModes) {
+                            ActionChip(
+                                label = "Image to image",
+                                testTag = "chat-action-image-to-image",
+                                modifier = Modifier.weight(1f),
+                            ) { onRunMode(AigcMode.ImageToImage) }
+                        }
                     }
-                    ActionChip(
-                        label = "Video to video",
-                        testTag = "chat-action-video-to-video",
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { onRunMode(AigcMode.VideoToVideo) }
+                    if (AigcMode.ImageToImage in visibleModes && generationSourceMedia?.type != AttachmentType.Image) {
+                        Text(
+                            text = "Choose an image source to enable image-to-image.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AetherColors.OnSurfaceVariant,
+                        )
+                    }
+                    if (AigcMode.VideoToVideo in readyModes) {
+                        ActionChip(
+                            label = "Video to video",
+                            testTag = "chat-action-video-to-video",
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { onRunMode(AigcMode.VideoToVideo) }
+                    }
+                    if (AigcMode.VideoToVideo in visibleModes && generationSourceMedia?.type != AttachmentType.Video) {
+                        Text(
+                            text = "Choose a video source to enable video-to-video.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AetherColors.OnSurfaceVariant,
+                        )
+                    }
                 }
             }
 
@@ -325,10 +450,37 @@ private fun ChatScreen(
 }
 
 @Composable
-private fun LatestGenerationCard(task: AigcTask) {
+private fun LatestGenerationCard(
+    task: AigcTask,
+    actionFeedback: String?,
+    onSaveGeneratedImage: (AigcTask) -> Unit,
+    onSendGeneratedImage: (AigcTask) -> Unit,
+) {
+    val feedback = generationFeedback(task)
+    val showImageActions = task.status == TaskStatus.Succeeded &&
+        !task.outputPreview.isNullOrBlank() &&
+        task.mode != AigcMode.VideoToVideo
     GlassCard(modifier = Modifier.testTag("chat-latest-generation-card")) {
         Text(text = "LATEST GENERATION", style = MaterialTheme.typography.labelLarge, color = AetherColors.Tertiary)
-        AsyncImage(model = task.outputPreview, contentDescription = null, modifier = Modifier.fillMaxWidth().height(220.dp))
+        if (feedback.showPreview && task.outputPreview != null) {
+            AsyncImage(model = task.outputPreview, contentDescription = null, modifier = Modifier.fillMaxWidth().height(220.dp))
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(148.dp)
+                    .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(18.dp))
+                    .testTag("chat-generation-placeholder"),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = feedback.statusLine,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = AetherColors.OnSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            }
+        }
         Text(
             text = "${task.mode.name} · ${task.prompt}",
             style = MaterialTheme.typography.bodyLarge,
@@ -336,6 +488,42 @@ private fun LatestGenerationCard(task: AigcTask) {
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
+        Text(
+            text = feedback.statusLine,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (task.status == TaskStatus.Failed) AetherColors.OnSurface else AetherColors.OnSurfaceVariant,
+            modifier = Modifier.testTag("chat-generation-status"),
+        )
+        task.errorMessage?.let { errorMessage ->
+            Text(
+                text = errorMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = AetherColors.OnSurface,
+                modifier = Modifier.testTag("chat-generation-error"),
+            )
+        }
+        if (showImageActions) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ActionChip(
+                    label = "Save locally",
+                    testTag = "chat-generation-save",
+                    modifier = Modifier.weight(1f),
+                ) { onSaveGeneratedImage(task) }
+                ActionChip(
+                    label = "Send to chat",
+                    testTag = "chat-generation-send",
+                    modifier = Modifier.weight(1f),
+                ) { onSendGeneratedImage(task) }
+            }
+        }
+        actionFeedback?.let { feedbackMessage ->
+            Text(
+                text = feedbackMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = AetherColors.OnSurfaceVariant,
+                modifier = Modifier.testTag("chat-generation-action-feedback"),
+            )
+        }
     }
 }
 
@@ -392,7 +580,8 @@ private fun ChatMessageRow(
 ) {
     val isOutgoing = message.direction == MessageDirection.Outgoing
     val hasAttachment = message.attachment != null
-    val isOutgoingTextOnly = isOutgoing && !hasAttachment
+    val hasBody = message.body.isNotBlank()
+    val isOutgoingTextOnly = isOutgoing && !hasAttachment && hasBody
     val isIncomingOrSystem = !isOutgoing
     val authorName = when (message.direction) {
         MessageDirection.Incoming -> conversation?.contactName ?: "Contact"
@@ -468,12 +657,14 @@ private fun ChatMessageRow(
                 verticalArrangement = Arrangement.spacedBy(bubbleSpacing),
                 horizontalAlignment = if (isOutgoing) Alignment.End else Alignment.Start,
             ) {
-                Text(
-                    text = message.body,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = AetherColors.OnSurface,
-                    modifier = Modifier.testTag("chat-message-body-${message.id}"),
-                )
+                if (hasBody) {
+                    Text(
+                        text = message.body,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = AetherColors.OnSurface,
+                        modifier = Modifier.testTag("chat-message-body-${message.id}"),
+                    )
+                }
                 message.attachment?.let { attachment ->
                     AsyncImage(
                         model = attachment.preview,
@@ -525,6 +716,50 @@ private fun ActionChip(
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 10.dp)
             .testTag(testTag),
+    )
+}
+
+internal fun visibleAigcModes(activeProvider: AigcProvider?): List<AigcMode> =
+    activeProvider?.capabilities?.toList()?.sortedBy { it.ordinal }.orEmpty()
+
+internal fun readyAigcModes(
+    activeProvider: AigcProvider?,
+    generationSourceType: AttachmentType?,
+): List<AigcMode> = visibleAigcModes(activeProvider).filter { mode ->
+    when (mode) {
+        AigcMode.TextToImage -> true
+        AigcMode.ImageToImage -> generationSourceType == AttachmentType.Image
+        AigcMode.VideoToVideo -> generationSourceType == AttachmentType.Video
+    }
+}
+
+private fun MediaInput.asMessageAttachment(): MessageAttachment = MessageAttachment(
+    type = type,
+    preview = uri.toString(),
+)
+
+private fun AigcTask.asGeneratedMessageAttachment(): MessageAttachment? {
+    val preview = outputPreview?.takeIf { it.isNotBlank() } ?: return null
+    return MessageAttachment(
+        type = AttachmentType.Image,
+        preview = preview,
+        prompt = prompt,
+        generationId = id,
+    )
+}
+
+internal fun generationFeedback(task: AigcTask): GenerationFeedback = when (task.status) {
+    TaskStatus.Queued -> GenerationFeedback(
+        statusLine = "Generating with ${task.providerId} · ${task.model}",
+        showPreview = false,
+    )
+    TaskStatus.Failed -> GenerationFeedback(
+        statusLine = task.errorMessage ?: "Generation failed with ${task.providerId} · ${task.model}",
+        showPreview = false,
+    )
+    TaskStatus.Succeeded -> GenerationFeedback(
+        statusLine = "Ready from ${task.providerId} · ${task.model}",
+        showPreview = !task.outputPreview.isNullOrBlank(),
     )
 }
 

@@ -40,6 +40,7 @@ import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.core.model.AigcProvider
 import com.gkim.im.android.core.model.CustomProviderConfig
+import com.gkim.im.android.core.model.PresetProviderConfig
 import com.gkim.im.android.core.util.messagingIntegrationStatusLabel
 import com.gkim.im.android.data.local.PreferencesStore
 import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
@@ -59,6 +60,7 @@ internal data class SettingsUiState(
     val providers: List<AigcProvider> = emptyList(),
     val activeProviderId: String = "",
     val customProvider: CustomProviderConfig = CustomProviderConfig("", "", ""),
+    val activePresetProviderConfig: PresetProviderConfig? = null,
     val imHttpBaseUrl: String = "",
     val imWebSocketUrl: String = "",
     val imDevUserExternalId: String = "",
@@ -81,10 +83,18 @@ internal class SettingsViewModel(
     private val preferencesStore: PreferencesStore,
     messagingRepository: MessagingRepository,
 ) : ViewModel() {
+    private data class ProviderConfigState(
+        val providers: List<AigcProvider>,
+        val activeProviderId: String,
+        val customProvider: CustomProviderConfig,
+        val presetProviderConfigs: Map<String, PresetProviderConfig>,
+    )
+
     private data class ProviderSettingsState(
         val providers: List<AigcProvider>,
         val activeProviderId: String,
         val customProvider: CustomProviderConfig,
+        val presetProviderConfigs: Map<String, PresetProviderConfig>,
         val appLanguage: AppLanguage,
         val themeMode: AppThemeMode,
     )
@@ -97,17 +107,30 @@ internal class SettingsViewModel(
         Triple(httpBaseUrl, webSocketUrl, devUserExternalId)
     }
 
-    private val providerSettings = combine(
+    private val providerConfig = combine(
         repository.providers,
         repository.activeProviderId,
         repository.customProvider,
-        preferencesStore.appLanguage,
-        preferencesStore.appThemeMode,
-    ) { providers, activeProviderId, customProvider, appLanguage, themeMode ->
-        ProviderSettingsState(
+        repository.presetProviderConfigs,
+    ) { providers, activeProviderId, customProvider, presetProviderConfigs ->
+        ProviderConfigState(
             providers = providers,
             activeProviderId = activeProviderId,
             customProvider = customProvider,
+            presetProviderConfigs = presetProviderConfigs,
+        )
+    }
+
+    private val providerSettings = combine(
+        providerConfig,
+        preferencesStore.appLanguage,
+        preferencesStore.appThemeMode,
+    ) { providerConfig, appLanguage, themeMode ->
+        ProviderSettingsState(
+            providers = providerConfig.providers,
+            activeProviderId = providerConfig.activeProviderId,
+            customProvider = providerConfig.customProvider,
+            presetProviderConfigs = providerConfig.presetProviderConfigs,
             appLanguage = appLanguage,
             themeMode = themeMode,
         )
@@ -119,6 +142,7 @@ internal class SettingsViewModel(
             providers = providerSettings.providers,
             activeProviderId = providerSettings.activeProviderId,
             customProvider = providerSettings.customProvider,
+            activePresetProviderConfig = providerSettings.presetProviderConfigs[providerSettings.activeProviderId],
             imHttpBaseUrl = imHttpBaseUrl,
             imWebSocketUrl = imWebSocketUrl,
             imDevUserExternalId = imDevUserExternalId,
@@ -145,6 +169,15 @@ internal class SettingsViewModel(
 
     fun setActiveProvider(id: String) = repository.setActiveProvider(id)
     fun updateCustom(baseUrl: String? = null, model: String? = null, apiKey: String? = null) = repository.updateCustomProvider(baseUrl, model, apiKey)
+    fun updatePresetProvider(model: String? = null, apiKey: String? = null) {
+        val activeProviderId = uiState.value.activeProviderId
+        if (activeProviderId == "custom") return
+        repository.updatePresetProviderConfig(
+            providerId = activeProviderId,
+            model = model,
+            apiKey = apiKey,
+        )
+    }
     fun updateImValidationConfig(
         httpBaseUrl: String? = null,
         webSocketUrl: String? = null,
@@ -185,10 +218,14 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
         SettingsViewModel(container.aigcRepository, container.preferencesStore, container.messagingRepository)
     })
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val activeProvider = uiState.providers.firstOrNull { it.id == uiState.activeProviderId }
+    val presetProviderConfig = uiState.activePresetProviderConfig
+    val activeModelValue = if (activeProvider?.id == "custom") uiState.customProvider.model else presetProviderConfig?.model.orEmpty()
+    val activeApiKeyValue = if (activeProvider?.id == "custom") uiState.customProvider.apiKey else presetProviderConfig?.apiKey.orEmpty()
     var destination by rememberSaveable { mutableStateOf(SettingsDestination.Menu) }
     var baseUrl by remember(uiState.customProvider.baseUrl) { mutableStateOf(uiState.customProvider.baseUrl) }
-    var model by remember(uiState.customProvider.model) { mutableStateOf(uiState.customProvider.model) }
-    var apiKey by remember(uiState.customProvider.apiKey) { mutableStateOf(uiState.customProvider.apiKey) }
+    var model by remember(uiState.activeProviderId, activeModelValue) { mutableStateOf(activeModelValue) }
+    var apiKey by remember(uiState.activeProviderId, activeApiKeyValue) { mutableStateOf(activeApiKeyValue) }
     var imHttpBaseUrl by remember(uiState.imHttpBaseUrl) { mutableStateOf(uiState.imHttpBaseUrl) }
     var imWebSocketUrl by remember(uiState.imWebSocketUrl) { mutableStateOf(uiState.imWebSocketUrl) }
     var imDevUserExternalId by remember(uiState.imDevUserExternalId) { mutableStateOf(uiState.imDevUserExternalId) }
@@ -208,11 +245,19 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
         },
         onModelChanged = {
             model = it
-            viewModel.updateCustom(model = it)
+            if (activeProvider?.id == "custom") {
+                viewModel.updateCustom(model = it)
+            } else {
+                viewModel.updatePresetProvider(model = it)
+            }
         },
         onApiKeyChanged = {
             apiKey = it
-            viewModel.updateCustom(apiKey = it)
+            if (activeProvider?.id == "custom") {
+                viewModel.updateCustom(apiKey = it)
+            } else {
+                viewModel.updatePresetProvider(apiKey = it)
+            }
         },
         onImHttpBaseUrlChanged = {
             imHttpBaseUrl = it
@@ -469,13 +514,37 @@ private fun SettingsAiProviderScreen(
         }
 
         GlassCard {
-            Text(text = appLanguage.pick("CUSTOM ENDPOINT", "自定义端点"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Tertiary)
-            OutlinedTextField(
-                value = baseUrl,
-                onValueChange = onBaseUrlChanged,
-                modifier = Modifier.fillMaxWidth().testTag("settings-base-url"),
-                label = { Text(appLanguage.pick("Base URL", "基础 URL")) },
+            val activeProvider = uiState.providers.firstOrNull { it.id == uiState.activeProviderId }
+            val isCustomProvider = activeProvider?.id == "custom"
+            Text(
+                text = if (isCustomProvider) appLanguage.pick("CUSTOM ENDPOINT", "自定义端点") else appLanguage.pick("PRESET PROVIDER", "预设提供商"),
+                style = MaterialTheme.typography.labelLarge,
+                color = AetherColors.Tertiary,
             )
+            Text(
+                text = if (isCustomProvider) {
+                    appLanguage.pick(
+                        "The custom gateway uses your own base URL, model, and key.",
+                        "自定义网关使用你自己的基础 URL、模型和密钥。",
+                    )
+                } else {
+                    appLanguage.pick(
+                        "The selected preset keeps its provider-managed endpoint while you edit the local model override and API key.",
+                        "当前预设会保留提供商托管端点，你只需维护本地模型覆盖与 API 密钥。",
+                    )
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = AetherColors.OnSurfaceVariant,
+                modifier = Modifier.testTag("settings-active-provider-summary"),
+            )
+            if (isCustomProvider) {
+                OutlinedTextField(
+                    value = baseUrl,
+                    onValueChange = onBaseUrlChanged,
+                    modifier = Modifier.fillMaxWidth().testTag("settings-base-url"),
+                    label = { Text(appLanguage.pick("Base URL", "基础 URL")) },
+                )
+            }
             OutlinedTextField(
                 value = model,
                 onValueChange = onModelChanged,

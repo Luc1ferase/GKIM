@@ -154,4 +154,38 @@ class SettingsViewModelTest {
 
         collector.cancel()
     }
+
+    @Test
+    fun `settings view model exposes and updates active preset provider credentials`() = runTest(mainDispatcherRule.dispatcher) {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val preferencesStore = FakePreferencesStore(
+            initialPresetModels = mapOf("hunyuan" to "hy-image-v3.5"),
+        )
+        val secureStore = InMemorySecureKeyValueStore(
+            mapOf("preset_provider_hunyuan_api_key" to "preset-secret")
+        )
+        val repository = DefaultAigcRepository(presetProviders, preferencesStore, secureStore, dispatcher)
+        val viewModel = SettingsViewModel(repository, preferencesStore, InMemoryMessagingRepository(seedConversations))
+        val collector = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect { }
+        }
+
+        advanceUntilIdle()
+
+        viewModel.setActiveProvider("hunyuan")
+        advanceUntilIdle()
+
+        assertEquals("hy-image-v3.5", viewModel.uiState.value.activePresetProviderConfig?.model)
+        assertEquals("preset-secret", viewModel.uiState.value.activePresetProviderConfig?.apiKey)
+
+        viewModel.updatePresetProvider(model = "hy-image-v3.6", apiKey = "next-secret")
+        advanceUntilIdle()
+
+        assertEquals("hy-image-v3.6", viewModel.uiState.value.activePresetProviderConfig?.model)
+        assertEquals("next-secret", viewModel.uiState.value.activePresetProviderConfig?.apiKey)
+        assertEquals("hy-image-v3.6", preferencesStore.currentPresetModels.getValue("hunyuan"))
+        assertEquals("next-secret", secureStore.peek("preset_provider_hunyuan_api_key"))
+
+        collector.cancel()
+    }
 }

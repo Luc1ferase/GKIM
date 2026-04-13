@@ -315,3 +315,33 @@ Upload
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
+
+### Task 4.2: Run local validation for real Hunyuan `hy-image-v3.0` and Tongyi `wan2.7-image` generation results using locally entered secrets, then record verification/review/score/upload evidence in `docs/DELIVERY_WORKFLOW.md`.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat :app:testDebugUnitTest`` - pass (Android unit suite stayed green after updating the Hunyuan submit/query contract and switching the Tongyi preset default to the Beijing DashScope endpoint)
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat :app:compileDebugAndroidTestKotlin`` - pass (Android instrumentation sources still compile against the updated provider wiring)
+  - ``powershell (Invoke-RestMethod to https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation with the locally supplied `wan2.7-image` key)`` - pass (received request id `ff71b2de-d9af-9e9b-b456-eabd76fe0c2e` and an OSS-hosted image URL; secret redacted)
+  - ``powershell (Invoke-RestMethod to https://api.cloudai.tencent.com/v1/aiart/submit and /v1/aiart/query with the locally supplied `HY-Image-V3.0` key)`` - fail (Tencent returned `invalid_api_key`; no image result was issued and the secret remained redacted in the review log)
+  - ``powershell (Invoke-RestMethod to https://api.hunyuan.cloud.tencent.com/v1/chat/completions with the same local Tencent key)`` - fail (Tencent again returned `invalid_api_key`, which indicates the current blocker is the supplied local credential rather than only the image endpoint path)
+- Review:
+  - Score: `91/100`
+  - Findings: `Tongyi live validation passed, but Hunyuan acceptance remains blocked because Tencent rejects the supplied local key as invalid. Task 4.2 must stay open until a valid Hunyuan key can produce a real image result.`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not created`
+- Result: `blocked`
+
+### Task 4.2: Run focused local verification for split chat image intents, truthful image-to-image readiness, and generated-image save/send follow-up actions, then capture the evidence in `docs/DELIVERY_WORKFLOW.md`.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat :app:testDebugUnitTest --tests "com.gkim.im.android.feature.chat.ChatPresentationTest" --tests "com.gkim.im.android.data.repository.RepositoriesTest" --tests "com.gkim.im.android.data.remote.aigc.AigcProviderClientsTest" :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#chatSecondaryMenuFiltersAigcActionsToTheActiveProviderCapabilities,com.gkim.im.android.feature.navigation.GkimRootAppTest#chatSecondaryMenuSeparatesChatAttachmentAndGenerationSourceFlows,com.gkim.im.android.feature.navigation.GkimRootAppTest#chatSendButtonSendsStagedImageAttachmentAsNormalOutgoingMessage,com.gkim.im.android.feature.navigation.GkimRootAppTest#latestGenerationCardOffersSaveAndSendActionsForSuccessfulImages,com.gkim.im.android.feature.navigation.GkimRootAppTest#chatGenerationFailureShowsMissingPresetKeyFeedback"`` - pass (unit coverage stayed green for capability truth, missing-source failures, attachment sending, and provider request contracts; `5` focused instrumentation cases passed on `codex_api34` for the explicit `+` menu, staged image send, truthful generation failure feedback, and generated-image save/send actions)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not requested in this session`
+- Result: `accepted`

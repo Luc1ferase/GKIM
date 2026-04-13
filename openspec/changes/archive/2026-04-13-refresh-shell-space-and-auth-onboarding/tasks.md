@@ -11,17 +11,17 @@
 ## 3. Welcome and Android auth shell
 
 - [x] 3.1 Add a root auth state machine and welcome/onboarding route that uses the provided `docs/stitch-design/welcome_screen` design direction and media assets to expose `注册` and `登录` entry actions before the main shell.
-- [ ] 3.2 Introduce Android-side account session persistence, login/register form flows, and authenticated-shell gating tests so returning users bypass welcome while signed-out users cannot access the app shell.
+- [x] 3.2 Introduce Android-side account session persistence, login/register form flows, and authenticated-shell gating tests so returning users bypass welcome while signed-out users cannot access the app shell.
 
 ## 4. Backend account and contact foundation
 
-- [ ] 4.1 Add Rust/PostgreSQL account persistence, registration/login APIs, and authenticated session/token issuance with focused backend verification.
-- [ ] 4.2 Add backend add-by-ID contact APIs plus account-backed IM bootstrap/session authorization so messaging data is scoped to authenticated accounts instead of development-only identities.
+- [x] 4.1 Add Rust/PostgreSQL account persistence, registration/login APIs, and authenticated session/token issuance with focused backend verification.
+- [x] 4.2 Add backend add-by-ID contact APIs plus account-backed IM bootstrap/session authorization so messaging data is scoped to authenticated accounts instead of development-only identities.
 
 ## 5. Account-backed app integration and acceptance
 
-- [ ] 5.1 Replace the Android development-user IM assumptions with account-backed auth/session wiring, including account-ID contact adding from the app shell and authenticated IM bootstrap usage.
-- [ ] 5.2 Run emulator validation for the authenticated welcome/login/add-by-ID/message flow, including the unread-badge removal and merged Space browsing surfaces, then capture the required evidence in `docs/DELIVERY_WORKFLOW.md`.
+- [x] 5.1 Replace the Android development-user IM assumptions with account-backed auth/session wiring, including account-ID contact adding from the app shell and authenticated IM bootstrap usage.
+- [x] 5.2 Run emulator validation for the authenticated welcome/login/add-by-ID/message flow, including the unread-badge removal and merged Space browsing surfaces, then capture the required evidence in `docs/DELIVERY_WORKFLOW.md`.
 
 ## Task Evidence
 
@@ -101,3 +101,43 @@
   - Branch: `master`
   - Push: `origin/master`
 - Result: `accepted`
+
+### Task 3.2: Introduce Android-side account session persistence, login/register form flows, and authenticated-shell gating tests so returning users bypass welcome while signed-out users cannot access the app shell.
+
+- Reconciled completion:
+  - Archived change `2026-04-10-real-im-auth-and-social` implemented Android session persistence plus real login/register routes in tasks `7.2`, `8.1`, `9.1`, `10.1`, and `10.2`.
+  - Archived change `2026-04-13-validate-real-im-auth-app` revalidated the resulting flow in tasks `3.1` and `4.2`, including login/register submission, stored-session restore, and invalid-session fallback coverage on Android.
+  - Archived change `2026-04-13-diagnose-onboarding-and-api-regressions` refreshed the inert auth-back-navigation regression coverage and endpoint-selection diagnostics in tasks `1.1`, `2.2`, `3.1`, and `3.2`.
+- Result: `completed by later archived auth validation work`
+
+### Task 4.1: Add Rust/PostgreSQL account persistence, registration/login APIs, and authenticated session/token issuance with focused backend verification.
+
+- Reconciled completion:
+  - Archived change `2026-04-10-real-im-auth-and-social` landed the backend account schema and auth endpoints through tasks `1.1`, `1.3`, `2.1`, and `2.2`.
+  - Archived change `2026-04-13-validate-real-im-auth-app` re-ran focused backend verification in tasks `1.3` and `4.1`, covering register/login/search/friend-request/contact-gated messaging against the live PostgreSQL-backed backend.
+- Result: `completed by later archived backend auth work`
+
+### Task 4.2: Add backend add-by-ID contact APIs plus account-backed IM bootstrap/session authorization so messaging data is scoped to authenticated accounts instead of development-only identities.
+
+- Reconciled completion:
+  - The original literal `add-by-ID` wording was superseded by the later accepted authenticated user-discovery plus friend-request lifecycle, which became the durable main-spec contract.
+  - Archived change `2026-04-10-real-im-auth-and-social` landed the account-backed IM bootstrap/session model plus social graph APIs through tasks `3.1`, `4.1`-`4.4`, `5.1`, and `6.1`.
+  - Archived change `2026-04-13-validate-real-im-auth-app` task `4.3` synced that accepted auth/social behavior into the main `openspec/specs/im-backend/spec.md` and `openspec/specs/core/im-app/spec.md`.
+- Result: `completed via the later accepted search-and-friend-request flow that replaced the earlier add-by-ID wording`
+
+### Task 5.1: Replace the Android development-user IM assumptions with account-backed auth/session wiring, including account-ID contact adding from the app shell and authenticated IM bootstrap usage.
+
+- Reconciled completion:
+  - Archived change `2026-04-10-real-im-auth-and-social` replaced Android development-user assumptions with session-backed auth, authenticated bootstrap restore, and live social entry points across tasks `7.1`-`12.3`.
+  - Archived change `2026-04-13-validate-real-im-auth-app` revalidated the resulting Android contract in tasks `3.1`, `3.2`, and `4.2`, including stored-session restore/fallback, authenticated user discovery, pending friend requests, and contact-gated messaging entry.
+  - As with backend task `4.2`, the app-shell contact path evolved from exact account-ID entry to the accepted authenticated search/request flow before archive reconciliation.
+- Result: `completed via the later accepted Android auth-and-social integration`
+
+### Task 5.2: Run emulator validation for the authenticated welcome/login/add-by-ID/message flow, including the unread-badge removal and merged Space browsing surfaces, then capture the required evidence in `docs/DELIVERY_WORKFLOW.md`.
+
+- Reconciled completion:
+  - This change already captured accepted emulator evidence for unread-badge removal (`2.1`), merged Space browsing (`2.2`), and the welcome-shell entry flow (`3.1`).
+  - Archived change `2026-04-13-validate-real-im-auth-app` captured the authenticated emulator/backend evidence chain in task `4.2`, covering login, registration, stored-session restore/fallback, contacts discovery, pending requests, and messaging entry.
+  - Archived change `2026-04-13-diagnose-onboarding-and-api-regressions` added follow-up emulator/backend verification for auth target resolution, welcome playback, and login/register back navigation in tasks `4.1` and `4.2`.
+  - The original `add-by-ID` wording was again superseded by the accepted user-search/friend-request flow used in the validated Android path.
+- Result: `completed across the accepted evidence chain for shell, auth, and live backend validation`

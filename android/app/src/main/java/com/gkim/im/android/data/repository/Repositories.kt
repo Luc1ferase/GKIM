@@ -15,12 +15,17 @@ import com.gkim.im.android.core.model.MediaInput
 import com.gkim.im.android.core.model.MessageAttachment
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
+import com.gkim.im.android.core.model.PresetProviderConfig
 import com.gkim.im.android.core.model.PromptCategory
 import com.gkim.im.android.core.model.TaskStatus
 import com.gkim.im.android.core.model.WorkshopPrompt
 import com.gkim.im.android.core.security.SecureKeyValueStore
 import com.gkim.im.android.core.util.sortContacts
 import com.gkim.im.android.data.local.PreferencesStore
+import com.gkim.im.android.data.remote.aigc.MediaInputEncoder
+import com.gkim.im.android.data.remote.aigc.RemoteAigcGenerateRequest
+import com.gkim.im.android.data.remote.aigc.RemoteAigcProviderClient
+import com.gkim.im.android.data.remote.aigc.UnsupportedMediaInputEncoder
 import com.gkim.im.android.data.remote.im.ImBackendClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -60,7 +65,7 @@ interface MessagingRepository {
     fun conversation(conversationId: String): Flow<Conversation?>
     fun ensureConversation(contact: Contact): Conversation
     fun ensureStudioRoom(): Conversation
-    fun sendMessage(conversationId: String, body: String)
+    fun sendMessage(conversationId: String, body: String, attachment: MessageAttachment? = null)
     fun appendAigcResult(conversationId: String, task: AigcTask)
     fun loadConversationHistory(conversationId: String)
 }
@@ -109,10 +114,17 @@ class InMemoryMessagingRepository(seed: List<Conversation>) : MessagingRepositor
         return ensureConversation(Contact("studio", "Studio Core", "AIGC Control", "SC", Instant.now().toString(), true))
     }
 
-    override fun sendMessage(conversationId: String, body: String) {
+    override fun sendMessage(conversationId: String, body: String, attachment: MessageAttachment?) {
+        if (body.isBlank() && attachment == null) return
         val timestamp = Instant.now().toString()
         conversationState.value = conversationState.value.map { conversation ->
             if (conversation.id != conversationId) return@map conversation
+            val lastMessage = when {
+                body.isNotBlank() -> body
+                attachment?.type == AttachmentType.Image -> "Sent an image"
+                attachment?.type == AttachmentType.Video -> "Sent a video"
+                else -> conversation.lastMessage
+            }
             conversation.copy(
                 messages = conversation.messages + ChatMessage(
                     id = "out-$timestamp",
@@ -120,8 +132,9 @@ class InMemoryMessagingRepository(seed: List<Conversation>) : MessagingRepositor
                     kind = MessageKind.Text,
                     body = body,
                     createdAt = timestamp,
+                    attachment = attachment,
                 ),
-                lastMessage = body,
+                lastMessage = lastMessage,
                 lastTimestamp = timestamp,
             )
         }
@@ -140,7 +153,7 @@ class InMemoryMessagingRepository(seed: List<Conversation>) : MessagingRepositor
                     createdAt = task.createdAt,
                     attachment = MessageAttachment(
                         type = if (task.mode == AigcMode.VideoToVideo) AttachmentType.Video else AttachmentType.Image,
-                        preview = task.outputPreview,
+                        preview = task.outputPreview ?: "",
                         prompt = task.prompt,
                         generationId = task.id,
                     ),
@@ -229,12 +242,14 @@ interface AigcRepository {
     val providers: StateFlow<List<AigcProvider>>
     val activeProviderId: StateFlow<String>
     val customProvider: StateFlow<CustomProviderConfig>
+    val presetProviderConfigs: StateFlow<Map<String, PresetProviderConfig>>
     val history: StateFlow<List<AigcTask>>
     val draftRequest: StateFlow<DraftAigcRequest>
     fun setActiveProvider(id: String)
     fun updateCustomProvider(baseUrl: String? = null, model: String? = null, apiKey: String? = null)
+    fun updatePresetProviderConfig(providerId: String, model: String? = null, apiKey: String? = null)
     fun updateDraft(request: DraftAigcRequest)
-    fun generate(mode: AigcMode, prompt: String, mediaInput: MediaInput? = null): AigcTask
+    suspend fun generate(mode: AigcMode, prompt: String, mediaInput: MediaInput? = null): AigcTask
 }
 
 class DefaultAigcRepository(
@@ -242,15 +257,28 @@ class DefaultAigcRepository(
     private val preferencesStore: PreferencesStore,
     private val secureStore: SecureKeyValueStore,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val providerClients: Map<String, RemoteAigcProviderClient> = emptyMap(),
+    private val mediaInputEncoder: MediaInputEncoder = UnsupportedMediaInputEncoder(),
 ) : AigcRepository {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
-    override val providers = MutableStateFlow(presets)
-    private val activeProviderState = MutableStateFlow(presets.firstOrNull()?.id ?: "hunyuan")
+    private val providerCatalog = presets
+    private val presetDefaults = providerCatalog.filter { it.preset }.associateBy { it.id }
+    override val providers = MutableStateFlow(providerCatalog)
+    private val activeProviderState = MutableStateFlow(providerCatalog.firstOrNull()?.id ?: "hunyuan")
     private val customProviderState = MutableStateFlow(CustomProviderConfig("https://api.example.com/v1", "", "gpt-image-1"))
+    private val presetProviderConfigState = MutableStateFlow(
+        presetDefaults.mapValues { (_, provider) ->
+            PresetProviderConfig(
+                model = provider.model,
+                apiKey = "",
+            )
+        }
+    )
     override val history = MutableStateFlow<List<AigcTask>>(emptyList())
     override val draftRequest = MutableStateFlow(DraftAigcRequest())
     override val activeProviderId: StateFlow<String> = activeProviderState
     override val customProvider: StateFlow<CustomProviderConfig> = customProviderState
+    override val presetProviderConfigs: StateFlow<Map<String, PresetProviderConfig>> = presetProviderConfigState
 
     init {
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -267,6 +295,22 @@ class DefaultAigcRepository(
             }
         }
         secureStore.getString("custom_api_key")?.let { apiKey -> customProviderState.value = customProviderState.value.copy(apiKey = apiKey) }
+        presetDefaults.forEach { (providerId, provider) ->
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                preferencesStore.presetProviderModel(providerId).collect { model ->
+                    val resolvedModel = model?.takeIf { it.isNotBlank() } ?: provider.model
+                    updatePresetProviderState(providerId) { current ->
+                        current.copy(model = resolvedModel)
+                    }
+                }
+            }
+            val secureKey = presetProviderApiKeyKey(providerId)
+            secureStore.getString(secureKey)?.let { apiKey ->
+                updatePresetProviderState(providerId) { current ->
+                    current.copy(apiKey = apiKey)
+                }
+            }
+        }
     }
 
     override fun setActiveProvider(id: String) {
@@ -290,29 +334,207 @@ class DefaultAigcRepository(
         }
     }
 
+    override fun updatePresetProviderConfig(providerId: String, model: String?, apiKey: String?) {
+        val defaultProvider = presetDefaults[providerId] ?: return
+        val current = presetProviderConfigState.value[providerId]
+            ?: PresetProviderConfig(model = defaultProvider.model, apiKey = "")
+        val resolvedModel = model?.takeIf { it.isNotBlank() } ?: current.model
+        val next = current.copy(
+            model = resolvedModel,
+            apiKey = apiKey ?: current.apiKey,
+        )
+        presetProviderConfigState.value = presetProviderConfigState.value + (providerId to next)
+        providers.value = applyPresetProviderConfigs(providerCatalog, presetProviderConfigState.value)
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            model?.let { preferencesStore.setPresetProviderModel(providerId, resolvedModel) }
+            apiKey?.let { secureStore.putString(presetProviderApiKeyKey(providerId), it) }
+        }
+    }
+
     override fun updateDraft(request: DraftAigcRequest) {
         draftRequest.value = request
     }
 
-    override fun generate(mode: AigcMode, prompt: String, mediaInput: MediaInput?): AigcTask {
-        val providerId = activeProviderState.value
-        val task = AigcTask(
-            id = "$providerId-${System.currentTimeMillis()}",
-            providerId = providerId,
+    override suspend fun generate(mode: AigcMode, prompt: String, mediaInput: MediaInput?): AigcTask {
+        val provider = providers.value.firstOrNull { it.id == activeProviderState.value }
+            ?: return createTerminalTask(
+                providerId = "unknown",
+                model = "",
+                mode = mode,
+                prompt = prompt,
+                mediaInput = mediaInput,
+                status = TaskStatus.Failed,
+                errorMessage = "No active AIGC provider is configured.",
+            )
+        draftRequest.value = DraftAigcRequest(mode = mode, prompt = prompt, mediaInput = mediaInput)
+
+        val requiredInputType = requiredInputTypeFor(mode)
+        if (requiredInputType != null && mediaInput == null) {
+            return createTerminalTask(
+                providerId = provider.id,
+                model = provider.model,
+                mode = mode,
+                prompt = prompt,
+                mediaInput = mediaInput,
+                status = TaskStatus.Failed,
+                errorMessage = when (mode) {
+                    AigcMode.ImageToImage -> "Select a source image before running image-to-image."
+                    AigcMode.VideoToVideo -> "Select a source video before running video-to-video."
+                    AigcMode.TextToImage -> "Generation input is missing."
+                },
+            )
+        }
+
+        if (requiredInputType != null && mediaInput?.type != requiredInputType) {
+            return createTerminalTask(
+                providerId = provider.id,
+                model = provider.model,
+                mode = mode,
+                prompt = prompt,
+                mediaInput = mediaInput,
+                status = TaskStatus.Failed,
+                errorMessage = when (requiredInputType) {
+                    AttachmentType.Image -> "Image-to-image requires an image source."
+                    AttachmentType.Video -> "Video-to-video requires a video source."
+                },
+            )
+        }
+
+        if (mode !in provider.capabilities) {
+            return createTerminalTask(
+                providerId = provider.id,
+                model = provider.model,
+                mode = mode,
+                prompt = prompt,
+                mediaInput = mediaInput,
+                status = TaskStatus.Failed,
+                errorMessage = "${provider.label} does not support ${mode.name}.",
+            )
+        }
+
+        val apiKey = resolveApiKey(provider.id)
+        if (apiKey.isBlank()) {
+            return createTerminalTask(
+                providerId = provider.id,
+                model = provider.model,
+                mode = mode,
+                prompt = prompt,
+                mediaInput = mediaInput,
+                status = TaskStatus.Failed,
+                errorMessage = "${provider.label} API key is required before generation can start.",
+            )
+        }
+
+        val client = providerClients[provider.id]
+            ?: return createTerminalTask(
+                providerId = provider.id,
+                model = provider.model,
+                mode = mode,
+                prompt = prompt,
+                mediaInput = mediaInput,
+                status = TaskStatus.Failed,
+                errorMessage = "${provider.label} is not wired for live generation in this build.",
+            )
+
+        val queuedTask = AigcTask(
+            id = "${provider.id}-${System.currentTimeMillis()}",
+            providerId = provider.id,
+            model = provider.model,
             mode = mode,
             prompt = prompt,
             createdAt = Instant.now().toString(),
-            status = TaskStatus.Succeeded,
+            status = TaskStatus.Queued,
             input = mediaInput,
-            outputPreview = when (mode) {
-                AigcMode.VideoToVideo -> "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80"
-                AigcMode.ImageToImage -> "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80"
-                AigcMode.TextToImage -> "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80"
-            },
+        )
+        history.value = listOf(queuedTask) + history.value
+
+        return try {
+            val encodedMedia = mediaInput?.let { mediaInputEncoder.encode(it) }
+            val result = client.generate(
+                RemoteAigcGenerateRequest(
+                    model = provider.model,
+                    prompt = prompt,
+                    apiKey = apiKey,
+                    imageBase64 = encodedMedia?.base64Data,
+                    imageMimeType = encodedMedia?.mimeType,
+                )
+            )
+            val succeededTask = queuedTask.copy(
+                remoteId = result.remoteId,
+                status = TaskStatus.Succeeded,
+                outputPreview = result.outputUrl,
+            )
+            replaceTask(succeededTask)
+            succeededTask
+        } catch (error: Throwable) {
+            val failedTask = queuedTask.copy(
+                status = TaskStatus.Failed,
+                errorMessage = error.message ?: "Generation failed.",
+                outputPreview = null,
+            )
+            replaceTask(failedTask)
+            failedTask
+        }
+    }
+
+    private fun updatePresetProviderState(
+        providerId: String,
+        transform: (PresetProviderConfig) -> PresetProviderConfig,
+    ) {
+        val defaultProvider = presetDefaults[providerId] ?: return
+        val current = presetProviderConfigState.value[providerId]
+            ?: PresetProviderConfig(model = defaultProvider.model, apiKey = "")
+        presetProviderConfigState.value = presetProviderConfigState.value + (providerId to transform(current))
+        providers.value = applyPresetProviderConfigs(providerCatalog, presetProviderConfigState.value)
+    }
+
+    private fun applyPresetProviderConfigs(
+        providers: List<AigcProvider>,
+        configs: Map<String, PresetProviderConfig>,
+    ): List<AigcProvider> = providers.map { provider ->
+        if (!provider.preset) {
+            provider
+        } else {
+            val config = configs[provider.id]
+            provider.copy(model = config?.model ?: provider.model)
+        }
+    }
+
+    private fun presetProviderApiKeyKey(providerId: String): String = "preset_provider_${providerId}_api_key"
+
+    private fun resolveApiKey(providerId: String): String = when (providerId) {
+        "custom" -> customProviderState.value.apiKey
+        else -> presetProviderConfigState.value[providerId]?.apiKey.orEmpty()
+    }
+
+    private fun createTerminalTask(
+        providerId: String,
+        model: String,
+        mode: AigcMode,
+        prompt: String,
+        mediaInput: MediaInput?,
+        status: TaskStatus,
+        errorMessage: String,
+    ): AigcTask {
+        val task = AigcTask(
+            id = "$providerId-${System.currentTimeMillis()}",
+            providerId = providerId,
+            model = model,
+            mode = mode,
+            prompt = prompt,
+            createdAt = Instant.now().toString(),
+            status = status,
+            input = mediaInput,
+            errorMessage = errorMessage,
         )
         history.value = listOf(task) + history.value
-        draftRequest.value = DraftAigcRequest(mode = mode, prompt = prompt, mediaInput = mediaInput)
         return task
+    }
+
+    private fun replaceTask(task: AigcTask) {
+        history.value = history.value.map { existing ->
+            if (existing.id == task.id) task else existing
+        }
     }
 }
 
@@ -399,9 +621,13 @@ class LiveMessagingRepository(
         return fallbackConversation
     }
 
-    override fun sendMessage(conversationId: String, body: String) {
-        if (body.isBlank()) return
+    override fun sendMessage(conversationId: String, body: String, attachment: MessageAttachment?) {
+        if (body.isBlank() && attachment == null) return
         val conversation = conversationState.value.firstOrNull { it.id == conversationId } ?: return
+        if (attachment != null) {
+            upsertLocalOutgoingMessage(conversationId, body, attachment)
+            return
+        }
         val clientMessageId = "client-${System.currentTimeMillis()}"
         val sent = realtimeGateway.sendMessage(
             recipientExternalId = conversation.contactId,
@@ -575,6 +801,37 @@ class LiveMessagingRepository(
         )
     }
 
+    private fun upsertLocalOutgoingMessage(
+        conversationId: String,
+        body: String,
+        attachment: MessageAttachment,
+    ) {
+        val timestamp = Instant.now().toString()
+        val lastMessage = when {
+            body.isNotBlank() -> body
+            attachment.type == AttachmentType.Image -> "Sent an image"
+            else -> "Sent a video"
+        }
+        conversationState.value = conversationState.value.map { conversation ->
+            if (conversation.id != conversationId) {
+                conversation
+            } else {
+                conversation.copy(
+                    messages = conversation.messages + ChatMessage(
+                        id = "local-$timestamp",
+                        direction = MessageDirection.Outgoing,
+                        kind = MessageKind.Text,
+                        body = body,
+                        createdAt = timestamp,
+                        attachment = attachment,
+                    ),
+                    lastMessage = lastMessage,
+                    lastTimestamp = timestamp,
+                )
+            }
+        }
+    }
+
     private fun upsertMessage(
         conversationId: String,
         message: ChatMessage,
@@ -594,6 +851,12 @@ class LiveMessagingRepository(
             }
         }
     }
+}
+
+private fun requiredInputTypeFor(mode: AigcMode): AttachmentType? = when (mode) {
+    AigcMode.TextToImage -> null
+    AigcMode.ImageToImage -> AttachmentType.Image
+    AigcMode.VideoToVideo -> AttachmentType.Video
 }
 
 

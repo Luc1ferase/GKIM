@@ -123,7 +123,7 @@ val seedPrompts = listOf(
 )
 
 val presetProviders = listOf(
-    AigcProvider("hunyuan", "Tencent Hunyuan", "Tencent", "Default image and video experimentation lane.", "hunyuan-image", AccentTone.Primary, true, setOf(AigcMode.TextToImage, AigcMode.ImageToImage, AigcMode.VideoToVideo)),
-    AigcProvider("tongyi", "Alibaba Tongyi", "Alibaba", "Useful for prompt expansion and guided iteration.", "wanx2.1", AccentTone.Secondary, true, setOf(AigcMode.TextToImage, AigcMode.ImageToImage)),
+    AigcProvider("hunyuan", "Tencent Hunyuan", "Tencent", "Tencent image generation lane for local provider validation.", "hy-image-v3.0", AccentTone.Primary, true, setOf(AigcMode.TextToImage)),
+    AigcProvider("tongyi", "Alibaba Tongyi", "Alibaba", "Alibaba image generation lane for iterative prompt experiments.", "wan2.7-image", AccentTone.Secondary, true, setOf(AigcMode.TextToImage, AigcMode.ImageToImage)),
     AigcProvider("custom", "Custom Endpoint", "OpenAI-Compatible", "Bring your own gateway, auth key, and model identifier.", "gpt-image-1", AccentTone.Tertiary, false, setOf(AigcMode.TextToImage, AigcMode.ImageToImage, AigcMode.VideoToVideo)),
 )

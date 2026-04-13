@@ -29,6 +29,8 @@ interface PreferencesStore {
     suspend fun setActiveProviderId(value: String)
     suspend fun setCustomBaseUrl(value: String)
     suspend fun setCustomModel(value: String)
+    fun presetProviderModel(providerId: String): Flow<String?>
+    suspend fun setPresetProviderModel(providerId: String, value: String)
     suspend fun setImHttpBaseUrl(value: String)
     suspend fun setImWebSocketUrl(value: String)
     suspend fun setImDevUserExternalId(value: String)
@@ -47,6 +49,8 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
     private val appLanguageKey = stringPreferencesKey("app_language")
     private val appThemeModeKey = stringPreferencesKey("app_theme_mode")
 
+    private fun presetModelKey(providerId: String) = stringPreferencesKey("preset_provider_${providerId}_model")
+
     override val contactSortMode: Flow<ContactSortMode> = context.preferencesStore.data.map {
         ContactSortMode.valueOf(it[sortKey] ?: ContactSortMode.Nickname.name)
     }
@@ -61,6 +65,10 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
 
     override val customModel: Flow<String> = context.preferencesStore.data.map { prefs ->
         prefs[customModelKey] ?: "gpt-image-1"
+    }
+
+    override fun presetProviderModel(providerId: String): Flow<String?> = context.preferencesStore.data.map { prefs ->
+        prefs[presetModelKey(providerId)]
     }
 
     override val imHttpBaseUrl: Flow<String> = context.preferencesStore.data.map { prefs ->
@@ -97,6 +105,10 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
 
     override suspend fun setCustomModel(value: String) {
         context.preferencesStore.edit { it[customModelKey] = value }
+    }
+
+    override suspend fun setPresetProviderModel(providerId: String, value: String) {
+        context.preferencesStore.edit { it[presetModelKey(providerId)] = value }
     }
 
     override suspend fun setImHttpBaseUrl(value: String) {

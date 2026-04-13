@@ -1,6 +1,8 @@
 package com.gkim.im.android.data.repository
 
 import android.content.Context
+import com.gkim.im.android.core.media.AndroidGeneratedImageSaver
+import com.gkim.im.android.core.media.GeneratedImageSaver
 import com.gkim.im.android.core.rendering.MarkdownDocumentParser
 import com.gkim.im.android.core.security.AndroidSecureKeyValueStore
 import com.gkim.im.android.core.security.SecureKeyValueStore
@@ -8,6 +10,9 @@ import com.gkim.im.android.data.local.AppDatabase
 import com.gkim.im.android.data.local.AppPreferencesStore
 import com.gkim.im.android.data.local.PreferencesStore
 import com.gkim.im.android.data.local.SessionStore
+import com.gkim.im.android.data.remote.aigc.AndroidMediaInputEncoder
+import com.gkim.im.android.data.remote.aigc.HunyuanImageProviderClient
+import com.gkim.im.android.data.remote.aigc.TongyiImageProviderClient
 import com.gkim.im.android.data.remote.api.AigcService
 import com.gkim.im.android.data.remote.api.FeedService
 import com.gkim.im.android.data.remote.api.ServiceFactory
@@ -26,6 +31,7 @@ interface AppContainer {
     val imBackendClient: ImBackendClient
     val markdownParser: MarkdownDocumentParser
     val realtimeChatClient: RealtimeChatClient
+    val generatedImageSaver: GeneratedImageSaver
 }
 
 class DefaultAppContainer(context: Context) : AppContainer {
@@ -46,6 +52,10 @@ class DefaultAppContainer(context: Context) : AppContainer {
 
     override val markdownParser = MarkdownDocumentParser()
     override val realtimeChatClient = RealtimeChatClient(okHttpClient, "wss://example.com/realtime")
+    override val generatedImageSaver: GeneratedImageSaver = AndroidGeneratedImageSaver(
+        context = context,
+        httpClient = okHttpClient,
+    )
 
     override val messagingRepository: MessagingRepository = LiveMessagingRepository(
         backendClient = imBackendClient,
@@ -59,5 +69,10 @@ class DefaultAppContainer(context: Context) : AppContainer {
         presets = presetProviders,
         preferencesStore = preferencesStore,
         secureStore = secureStore,
+        providerClients = mapOf(
+            "hunyuan" to HunyuanImageProviderClient(httpClient = okHttpClient),
+            "tongyi" to TongyiImageProviderClient(httpClient = okHttpClient),
+        ),
+        mediaInputEncoder = AndroidMediaInputEncoder(context),
     )
 }

@@ -15,7 +15,7 @@ The system SHALL initialize an Android application scaffold implemented with Kot
 - **THEN** the implementation uses ViewModels, repositories, and shared services instead of direct API calls or complex business logic in Compose screen functions
 
 ### Requirement: Welcome onboarding uses native runtime composition instead of reference mockup overlays
-The system SHALL render the Android unauthenticated welcome/onboarding surface as native runtime UI aligned to the approved design direction, and it MUST NOT display the provided static welcome/register mockup image as a background, overlay, or other runtime composition layer behind the interactive auth controls. The welcome screen video backdrop MUST use the currently approved packaged runtime motion asset derived from `docs/stitch-design/welcome_screen/1.mp4` while preserving the existing looping muted playback behavior. The `登录` and `注册` actions on that welcome surface MUST route to real auth screens rather than directly bypassing authentication into the shell.
+The system SHALL render the Android unauthenticated welcome/onboarding surface as native runtime UI aligned to the approved design direction, and it MUST NOT display the provided static welcome/register mockup image as a background, overlay, or other runtime composition layer behind the interactive auth controls. The welcome screen video backdrop MUST use the currently approved packaged runtime motion asset derived from `docs/stitch-design/welcome_screen/1.mp4` while preserving the existing looping muted playback behavior. The runtime backdrop MUST preserve the source video aspect ratio and scale to cover the available welcome-screen viewport across supported Android phone screen resolutions, allowing centered crop rather than stretching, pillarboxing, or letterboxing when ratios differ. The lower auth CTA area MUST NOT render a separate translucent decorative block immediately above the `注册` / `登录` action row. The welcome-screen motion MUST remain visibly active to the user after runtime cover-scaling and overlay treatment are applied, instead of degrading into a seemingly static backdrop while the onboarding UI remains on screen. The `登录` and `注册` actions on that welcome surface MUST route to real auth screens rather than directly bypassing authentication into the shell.
 
 #### Scenario: Unauthenticated startup shows a native-composed welcome surface
 - **WHEN** the Android app launches without an authenticated session
@@ -29,12 +29,24 @@ The system SHALL render the Android unauthenticated welcome/onboarding surface a
 - **WHEN** the unauthenticated welcome screen is displayed
 - **THEN** the login/register controls remain readable without relying on a shipped static mockup image behind them
 
+#### Scenario: Welcome CTA row avoids standalone translucent chrome above the actions
+- **WHEN** the unauthenticated welcome screen renders the lower auth action area
+- **THEN** the `注册` / `登录` buttons appear without a separate translucent decorative block immediately above them
+
 #### Scenario: Welcome screen uses the approved runtime video asset
 - **WHEN** the Android app packages and renders the welcome-screen video backdrop
 - **THEN** the runtime welcome video resource corresponds to the approved motion source derived from `docs/stitch-design/welcome_screen/1.mp4` rather than the superseded packaged backdrop asset
 
+#### Scenario: Welcome video covers supported phone viewports without distortion
+- **WHEN** the Android app renders the welcome-screen video backdrop on supported phone viewports whose aspect ratio differs from the source video
+- **THEN** the runtime backdrop fills the available viewport edge to edge, preserves the source video aspect ratio, and crops outer edges if needed instead of stretching the image or showing blank bands
+
+#### Scenario: Welcome video still reads as visibly playing after cover and overlay adjustments
+- **WHEN** the Android app renders the welcome-screen video backdrop with the current runtime scaling and scrim treatment
+- **THEN** the user can still perceive active motion from the packaged welcome video instead of seeing a backdrop that appears frozen or fully obscured
+
 ### Requirement: Android app provides credential login and registration entry points
-The system SHALL expose real `登录 / 注册` routes from the unauthenticated welcome flow and account surfaces, and it MUST submit those forms to backend auth endpoints instead of treating auth actions as local preview toggles. Successful register/login actions MUST persist the returned session and enter the authenticated shell. Backend validation or authentication failures MUST be shown to the user inline.
+The system SHALL expose real `登录 / 注册` routes from the unauthenticated welcome flow and account surfaces, and it MUST submit those forms to backend auth endpoints instead of treating auth actions as local preview toggles. Successful register/login actions MUST persist the returned session and enter the authenticated shell. Backend validation or authentication failures MUST be shown to the user inline. The login and registration surfaces MUST also provide a working in-UI back affordance that returns the user to the welcome route.
 
 #### Scenario: User logs in from the welcome-driven auth flow
 - **WHEN** an unauthenticated user opens the login route from the welcome surface and submits valid credentials
@@ -47,6 +59,10 @@ The system SHALL expose real `登录 / 注册` routes from the unauthenticated w
 #### Scenario: Auth form shows backend validation feedback
 - **WHEN** the backend returns invalid-credential, duplicate-username, or invalid-input feedback during login or registration
 - **THEN** the app shows the error inline on the corresponding auth route instead of silently advancing into the shell
+
+#### Scenario: User returns from login or registration to welcome
+- **WHEN** the user taps the visible back affordance on the login or registration screen
+- **THEN** the app navigates back to the unauthenticated welcome surface instead of leaving an inert back label on screen
 
 ### Requirement: Android app persists authenticated sessions securely
 The system SHALL persist the authenticated account session locally using encrypted device storage, and it MUST restore the authenticated shell only when the stored session remains valid against backend bootstrap or equivalent authenticated startup checks.
@@ -90,7 +106,7 @@ The system SHALL let the Android app authenticate through the backend developmen
 - **THEN** the app shows an explicit validation/debug failure state instead of silently falling back to placeholder success behavior
 
 ### Requirement: Android client accesses protected infrastructure through service boundaries
-The system SHALL access IM, feed, and AIGC backend capabilities through HTTPS and WebSocket service endpoints, and it MUST NOT embed direct PostgreSQL credentials or database trust material in the Android client runtime. Backend-side PostgreSQL connectivity MUST be configurable through deployment-managed secrets for the current provider, so switching away from Aiven to the operations-provided PostgreSQL instance does not require shipping raw database inputs inside the repository or the mobile app. For IM emulator validation, the Android app MUST also support operator-managed HTTP and WebSocket endpoint inputs plus a development user selection so the Android emulator can target a host-published or deployed backend service without rebuilding the APK.
+The system SHALL access IM, feed, and AIGC backend capabilities through HTTPS and WebSocket service endpoints, and it MUST NOT embed direct PostgreSQL credentials or database trust material in the Android client runtime. Backend-side PostgreSQL connectivity MUST be configurable through deployment-managed secrets for the current provider, so switching away from Aiven to the operations-provided PostgreSQL instance does not require shipping raw database inputs inside the repository or the mobile app. For IM emulator validation, the Android app MUST also support operator-managed HTTP and WebSocket endpoint inputs plus a development user selection so the Android emulator can target a host-published or deployed backend service without rebuilding the APK. Credential login, registration, startup bootstrap, contacts, and user-search flows MUST resolve their HTTP API target from the persisted operator-managed IM Validation configuration or an already-authenticated session URL, rather than silently falling back to an opaque emulator-local `127.0.0.1` default when no session has been established yet.
 
 #### Scenario: Android app initializes remote connectivity
 - **WHEN** the app configures its connected services
@@ -116,6 +132,10 @@ The system SHALL access IM, feed, and AIGC backend capabilities through HTTPS an
 - **WHEN** a tester enters or selects IM backend endpoint values and a development user identity in the Android emulator
 - **THEN** the app persists those service-boundary inputs locally for subsequent validation sessions without bundling backend credentials or database secrets into the APK
 
+#### Scenario: Auth routes honor the persisted emulator-facing HTTP endpoint before session bootstrap
+- **WHEN** an unauthenticated user opens login or registration before any authenticated session URL has been stored
+- **THEN** the app sends auth requests to the persisted IM Validation HTTP base URL instead of silently assuming `http://127.0.0.1:18080/`
+
 ### Requirement: Application shell provides three primary mobile tabs
 The system SHALL provide a fixed bottom navigation bar with Messages, Contacts, and Space as the three primary destinations, and it MUST visually indicate the active tab using the design-system token set.
 
@@ -135,7 +155,7 @@ The system SHALL present `Recent conversations / 最近对话`, `Contacts / 联�
 - **THEN** each page shows its main heading at a consistent visual level with the same large heading treatment instead of noticeably different title sizing or top offsets
 
 ### Requirement: Messages tab summarizes conversations in a single-row list
-The system SHALL present conversations as one row per contact showing nickname, latest message preview, message time, and unread badge count when unread messages exist, and it MUST keep the conversation list as the primary focal area without rendering a separate unread summary panel above the list or a standalone live IM status card ahead of the list. The first visible section heading on the non-empty Messages screen MUST start at `Recent conversations`. The Messages screen MUST NOT include a settings action button; settings access is provided exclusively from the Space page.
+The system SHALL present conversations as one row per contact showing nickname, latest message preview, message time, and unread badge count when unread messages exist, and it MUST keep the conversation list as the primary focal area without rendering a separate unread summary panel above the list or a standalone live IM status card ahead of the list. The first visible section heading on the non-empty Messages screen MUST start at `Recent conversations`. The Messages screen MUST NOT include a settings action button, and it MUST present a compact `+` quick-action trigger in the header instead of passive active-conversation count copy. That quick-action trigger MUST expose `Add friend / 加好友` and `Scan QR code / 扫描二维码` as menu options.
 
 #### Scenario: Conversation row includes unread metadata
 - **WHEN** a conversation has unread messages
@@ -149,9 +169,35 @@ The system SHALL present conversations as one row per contact showing nickname, 
 - **WHEN** the user has no conversations in local state
 - **THEN** the Messages page displays an empty-state panel instead of a blank list
 
-#### Scenario: Messages screen does not expose a settings action
+#### Scenario: Messages header exposes quick actions
+- **WHEN** the user taps the `+` trigger in the Messages header
+- **THEN** the app opens a menu that includes `Add friend / 加好友` and `Scan QR code / 扫描二维码`
+
+#### Scenario: Messages screen omits settings and passive conversation-count copy
 - **WHEN** the Messages screen renders its header
-- **THEN** the header row shows the conversation count but does not include a settings pill or button
+- **THEN** the header does not show a settings pill and does not show `${count} active` or `${count} 个活跃会话` copy
+
+### Requirement: Messages quick add-friend entry uses the real social workflow
+The system SHALL route the Messages quick `Add friend / 加好友` action into an authenticated user-discovery flow that is backed by the live social APIs, and it MUST reflect real relationship state instead of a front-end-only demo result.
+
+#### Scenario: User opens add-friend from Messages
+- **WHEN** an authenticated user selects `Add friend / 加好友` from the Messages quick-action menu
+- **THEN** the app opens the authenticated user-search/request flow instead of showing a local-only placeholder
+
+#### Scenario: User sends a real friend request from the Messages entry path
+- **WHEN** the user searches for another account from the Messages-launched add-friend flow and taps `Add / 添加`
+- **THEN** the app calls the live friend-request path, updates the visible relationship state to a pending state, and does not report success unless the backend request succeeds
+
+### Requirement: QR scanning displays decoded content before any action
+The system SHALL allow authenticated users to scan a QR code from the Messages quick-action menu, and it MUST display the decoded payload content in a dedicated result surface before any redirect, add-friend attempt, or other side effect occurs.
+
+#### Scenario: Successful scan shows QR payload content
+- **WHEN** the user scans a readable QR code from the Messages quick-action flow
+- **THEN** the app shows the decoded content in a result surface and does not automatically navigate, open a link, or mutate account state
+
+#### Scenario: Scan flow exits without side effects
+- **WHEN** the user backs out of the scan flow or scanning does not yield a readable payload
+- **THEN** the app returns to the prior shell flow without creating friendships, opening external content, or changing conversation state
 
 ### Requirement: Contacts tab supports deterministic sorting controls
 The system SHALL provide a compact inline dropdown pill on the Contacts page that allows sorting by nickname initial, added time ascending, and added time descending. The sort control MUST render as a single pill-shaped element displaying the active sort label with a dropdown indicator, and it MUST NOT occupy a full-width card or include explanatory text. The Contacts page header MUST display only the page title without an eyebrow label, description paragraph, or settings action, and the sort control MUST share that top band instead of rendering on a detached row above the list.
@@ -181,7 +227,7 @@ The system SHALL provide a compact inline dropdown pill on the Contacts page tha
 - **THEN** the header displays only the `Contacts / 联系人` title plus the compact sort control in the same row, and the first contact row starts immediately below that shared top band
 
 ### Requirement: Space feed renders developer-oriented rich posts
-The system SHALL provide a `Space` feed optimized for developer posts and prompt-discovery content, and it MUST render mixed discovery content through the shared content-rendering pipeline while exposing `为你推荐`, `提示工程`, `AI 工具`, and `动态` as the visible discovery filter row without showing a separate unread-summary card above the feed. The Space page header MUST include a settings action pill as the sole app-level settings entry point across the three primary tabs.
+The system SHALL provide a `Space` feed optimized for developer posts and prompt-discovery content, and it MUST render mixed discovery content through the shared content-rendering pipeline while exposing `为你推荐`, `提示工程`, `AI 工具`, and `动态` as the visible discovery filter row without showing a separate unread-summary card above the feed. The Space page header MUST include a visible and tappable settings action pill as the sole app-level settings entry point across the three primary tabs.
 
 #### Scenario: Space tab focuses on discovery content without unread summary chrome
 - **WHEN** the user opens the Space tab
@@ -206,6 +252,10 @@ The system SHALL provide a `Space` feed optimized for developer posts and prompt
 #### Scenario: Space page provides the settings entry point
 - **WHEN** the Space page renders its page header
 - **THEN** the header includes a "Settings / 设置" pill action that navigates to the settings page
+
+#### Scenario: Space header settings action remains tappable after shell refactors
+- **WHEN** the user taps the visible settings pill from the Space page header
+- **THEN** the app navigates into the settings route instead of rendering a missing or inert settings affordance
 
 ### Requirement: Production-facing app surfaces avoid development-stage commentary
 The system SHALL present shipped Android UI copy as product-facing language, and it MUST NOT render development-stage notes, prototype annotations, or internal explanatory commentary directly inside production-facing app surfaces.
@@ -246,7 +296,7 @@ The system SHALL present chat detail with a compact top identity row that places
 - **THEN** the bubble preserves readable wrapping and stable footer placement instead of collapsing into an overly narrow layout
 
 ### Requirement: Chat detail exposes AIGC generation entry points
-The system SHALL provide a standard chat composer with a text input field and send action as the primary control path, and it MUST expose AIGC actions plus local photo and video pickers from a secondary `+` action menu inside the chat experience.
+The system SHALL provide a standard chat composer with a text input field and send action as the primary control path, and it MUST expose distinct secondary actions for only the AIGC generation modes supported by the currently active provider, normal chat media attachments, and generation-source media selection from the `+` menu inside the chat experience. Image-to-image and video-to-video actions MUST only appear or enable as ready-to-run actions when both the active provider supports the mode and the required local source media for that mode has been selected explicitly for generation. Unsupported AIGC modes MUST NOT appear as ready-to-run actions for the active provider.
 
 #### Scenario: User sends plain text from the primary composer
 - **WHEN** the user is in chat detail and enters text without opening secondary actions
@@ -254,19 +304,50 @@ The system SHALL provide a standard chat composer with a text input field and se
 
 #### Scenario: User opens the secondary action menu
 - **WHEN** the user taps the `+` affordance in the chat composer
-- **THEN** the app reveals a secondary action menu that contains AIGC generation entries and local media pickers instead of showing those controls inline by default
+- **THEN** the app reveals a secondary action menu that separates normal chat media attachment actions from the AIGC generation actions supported by the active provider instead of relying on one ambiguous `Pick image` path
+
+#### Scenario: User picks an image to send as a normal chat message
+- **WHEN** the user chooses the chat image attachment action from the secondary menu and selects a local photo
+- **THEN** the app stages that photo as a normal outgoing chat attachment rather than treating it as image-to-image input
+
+#### Scenario: User picks an image as image-to-image source media
+- **WHEN** the user chooses the generation-source image action from the secondary menu and selects a local photo
+- **THEN** the app stages that photo as image-to-image input and keeps it separate from normal outgoing chat attachments
 
 #### Scenario: User starts text-to-image generation in chat
 - **WHEN** the user selects the text-to-image AIGC action from the secondary composer menu
 - **THEN** the app opens the generation flow with a prompt input experience tied to the shared AIGC composable
 
-#### Scenario: User starts image-to-image generation with local media
-- **WHEN** the user selects image-to-image from the secondary composer menu and chooses a local photo
-- **THEN** the app passes the chosen media and prompt data through the shared AIGC generation flow
+#### Scenario: Image-to-image only becomes runnable after source image selection
+- **WHEN** the active provider supports image-to-image but the user has not selected a generation-source image yet
+- **THEN** the chat `+` menu does not present image-to-image as a ready-to-run action and instead guides the user to choose generation source media first
+
+#### Scenario: User starts image-to-image generation with explicit source media
+- **WHEN** the active provider supports image-to-image, the user has selected a generation-source photo explicitly for AIGC, and the user chooses image-to-image
+- **THEN** the app passes that staged generation-source media and prompt data through the shared AIGC generation flow
 
 #### Scenario: User starts video-to-video generation with local media
-- **WHEN** the user selects video-to-video from the secondary composer menu and chooses a local video
-- **THEN** the app passes the chosen media and prompt data through the shared AIGC generation flow
+- **WHEN** the user selects video-to-video from the secondary composer menu and chooses a local video as generation source media
+- **THEN** the app passes the chosen generation-source media and prompt data through the shared AIGC generation flow
+
+#### Scenario: Unsupported AIGC modes are not presented as ready actions
+- **WHEN** the active provider does not support one or more AIGC modes
+- **THEN** the chat `+` menu hides or otherwise clearly blocks those unsupported generation actions before any network request starts
+
+### Requirement: Successful generated images expose follow-up actions
+The system SHALL expose actionable follow-up controls on successful generated-image results, and it MUST let the user either save the generated image locally or send it into the current conversation without auto-sending the result by default.
+
+#### Scenario: User saves a generated image locally
+- **WHEN** a generated image result succeeds and the user selects the save action from the result surface
+- **THEN** the app exports the generated image to local device storage and reports whether the save completed successfully
+
+#### Scenario: User sends a generated image into the active conversation
+- **WHEN** a generated image result succeeds and the user selects the send action from the result surface
+- **THEN** the app inserts the generated image into the current conversation as a normal outgoing image message
+
+#### Scenario: Successful generation does not auto-send without user confirmation
+- **WHEN** an image generation succeeds
+- **THEN** the result remains a preview/action surface until the user explicitly chooses a follow-up action such as save or send
 
 ### Requirement: Creative workshop supports prompt discovery and contribution
 The system SHALL provide a creative workshop that helps users discover, reuse, and contribute prompts, and it MUST expose creator attribution data so future KOL/community features can build on the same content model.
@@ -280,11 +361,19 @@ The system SHALL provide a creative workshop that helps users discover, reuse, a
 - **THEN** the app stores the contribution in the workshop content model with author attribution metadata
 
 ### Requirement: AI settings support preset and custom infrastructure providers
-The system SHALL provide a Settings page that includes preset providers for Tencent Hunyuan and Alibaba Tongyi, and it MUST allow users to configure a custom OpenAI-compatible endpoint, API key, and model identifier while also exposing app-level language and appearance preferences. The page MUST support Chinese and English selection plus explicit light and dark theme modes, and those preferences MUST persist across app restarts.
+The system SHALL provide a Settings page that includes preset providers for Tencent Hunyuan and Alibaba Tongyi, and it MUST allow users to configure preset-provider API keys locally through secure device storage while also supporting a custom OpenAI-compatible endpoint, API key, and model identifier plus app-level language and appearance preferences. The Tencent Hunyuan preset MUST default to model `hy-image-v3.0`, and the Alibaba Tongyi preset MUST default to model `wan2.7-image`. The page MUST support Chinese and English selection plus explicit light and dark theme modes, and those preferences MUST persist across app restarts. Preset and custom provider secrets MUST NOT be sourced from tracked repository defaults.
 
-#### Scenario: User activates a preset provider
-- **WHEN** the user selects Tencent Hunyuan or Alibaba Tongyi in Settings
-- **THEN** the provider configuration store marks the preset as active for subsequent AIGC requests
+#### Scenario: User activates Tencent Hunyuan with the requested preset model
+- **WHEN** the user selects Tencent Hunyuan in Settings
+- **THEN** the provider configuration store marks `hunyuan` as active for subsequent AIGC requests and uses `hy-image-v3.0` as the preset model unless the user explicitly overrides it locally
+
+#### Scenario: User activates Alibaba Tongyi with the requested preset model
+- **WHEN** the user selects Alibaba Tongyi in Settings
+- **THEN** the provider configuration store marks `tongyi` as active for subsequent AIGC requests and uses `wan2.7-image` as the preset model unless the user explicitly overrides it locally
+
+#### Scenario: User stores preset-provider API keys locally
+- **WHEN** the user enters a Tencent Hunyuan or Alibaba Tongyi API key in Settings
+- **THEN** the app persists that key through secure local storage and restores it for later local generation sessions without reading it from tracked source defaults
 
 #### Scenario: User configures a custom provider
 - **WHEN** the user enters a custom API base URL, API key, and model in Settings
@@ -297,6 +386,29 @@ The system SHALL provide a Settings page that includes preset providers for Tenc
 #### Scenario: User switches app theme
 - **WHEN** the user selects light mode or dark mode in Settings
 - **THEN** the app persists that theme preference and re-renders the supported surfaces using the selected appearance mode
+
+### Requirement: Preset image providers execute real generation requests with truthful task state
+The system SHALL execute image-generation requests against the active preset provider’s real HTTP API when the user has configured a local API key, and it MUST render truthful task status, errors, and returned image output instead of synthesizing stock preview success. Successful generation MUST record the selected provider and resolved model in the resulting task metadata.
+
+#### Scenario: Tencent Hunyuan generation returns a real image result
+- **WHEN** the active provider is Tencent Hunyuan, a local API key is configured, and the user runs a supported image-generation request
+- **THEN** the app sends a real provider request using model `hy-image-v3.0` (or the locally overridden preset model), receives the provider response, and renders the returned image output in the existing AIGC result surfaces
+
+#### Scenario: Alibaba Tongyi generation returns a real image result
+- **WHEN** the active provider is Alibaba Tongyi, a local API key is configured, and the user runs a supported image-generation request
+- **THEN** the app sends a real provider request using model `wan2.7-image` (or the locally overridden preset model), receives the provider response, and renders the returned image output in the existing AIGC result surfaces
+
+#### Scenario: Missing preset-provider key blocks fake success
+- **WHEN** the user attempts generation from a preset provider without configuring its required local API key
+- **THEN** the app reports a configuration error and does not create a fake succeeded task with a stock preview URL
+
+#### Scenario: Provider failure remains visible and truthful
+- **WHEN** the active provider returns an HTTP, auth, quota, or payload-validation failure during generation
+- **THEN** the app surfaces a failed generation state or error message that reflects the provider failure and does not insert a placeholder success image
+
+#### Scenario: Task metadata reflects the provider actually used
+- **WHEN** a generation request succeeds
+- **THEN** the resulting AIGC task records the active provider identity and resolved model so later UI and validation evidence can identify which provider produced the image
 
 ### Requirement: IM validation status is surfaced from Settings
 The system SHALL present live IM connection and validation status inside `Settings > IM Validation`, and it MUST place that status alongside the IM endpoint inputs used for emulator validation and troubleshooting.

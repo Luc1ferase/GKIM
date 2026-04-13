@@ -10,12 +10,14 @@ import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 
 class FakePreferencesStore(
     initialSortMode: ContactSortMode = ContactSortMode.Nickname,
     initialProviderId: String = "hunyuan",
     initialBaseUrl: String = "https://api.example.com/v1",
     initialModel: String = "gpt-image-1",
+    initialPresetModels: Map<String, String> = emptyMap(),
     initialImHttpBaseUrl: String = DEFAULT_IM_HTTP_BASE_URL,
     initialImWebSocketUrl: String = DEFAULT_IM_WEBSOCKET_URL,
     initialImDevUserExternalId: String = "nox-dev",
@@ -26,6 +28,7 @@ class FakePreferencesStore(
     private val activeProviderIdState = MutableStateFlow(initialProviderId)
     private val customBaseUrlState = MutableStateFlow(initialBaseUrl)
     private val customModelState = MutableStateFlow(initialModel)
+    private val presetModelStates = initialPresetModels.mapValuesTo(mutableMapOf()) { MutableStateFlow(it.value) }
     private val imHttpBaseUrlState = MutableStateFlow(initialImHttpBaseUrl)
     private val imWebSocketUrlState = MutableStateFlow(initialImWebSocketUrl)
     private val imDevUserExternalIdState = MutableStateFlow(initialImDevUserExternalId)
@@ -36,6 +39,9 @@ class FakePreferencesStore(
     override val activeProviderId: Flow<String> = activeProviderIdState.asStateFlow()
     override val customBaseUrl: Flow<String> = customBaseUrlState.asStateFlow()
     override val customModel: Flow<String> = customModelState.asStateFlow()
+    override fun presetProviderModel(providerId: String): Flow<String?> = presetModelStates.getOrPut(providerId) { MutableStateFlow("") }
+        .asStateFlow()
+        .map { value -> value.takeIf { it.isNotBlank() } }
     override val imHttpBaseUrl: Flow<String> = imHttpBaseUrlState.asStateFlow()
     override val imWebSocketUrl: Flow<String> = imWebSocketUrlState.asStateFlow()
     override val imDevUserExternalId: Flow<String> = imDevUserExternalIdState.asStateFlow()
@@ -53,6 +59,9 @@ class FakePreferencesStore(
 
     val currentModel: String
         get() = customModelState.value
+
+    val currentPresetModels: Map<String, String>
+        get() = presetModelStates.mapValues { it.value.value }
 
     val currentImHttpBaseUrl: String
         get() = imHttpBaseUrlState.value
@@ -85,6 +94,10 @@ class FakePreferencesStore(
         customModelState.value = value
     }
 
+    override suspend fun setPresetProviderModel(providerId: String, value: String) {
+        presetModelStates.getOrPut(providerId) { MutableStateFlow("") }.value = value
+    }
+
     override suspend fun setImHttpBaseUrl(value: String) {
         imHttpBaseUrlState.value = value
     }
@@ -108,6 +121,10 @@ class FakePreferencesStore(
 
 class InMemorySecureKeyValueStore : SecureKeyValueStore {
     private val values = mutableMapOf<String, String>()
+
+    constructor(initialValues: Map<String, String> = emptyMap()) {
+        values.putAll(initialValues)
+    }
 
     override fun getString(key: String): String? = values[key]
 

@@ -1,21 +1,31 @@
 package com.gkim.im.android.feature.navigation
 
+import com.gkim.im.android.core.model.MediaInput
 import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.core.model.ContactSortMode
 import com.gkim.im.android.core.security.SecureKeyValueStore
 import com.gkim.im.android.data.local.PreferencesStore
+import com.gkim.im.android.data.remote.aigc.EncodedMediaPayload
+import com.gkim.im.android.data.remote.aigc.MediaInputEncoder
+import com.gkim.im.android.data.remote.aigc.RemoteAigcGenerateRequest
+import com.gkim.im.android.data.remote.aigc.RemoteAigcGenerateResult
+import com.gkim.im.android.data.remote.aigc.RemoteAigcProviderClient
 import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
 import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 
-internal class UiTestPreferencesStore : PreferencesStore {
+internal class UiTestPreferencesStore(
+    initialActiveProviderId: String = "hunyuan",
+) : PreferencesStore {
     private val contactSortModeState = MutableStateFlow(ContactSortMode.Nickname)
-    private val activeProviderIdState = MutableStateFlow("hunyuan")
+    private val activeProviderIdState = MutableStateFlow(initialActiveProviderId)
     private val customBaseUrlState = MutableStateFlow("https://api.example.com/v1")
     private val customModelState = MutableStateFlow("gpt-image-1")
+    private val presetModelStates = mutableMapOf<String, MutableStateFlow<String>>()
     private val imHttpBaseUrlState = MutableStateFlow(DEFAULT_IM_HTTP_BASE_URL)
     private val imWebSocketUrlState = MutableStateFlow(DEFAULT_IM_WEBSOCKET_URL)
     private val imDevUserExternalIdState = MutableStateFlow("nox-dev")
@@ -26,6 +36,9 @@ internal class UiTestPreferencesStore : PreferencesStore {
     override val activeProviderId: Flow<String> = activeProviderIdState.asStateFlow()
     override val customBaseUrl: Flow<String> = customBaseUrlState.asStateFlow()
     override val customModel: Flow<String> = customModelState.asStateFlow()
+    override fun presetProviderModel(providerId: String): Flow<String?> = presetModelStates.getOrPut(providerId) { MutableStateFlow("") }
+        .asStateFlow()
+        .map { value -> value.takeIf { it.isNotBlank() } }
     override val imHttpBaseUrl: Flow<String> = imHttpBaseUrlState.asStateFlow()
     override val imWebSocketUrl: Flow<String> = imWebSocketUrlState.asStateFlow()
     override val imDevUserExternalId: Flow<String> = imDevUserExternalIdState.asStateFlow()
@@ -63,6 +76,10 @@ internal class UiTestPreferencesStore : PreferencesStore {
         customModelState.value = value
     }
 
+    override suspend fun setPresetProviderModel(providerId: String, value: String) {
+        presetModelStates.getOrPut(providerId) { MutableStateFlow("") }.value = value
+    }
+
     override suspend fun setImHttpBaseUrl(value: String) {
         imHttpBaseUrlState.value = value
     }
@@ -91,5 +108,28 @@ internal class UiInMemorySecureStore : SecureKeyValueStore {
 
     override fun putString(key: String, value: String) {
         values[key] = value
+    }
+}
+
+internal class UiTestRemoteAigcProviderClient(
+    private val providerId: String,
+) : RemoteAigcProviderClient {
+    val requests = mutableListOf<RemoteAigcGenerateRequest>()
+
+    override suspend fun generate(request: RemoteAigcGenerateRequest): RemoteAigcGenerateResult {
+        requests += request
+        return RemoteAigcGenerateResult(
+            remoteId = "$providerId-${requests.size}",
+            outputUrl = "https://cdn.example.com/${providerId}-${requests.size}.png",
+        )
+    }
+}
+
+internal class UiTestMediaInputEncoder : MediaInputEncoder {
+    override suspend fun encode(mediaInput: MediaInput): EncodedMediaPayload {
+        return EncodedMediaPayload(
+            base64Data = "UI_TEST_BASE64",
+            mimeType = "image/png",
+        )
     }
 }

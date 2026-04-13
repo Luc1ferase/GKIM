@@ -25,6 +25,11 @@ data class CustomProviderConfig(
     val model: String,
 )
 
+data class PresetProviderConfig(
+    val model: String,
+    val apiKey: String,
+)
+
 data class AigcProvider(
     val id: String,
     val label: String,
@@ -45,15 +50,19 @@ data class DraftAigcRequest(
 enum class TaskStatus {
     Queued,
     Succeeded,
+    Failed,
 }
 
 data class AigcTask(
     val id: String,
+    val remoteId: String? = null,
     val providerId: String,
+    val model: String,
     val mode: AigcMode,
     val prompt: String,
     val createdAt: String,
     val status: TaskStatus,
     val input: MediaInput? = null,
-    val outputPreview: String,
+    val outputPreview: String? = null,
+    val errorMessage: String? = null,
 )

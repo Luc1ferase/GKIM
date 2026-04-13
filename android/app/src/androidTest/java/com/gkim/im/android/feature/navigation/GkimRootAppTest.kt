@@ -21,9 +21,12 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.gkim.im.android.core.media.MediaPickerController
 import com.gkim.im.android.core.media.MediaPickerControllerFactory
+import com.gkim.im.android.core.media.GeneratedImageSaveResult
+import com.gkim.im.android.core.media.GeneratedImageSaver
 import com.gkim.im.android.core.model.AigcMode
 import com.gkim.im.android.core.model.AttachmentType
 import com.gkim.im.android.core.model.MediaInput
+import com.gkim.im.android.core.model.TaskStatus
 import com.gkim.im.android.core.rendering.MarkdownDocumentParser
 import com.gkim.im.android.core.util.formatChatTimestamp
 import com.gkim.im.android.data.local.SessionStore
@@ -38,6 +41,7 @@ import com.gkim.im.android.data.remote.im.ImBackendHttpClient
 import com.gkim.im.android.data.remote.im.MessageHistoryPageDto
 import com.gkim.im.android.data.remote.im.MessageRecordDto
 import com.gkim.im.android.data.remote.im.UserSearchResultDto
+import com.gkim.im.android.data.remote.aigc.RemoteAigcProviderClient
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
@@ -495,22 +499,23 @@ class GkimRootAppTest {
     }
 
     @Test
-    fun chatSecondaryMenuShowsAigcAndMediaActions() {
+    fun chatSecondaryMenuFiltersAigcActionsToTheActiveProviderCapabilities() {
         setApp(UiTestAppContainer())
 
         composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
         composeRule.onNodeWithTag("chat-plus-button").performClick()
 
         composeRule.onNodeWithTag("chat-secondary-menu").fetchSemanticsNode()
-        composeRule.onNodeWithTag("chat-action-pick-image").fetchSemanticsNode()
-        composeRule.onNodeWithTag("chat-action-pick-video").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-action-send-image-message").fetchSemanticsNode()
         composeRule.onNodeWithTag("chat-action-text-to-image").fetchSemanticsNode()
-        composeRule.onNodeWithTag("chat-action-image-to-image").fetchSemanticsNode()
-        composeRule.onNodeWithTag("chat-action-video-to-video").fetchSemanticsNode()
+        assertTrue(!nodeExists("chat-action-choose-image-source"))
+        assertTrue(!nodeExists("chat-action-image-to-image"))
+        assertTrue(!nodeExists("chat-action-choose-video-source"))
+        assertTrue(!nodeExists("chat-action-video-to-video"))
     }
 
     @Test
-    fun chatSecondaryMenuActionsMapToExpectedChatBehavior() {
+    fun chatSecondaryMenuSeparatesChatAttachmentAndGenerationSourceFlows() {
         val container = UiTestAppContainer()
         setApp(container, fakeMediaPickerControllerFactory())
 
@@ -518,32 +523,94 @@ class GkimRootAppTest {
         composeRule.onNodeWithTag("chat-composer-input").performTextReplacement("Turn this orbit frame into a cinematic cut.")
 
         composeRule.onNodeWithTag("chat-plus-button").performClick()
-        composeRule.onNodeWithTag("chat-action-pick-image").performClick()
-        composeRule.onNodeWithText("Image ready").fetchSemanticsNode()
-        composeRule.onNodeWithTag("chat-action-image-to-image").performClick()
-        composeRule.waitUntil(5_000) {
-            val latestTask = container.aigcRepository.history.value.firstOrNull()
-            latestTask?.mode == AigcMode.ImageToImage && latestTask.input?.type == AttachmentType.Image
-        }
-        composeRule.onNodeWithText("ImageToImage · Turn this orbit frame into a cinematic cut.").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-action-send-image-message").performClick()
+        composeRule.onNodeWithTag("chat-chat-attachment-ready").fetchSemanticsNode()
+        assertTrue(!nodeExists("chat-generation-source-ready"))
+        assertTrue(!nodeExists("chat-action-image-to-image"))
 
-        composeRule.onNodeWithTag("chat-plus-button").performClick()
-        composeRule.onNodeWithTag("chat-action-pick-video").performClick()
-        composeRule.onNodeWithText("Video ready").fetchSemanticsNode()
-        composeRule.onNodeWithTag("chat-action-video-to-video").performClick()
-        composeRule.waitUntil(5_000) {
-            val latestTask = container.aigcRepository.history.value.firstOrNull()
-            latestTask?.mode == AigcMode.VideoToVideo && latestTask.input?.type == AttachmentType.Video
-        }
-        composeRule.onNodeWithText("VideoToVideo · Turn this orbit frame into a cinematic cut.").fetchSemanticsNode()
-
-        composeRule.onNodeWithTag("chat-plus-button").performClick()
         composeRule.onNodeWithTag("chat-action-text-to-image").performClick()
         composeRule.waitUntil(5_000) {
             val latestTask = container.aigcRepository.history.value.firstOrNull()
             latestTask?.mode == AigcMode.TextToImage && latestTask.input == null
         }
         composeRule.onNodeWithText("TextToImage · Turn this orbit frame into a cinematic cut.").fetchSemanticsNode()
+    }
+
+    @Test
+    fun chatSendButtonSendsStagedImageAttachmentAsNormalOutgoingMessage() {
+        val container = UiTestAppContainer()
+        setApp(container, fakeMediaPickerControllerFactory())
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+
+        composeRule.onNodeWithTag("chat-plus-button").performClick()
+        composeRule.onNodeWithTag("chat-action-send-image-message").performClick()
+        composeRule.onNodeWithTag("chat-chat-attachment-ready").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-send-button").performClick()
+
+        composeRule.waitUntil(5_000) {
+            container.messagingRepository.conversations.value
+                .first { it.id == "room-leo" }
+                .messages
+                .lastOrNull()
+                ?.attachment
+                ?.preview == "content://ui-test/fake-image"
+        }
+    }
+
+    @Test
+    fun latestGenerationCardOffersSaveAndSendActionsForSuccessfulImages() {
+        val generatedImageSaver = RecordingGeneratedImageSaver()
+        val container = UiTestAppContainer(generatedImageSaver = generatedImageSaver)
+        setApp(container, fakeMediaPickerControllerFactory())
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+        composeRule.onNodeWithTag("chat-composer-input").performTextReplacement("Render a launch-ready concept frame.")
+
+        composeRule.onNodeWithTag("chat-plus-button").performClick()
+        composeRule.onNodeWithTag("chat-action-text-to-image").performClick()
+        composeRule.waitUntil(5_000) {
+            val latestTask = container.aigcRepository.history.value.firstOrNull()
+            latestTask?.status == TaskStatus.Succeeded && !latestTask.outputPreview.isNullOrBlank()
+        }
+
+        composeRule.onNodeWithTag("chat-generation-save").fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-generation-send").fetchSemanticsNode()
+
+        composeRule.onNodeWithTag("chat-generation-save").performClick()
+        composeRule.waitUntil(5_000) { generatedImageSaver.savedUrls.isNotEmpty() }
+        composeRule.waitUntil(5_000) { textExists("Saved generated image locally.") }
+        composeRule.onNodeWithText("Saved generated image locally.").fetchSemanticsNode()
+
+        composeRule.onNodeWithTag("chat-generation-send").performClick()
+        val generatedPreview = container.aigcRepository.history.value.first().outputPreview
+        composeRule.waitUntil(5_000) {
+            container.messagingRepository.conversations.value
+                .first { it.id == "room-leo" }
+                .messages
+                .lastOrNull()
+                ?.attachment
+                ?.preview == generatedPreview
+        }
+    }
+
+    @Test
+    fun chatGenerationFailureShowsMissingPresetKeyFeedback() {
+        val container = UiTestAppContainer(presetApiKeys = emptyMap())
+        setApp(container)
+
+        composeRule.onNodeWithTag("conversation-row-room-leo").performClick()
+        composeRule.onNodeWithTag("chat-composer-input").performTextReplacement("Render a blocked frame.")
+        composeRule.onNodeWithTag("chat-plus-button").performClick()
+        composeRule.onNodeWithTag("chat-action-text-to-image").performClick()
+
+        composeRule.waitUntil(5_000) {
+            container.aigcRepository.history.value.firstOrNull()?.status == TaskStatus.Failed
+        }
+
+        composeRule.onNodeWithTag("chat-generation-error")
+            .assertTextContains("Tencent Hunyuan API key is required before generation can start.")
+        assertTrue(!nodeExists("chat-action-video-to-video"))
     }
 
     @Test
@@ -825,6 +892,29 @@ class GkimRootAppTest {
         assertEquals("custom", container.aigcRepository.activeProviderId.value)
         assertEquals("https://gateway.example.com/v1", container.aigcRepository.customProvider.value.baseUrl)
         assertEquals("gpt-image-1", container.aigcRepository.customProvider.value.model)
+    }
+
+    @Test
+    fun settingsInteractionsUpdatePresetProviderConfiguration() {
+        val container = UiTestAppContainer()
+        setApp(container)
+
+        openSettingsFromSpace()
+        composeRule.onNodeWithTag("settings-menu-ai-provider").performClick()
+        composeRule.onNodeWithTag("settings-detail-ai-provider").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-provider-hunyuan").performClick()
+        composeRule.waitUntil(5_000) { container.aigcRepository.activeProviderId.value == "hunyuan" }
+
+        assertTrue(!nodeExists("settings-base-url"))
+        composeRule.onNodeWithTag("settings-model").performTextReplacement("hy-image-v3.6")
+        composeRule.onNodeWithTag("settings-api-key").performTextReplacement("updated-preset-secret")
+
+        composeRule.waitUntil(5_000) {
+            container.aigcRepository.presetProviderConfigs.value["hunyuan"]?.model == "hy-image-v3.6"
+        }
+
+        assertEquals("hy-image-v3.6", container.aigcRepository.presetProviderConfigs.value["hunyuan"]?.model)
+        assertEquals("updated-preset-secret", container.aigcRepository.presetProviderConfigs.value["hunyuan"]?.apiKey)
     }
 
     @Test
@@ -1123,11 +1213,21 @@ private fun adaptiveWidthConversations(): List<com.gkim.im.android.core.model.Co
 
 private class UiTestAppContainer(
     conversations: List<com.gkim.im.android.core.model.Conversation> = seedConversations,
+    initialActiveProviderId: String = "hunyuan",
     override val messagingRepository: MessagingRepository = InMemoryMessagingRepository(conversations),
     override val imBackendClient: ImBackendClient = RecordingImBackendClient(),
+    override val generatedImageSaver: GeneratedImageSaver = RecordingGeneratedImageSaver(),
+    private val presetApiKeys: Map<String, String> = mapOf(
+        "hunyuan" to "ui-test-hunyuan-key",
+        "tongyi" to "ui-test-tongyi-key",
+    ),
+    private val providerClients: Map<String, RemoteAigcProviderClient> = mapOf(
+        "hunyuan" to UiTestRemoteAigcProviderClient("hunyuan"),
+        "tongyi" to UiTestRemoteAigcProviderClient("tongyi"),
+    ),
 ) : AppContainer {
     private val okHttpClient = OkHttpClient.Builder().build()
-    override val preferencesStore = UiTestPreferencesStore()
+    override val preferencesStore = UiTestPreferencesStore(initialActiveProviderId = initialActiveProviderId)
     override val sessionStore: SessionStore =
         SessionStore(ApplicationProvider.getApplicationContext())
     private val secureStore = UiInMemorySecureStore()
@@ -1135,14 +1235,33 @@ private class UiTestAppContainer(
     init {
         sessionStore.clear()
         sessionStore.baseUrl = null
+        presetApiKeys.forEach { (providerId, apiKey) ->
+            secureStore.putString("preset_provider_${providerId}_api_key", apiKey)
+        }
     }
 
     override val contactsRepository: ContactsRepository = DefaultContactsRepository(seedContacts, preferencesStore, Dispatchers.Main)
     override val feedRepository: FeedRepository = DefaultFeedRepository(seedPosts, seedPrompts, Dispatchers.Main)
-    override val aigcRepository: AigcRepository = DefaultAigcRepository(presetProviders, preferencesStore, secureStore, Dispatchers.Main)
+    override val aigcRepository: AigcRepository = DefaultAigcRepository(
+        presets = presetProviders,
+        preferencesStore = preferencesStore,
+        secureStore = secureStore,
+        dispatcher = Dispatchers.Main,
+        providerClients = providerClients,
+        mediaInputEncoder = UiTestMediaInputEncoder(),
+    )
     override val markdownParser: MarkdownDocumentParser = MarkdownDocumentParser()
     override val realtimeChatClient: RealtimeChatClient =
         RealtimeChatClient(okHttpClient, "wss://example.com/realtime")
+}
+
+private class RecordingGeneratedImageSaver : GeneratedImageSaver {
+    val savedUrls = mutableListOf<String>()
+
+    override suspend fun saveImage(imageUrl: String, prompt: String): GeneratedImageSaveResult {
+        savedUrls += imageUrl
+        return GeneratedImageSaveResult.Success(Uri.parse("content://ui-test/saved-generated-image"))
+    }
 }
 
 private data class RegisterCall(
