@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null
+          yes | sdkmanager --licenses >/dev/null || true
           sdkmanager \
             "platform-tools" \
             "platforms;android-34" \
@@ -67,7 +67,7 @@ jobs:
           echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
           echo "asset_name=$asset_name" >> "$GITHUB_OUTPUT"
 
-      - name: Validate Android release signing secrets
+      - name: Inspect Android release signing secrets
         id: signing
         shell: bash
         env:
@@ -85,12 +85,22 @@ jobs:
             ANDROID_RELEASE_KEY_PASSWORD
           )
 
+          configured_count=0
           for var_name in "${required_vars[@]}"; do
-            if [[ -z "${!var_name:-}" ]]; then
-              echo "::error::Missing required GitHub secret: $var_name"
-              exit 1
+            if [[ -n "${!var_name:-}" ]]; then
+              configured_count=$((configured_count + 1))
             fi
           done
+
+          if [[ "$configured_count" -eq 0 ]]; then
+            echo "has_signing=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$configured_count" -ne "${#required_vars[@]}" ]]; then
+            echo "::error::Android release signing secrets are partially configured. Supply all required ANDROID_RELEASE_* secrets."
+            exit 1
+          fi
 
           keystore_path="$RUNNER_TEMP/gkim-release.keystore"
           printf '%s' "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
@@ -100,6 +110,7 @@ jobs:
             exit 1
           fi
 
+          echo "has_signing=true" >> "$GITHUB_OUTPUT"
           echo "keystore_path=$keystore_path" >> "$GITHUB_OUTPUT"
 
       - name: Make Gradle wrapper executable
@@ -124,13 +135,26 @@ jobs:
         run: |
           set -euo pipefail
 
-          ./gradlew --no-daemon --stacktrace :app:assembleRelease \
-            -PGKIM_RELEASE_VERSION_NAME="${{ steps.version.outputs.version_name }}" \
-            -PGKIM_RELEASE_VERSION_CODE="${{ steps.version.outputs.version_code }}" \
-            -PGKIM_RELEASE_STORE_FILE="${{ steps.signing.outputs.keystore_path }}" \
-            -PGKIM_RELEASE_STORE_PASSWORD="$GKIM_RELEASE_STORE_PASSWORD" \
-            -PGKIM_RELEASE_KEY_ALIAS="$GKIM_RELEASE_KEY_ALIAS" \
-            -PGKIM_RELEASE_KEY_PASSWORD="$GKIM_RELEASE_KEY_PASSWORD"
+          gradle_args=(
+            --no-daemon
+            --stacktrace
+            :app:assembleRelease
+            -PGKIM_RELEASE_VERSION_NAME=${{ steps.version.outputs.version_name }}
+            -PGKIM_RELEASE_VERSION_CODE=${{ steps.version.outputs.version_code }}
+          )
+
+          if [[ "${{ steps.signing.outputs.has_signing }}" == "true" ]]; then
+            gradle_args+=(
+              -PGKIM_RELEASE_STORE_FILE=${{ steps.signing.outputs.keystore_path }}
+              -PGKIM_RELEASE_STORE_PASSWORD=$GKIM_RELEASE_STORE_PASSWORD
+              -PGKIM_RELEASE_KEY_ALIAS=$GKIM_RELEASE_KEY_ALIAS
+              -PGKIM_RELEASE_KEY_PASSWORD=$GKIM_RELEASE_KEY_PASSWORD
+            )
+          else
+            echo "::warning::ANDROID_RELEASE_* secrets are not configured. Running unsigned release build for compilation validation only."
+          fi
+
+          ./gradlew "${gradle_args[@]}"
 
           raw_apk_path="$PWD/app/build/outputs/apk/release/app-release.apk"
           if [[ ! -f "$raw_apk_path" ]]; then
@@ -144,6 +168,7 @@ jobs:
           echo "apk_path=$release_apk_path" >> "$GITHUB_OUTPUT"
 
       - name: Upload APK as workflow artifact
+        if: ${{ steps.signing.outputs.has_signing == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: android-release-${{ steps.version.outputs.tag_name }}
@@ -151,6 +176,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish APK to GitHub Release
+        if: ${{ steps.signing.outputs.has_signing == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag_name }}
@@ -158,3 +184,10 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: ${{ steps.build.outputs.apk_path }}
+
+      - name: Fail cleanly when release signing secrets are missing
+        if: ${{ steps.signing.outputs.has_signing != 'true' }}
+        shell: bash
+        run: |
+          echo "::error::Missing ANDROID_RELEASE_* secrets. The APK compiled successfully, but publication is blocked until signing secrets are configured."
+          exit 1
