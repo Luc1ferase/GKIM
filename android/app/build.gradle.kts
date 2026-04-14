@@ -1,3 +1,34 @@
+fun Project.stringGradleOrEnvProperty(name: String): String? {
+    val value = providers.gradleProperty(name).orNull ?: System.getenv(name)
+    return value?.trim()?.takeIf { it.isNotEmpty() }
+}
+
+fun Project.intGradleProperty(name: String, fallback: Int): Int {
+    return stringGradleOrEnvProperty(name)?.toIntOrNull() ?: fallback
+}
+
+val releaseVersionName = stringGradleOrEnvProperty("GKIM_RELEASE_VERSION_NAME") ?: "0.1.0"
+val releaseVersionCode = intGradleProperty("GKIM_RELEASE_VERSION_CODE", 1)
+val releaseStoreFilePath = stringGradleOrEnvProperty("GKIM_RELEASE_STORE_FILE")
+val releaseStorePassword = stringGradleOrEnvProperty("GKIM_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = stringGradleOrEnvProperty("GKIM_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = stringGradleOrEnvProperty("GKIM_RELEASE_KEY_PASSWORD")
+val releaseSigningInputs = listOf(
+    releaseStoreFilePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+)
+val hasAnyReleaseSigningInput = releaseSigningInputs.any { it != null }
+val hasCompleteReleaseSigningInput = releaseSigningInputs.all { it != null }
+
+if (hasAnyReleaseSigningInput && !hasCompleteReleaseSigningInput) {
+    logger.warn(
+        "GKIM release signing inputs are partially configured. " +
+            "Release builds will remain unsigned until all GKIM_RELEASE_* inputs are supplied."
+    )
+}
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -13,12 +44,25 @@ android {
         applicationId = "com.gkim.im.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = releaseVersionCode
+        versionName = releaseVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+    }
+
+    signingConfigs {
+        if (hasCompleteReleaseSigningInput) {
+            create("release") {
+                storeFile = file(releaseStoreFilePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+                enableV1Signing = true
+                enableV2Signing = true
+            }
         }
     }
 
@@ -29,6 +73,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (hasCompleteReleaseSigningInput) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

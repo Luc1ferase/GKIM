@@ -7,7 +7,7 @@
 | 层级 | 技术 | 定位 |
 |---|---|---|
 | **Android 客户端** | Kotlin · Jetpack Compose · Material 3 · Navigation Compose · Room · DataStore · EncryptedSharedPreferences · Retrofit 2 · OkHttp 4 · WebSocket | 原生移动端 |
-| **Rust 后端** | Rust 2021 · Axum 0.7 · Tokio · PostgreSQL (SQLx) · Argon2 · Docker | HTTP + WebSocket 即时通信服务 |
+| **Rust 后端** | Rust · Axum · Tokio · PostgreSQL (SQLx) · Argon2 · Docker | HTTP + WebSocket 即时通信服务 |
 
 客户端选择 Android 原生以保证 IM 场景对交互流畅度、状态管理和实时连接的要求；后端选择 Rust 以适配高并发、长连接和状态一致性的需求。
 
@@ -79,6 +79,32 @@ GKIM/
 **Rust 后端**：详见 [`backend/README.md`](backend/README.md)
 
 **Android 客户端**：详见 [`android/README.md`](android/README.md)
+
+## GitHub Android Release
+
+仓库现在预留了 GitHub tag 驱动的 Android APK 发布链路，约定如下：
+
+- 发布 tag 格式：`vMAJOR.MINOR.PATCH`
+- GitHub Release APK 资产名：`gkim-android-vMAJOR.MINOR.PATCH.apk`
+- 触发入口：向 GitHub 推送符合格式的版本 tag
+
+仓库需要先在 GitHub Secrets 中配置以下 Android release signing 输入：
+
+- `ANDROID_RELEASE_KEYSTORE_BASE64`
+- `ANDROID_RELEASE_STORE_PASSWORD`
+- `ANDROID_RELEASE_KEY_ALIAS`
+- `ANDROID_RELEASE_KEY_PASSWORD`
+
+CI 构建会把 tag 版本注入 Android Gradle 的以下输入，而不是要求维护者手工改版本号：
+
+- `GKIM_RELEASE_VERSION_NAME`
+- `GKIM_RELEASE_VERSION_CODE`
+- `GKIM_RELEASE_STORE_FILE`
+- `GKIM_RELEASE_STORE_PASSWORD`
+- `GKIM_RELEASE_KEY_ALIAS`
+- `GKIM_RELEASE_KEY_PASSWORD`
+
+详细的 Android 构建和本地验证说明见 [`android/README.md`](android/README.md)。
 
 ## 测试
 

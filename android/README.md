@@ -28,6 +28,55 @@ Once Gradle wrapper and Android SDK command-line tooling are available, run the 
 .\gradlew.bat connectedDebugAndroidTest
 ```
 
+## GitHub tag release automation
+
+The repository's Android release automation is designed around GitHub version tags.
+
+### Supported tag format
+
+- `vMAJOR.MINOR.PATCH`
+- Example: `v0.2.0`
+
+### Expected GitHub repository secrets
+
+The tag-release workflow expects these repository secrets to exist before a signed APK can be published:
+
+- `ANDROID_RELEASE_KEYSTORE_BASE64`
+- `ANDROID_RELEASE_STORE_PASSWORD`
+- `ANDROID_RELEASE_KEY_ALIAS`
+- `ANDROID_RELEASE_KEY_PASSWORD`
+
+The workflow reconstructs the keystore at runtime on the GitHub runner. Do not commit a release keystore, keystore passwords, or any filled signing-properties file into this repository.
+
+### Gradle inputs consumed by CI
+
+The Android app build now accepts release metadata and signing inputs through Gradle properties or environment variables:
+
+- `GKIM_RELEASE_VERSION_NAME`
+- `GKIM_RELEASE_VERSION_CODE`
+- `GKIM_RELEASE_STORE_FILE`
+- `GKIM_RELEASE_STORE_PASSWORD`
+- `GKIM_RELEASE_KEY_ALIAS`
+- `GKIM_RELEASE_KEY_PASSWORD`
+
+If the full signing input set is not supplied, `assembleRelease` can still fall back to an unsigned release build locally, but the GitHub tag workflow is expected to fail before publication instead of shipping an unsigned APK as a release artifact.
+
+### Published asset naming
+
+Successful GitHub tag builds publish an APK named:
+
+- `gkim-android-vMAJOR.MINOR.PATCH.apk`
+
+### Focused local verification
+
+Before relying on the GitHub workflow, you can locally verify the tag-driven version injection path from `android/`:
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Java\jdk-17'
+$env:Path="${env:JAVA_HOME}\bin;${env:Path}"
+.\gradlew.bat :app:testDebugUnitTest :app:assembleRelease "-PGKIM_RELEASE_VERSION_NAME=0.2.0" "-PGKIM_RELEASE_VERSION_CODE=2000"
+```
+
 ## Live IM Wiring Handoff
 
 The Android shell now boots the IM feature through the live backend repository path instead of the seed-only in-memory repository.
