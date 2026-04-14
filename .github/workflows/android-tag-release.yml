@@ -156,9 +156,9 @@ jobs:
 
           ./gradlew "${gradle_args[@]}"
 
-          raw_apk_path="$PWD/app/build/outputs/apk/release/app-release.apk"
-          if [[ ! -f "$raw_apk_path" ]]; then
-            echo "::error::Expected release APK was not found at $raw_apk_path"
+          raw_apk_path="$(find "$PWD/app/build/outputs/apk/release" -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          if [[ -z "$raw_apk_path" || ! -f "$raw_apk_path" ]]; then
+            echo "::error::Expected a release APK under $PWD/app/build/outputs/apk/release, but none was found."
             exit 1
           fi
 
