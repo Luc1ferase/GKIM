@@ -25,6 +25,7 @@ function Get-AndroidReleasePreflightResult {
         [string]$TagName,
 
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
         [string[]]$GitStatusLines,
 
         [Parameter(Mandatory = $true)]

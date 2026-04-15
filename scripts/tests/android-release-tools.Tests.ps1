@@ -24,6 +24,21 @@ Describe 'Get-AndroidReleaseTagInfo' {
 }
 
 Describe 'Get-AndroidReleasePreflightResult' {
+    It 'allows a clean worktree with no status lines' {
+        $result = Get-AndroidReleasePreflightResult `
+            -TagName 'v1.2.4' `
+            -GitStatusLines @() `
+            -BranchName 'master' `
+            -UpstreamName 'origin/master' `
+            -AheadBy 0 `
+            -BehindBy 0 `
+            -LocalTagExists $false `
+            -RemoteTagExists $false
+
+        $result.IsReady | Should Be $true
+        $result.Issues.Count | Should Be 0
+    }
+
     It 'blocks dirty worktrees, ahead branches, and conflicting tags' {
         $result = Get-AndroidReleasePreflightResult `
             -TagName 'v1.2.3' `
