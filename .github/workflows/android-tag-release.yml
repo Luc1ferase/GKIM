@@ -113,6 +113,19 @@ jobs:
           echo "has_signing=true" >> "$GITHUB_OUTPUT"
           echo "keystore_path=$keystore_path" >> "$GITHUB_OUTPUT"
 
+      - name: Initialize Android release summary
+        shell: bash
+        run: |
+          {
+            echo "## Android release context"
+            echo ""
+            echo "- Tag: \`${{ steps.version.outputs.tag_name }}\`"
+            echo "- Expected APK asset: \`${{ steps.version.outputs.asset_name }}\`"
+            echo "- Repository: \`${{ github.repository }}\`"
+            echo "- Signing secrets configured: \`${{ steps.signing.outputs.has_signing }}\`"
+            echo "- Release page: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag_name }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Make Gradle wrapper executable
         shell: bash
         run: chmod +x android/gradlew
@@ -168,6 +181,7 @@ jobs:
           echo "apk_path=$release_apk_path" >> "$GITHUB_OUTPUT"
 
       - name: Upload APK as workflow artifact
+        id: upload_artifact
         if: ${{ steps.signing.outputs.has_signing == 'true' }}
         uses: actions/upload-artifact@v4
         with:
@@ -176,6 +190,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish APK to GitHub Release
+        id: publish_release
         if: ${{ steps.signing.outputs.has_signing == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
@@ -185,9 +200,66 @@ jobs:
           fail_on_unmatched_files: true
           files: ${{ steps.build.outputs.apk_path }}
 
+      - name: Verify published GitHub Release asset
+        id: verify_release
+        if: ${{ steps.signing.outputs.has_signing == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          tag_name="${{ steps.version.outputs.tag_name }}"
+          asset_name="${{ steps.version.outputs.asset_name }}"
+          repo="${{ github.repository }}"
+          release_url="https://github.com/${repo}/releases/tag/${tag_name}"
+
+          for attempt in {1..12}; do
+            asset_match="$(gh release view "$tag_name" --repo "$repo" --json url,assets --jq ".assets[] | select(.name == \"$asset_name\") | .name" 2>/dev/null || true)"
+            if [[ -n "$asset_match" ]]; then
+              release_url="$(gh release view "$tag_name" --repo "$repo" --json url --jq '.url')"
+              echo "release_asset_verified=true" >> "$GITHUB_OUTPUT"
+              echo "release_url=$release_url" >> "$GITHUB_OUTPUT"
+              echo "release_asset_name=$asset_match" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            sleep 5
+          done
+
+          echo "::error::Published release asset '$asset_name' was not found on GitHub Release '$tag_name' after waiting for publication."
+          exit 1
+
       - name: Fail cleanly when release signing secrets are missing
+        id: missing_signing
         if: ${{ steps.signing.outputs.has_signing != 'true' }}
         shell: bash
         run: |
           echo "::error::Missing ANDROID_RELEASE_* secrets. The APK compiled successfully, but publication is blocked until signing secrets are configured."
           exit 1
+
+      - name: Summarize Android release outcome
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          {
+            echo ""
+            echo "## Android release outcome"
+            echo ""
+            echo "- Tag: \`${{ steps.version.outputs.tag_name }}\`"
+            echo "- Expected APK asset: \`${{ steps.version.outputs.asset_name }}\`"
+            echo "- Build step: \`${{ steps.build.outcome }}\`"
+            echo "- Workflow artifact upload: \`${{ steps.upload_artifact.outcome }}\`"
+            echo "- GitHub Release publish: \`${{ steps.publish_release.outcome }}\`"
+
+            if [[ "${{ steps.verify_release.outputs.release_asset_verified }}" == "true" ]]; then
+              echo "- Publication state: verified GitHub Release asset \`${{ steps.verify_release.outputs.release_asset_name }}\`"
+              echo "- Release URL: ${{ steps.verify_release.outputs.release_url }}"
+            elif [[ "${{ steps.signing.outputs.has_signing }}" != "true" ]]; then
+              echo "- Publication state: blocked because the required ANDROID_RELEASE_* secrets are missing or incomplete."
+            elif [[ "${{ steps.publish_release.outcome }}" == "failure" ]]; then
+              echo "- Publication state: GitHub Release publication failed before the final APK asset could be verified."
+            else
+              echo "- Publication state: the workflow did not confirm that \`${{ steps.version.outputs.asset_name }}\` is present on the GitHub Release."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
