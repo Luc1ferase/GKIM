@@ -12,7 +12,7 @@ fun String.asBuildConfigStringLiteral(): String =
 
 val releaseVersionName = stringGradleOrEnvProperty("GKIM_RELEASE_VERSION_NAME") ?: "0.1.0"
 val releaseVersionCode = intGradleProperty("GKIM_RELEASE_VERSION_CODE", 1)
-val imBackendOrigin = stringGradleOrEnvProperty("GKIM_IM_BACKEND_ORIGIN") ?: "http://124.222.15.128:18080/"
+val imBackendOrigin = stringGradleOrEnvProperty("GKIM_IM_BACKEND_ORIGIN") ?: "https://chat.lastxuans.sbs/"
 val releaseStoreFilePath = stringGradleOrEnvProperty("GKIM_RELEASE_STORE_FILE")
 val releaseStorePassword = stringGradleOrEnvProperty("GKIM_RELEASE_STORE_PASSWORD")
 val releaseKeyAlias = stringGradleOrEnvProperty("GKIM_RELEASE_KEY_ALIAS")

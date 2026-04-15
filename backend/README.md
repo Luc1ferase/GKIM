@@ -73,13 +73,13 @@ runtime schema before serving requests.
 
 ## Ubuntu bootstrap and debug
 
-1. SSH to `ubuntu@124.222.15.128`.
+1. SSH to the deployment host.
 2. Sync this `backend/` directory to `/opt/gkim-im/backend`.
 3. Edit `/etc/gkim-im-backend/gkim-im-backend.env` with real secret values.
 4. Run `./scripts/bootstrap-ubuntu.sh` from `/opt/gkim-im/backend`.
 5. Run `BACKEND_URL=http://127.0.0.1:18080 ./scripts/smoke-health.sh` on the Ubuntu host to confirm the systemd-managed service responds locally.
 6. Run `BACKEND_URL=http://127.0.0.1:18080 DEV_USER_EXTERNAL_ID=nox-dev ./scripts/smoke-session.sh` on the Ubuntu host to confirm auth/bootstrap succeeds before checking any published endpoint.
-7. From your workstation, point `BACKEND_URL` at the published Android-facing origin such as `http://124.222.15.128:18080/`, then re-run `./scripts/smoke-health.sh` plus `./scripts/smoke-session.sh`.
+7. From your workstation, point `BACKEND_URL` at the published Android-facing origin such as `https://chat.lastxuans.sbs/`, then re-run `./scripts/smoke-health.sh` plus `./scripts/smoke-session.sh`.
 8. Use `./scripts/debug-service.sh` or `sudo journalctl -u gkim-im-backend -f` for logs.
 
 The repo ships only placeholder values and service scaffolding. SSH auth remains interactive
@@ -87,8 +87,8 @@ or key-based outside version control.
 
 ### Current published Android-facing endpoints
 
-- HTTP: `http://124.222.15.128:18080/`
-- WebSocket: `ws://124.222.15.128:18080/ws`
+- HTTP: `https://chat.lastxuans.sbs/`
+- WebSocket: `wss://chat.lastxuans.sbs/ws`
 
 These are the accepted remote validation targets for the current Ubuntu deployment. Android
 validation against the deployed server should use these endpoints directly instead of relying on

@@ -14,8 +14,12 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.core.app.ApplicationProvider
 import android.util.Log
 import androidx.compose.ui.semantics.SemanticsProperties
+import android.content.Context
+import com.gkim.im.android.data.local.AppPreferencesStore
+import com.gkim.im.android.data.local.SessionStore
 import com.gkim.im.android.data.remote.im.ImBackendHttpClient
 import com.gkim.im.android.data.remote.im.ImGatewayEvent
 import com.gkim.im.android.data.repository.AppContainer
@@ -175,11 +179,8 @@ class LiveImBackendValidationTest {
     }
 
     private fun setLiveApp() {
+        preparePersistedLiveState()
         appContainer = DefaultAppContainer(composeRule.activity)
-        runBlocking {
-            appContainer.preferencesStore.setImBackendOrigin(httpBaseUrl)
-            appContainer.preferencesStore.setImDevUserExternalId("nox-dev")
-        }
 
         if (!contentInitialized) {
             composeRule.setContent {
@@ -202,6 +203,18 @@ class LiveImBackendValidationTest {
                 swapContainer(appContainer)
             }
             composeRule.waitForIdle()
+        }
+    }
+
+    private fun preparePersistedLiveState() = runBlocking {
+        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        SessionStore(appContext).apply {
+            clear()
+            baseUrl = null
+        }
+        AppPreferencesStore(appContext).apply {
+            setImBackendOrigin(httpBaseUrl)
+            setImDevUserExternalId("nox-dev")
         }
     }
 

@@ -101,7 +101,7 @@ The Android shell now boots the IM feature through the live backend repository p
    - `Resolved backend origin`: the current HTTP base origin the app will use
    - `Derived realtime endpoint`: the WebSocket URL derived automatically from that same origin
 3. If you need to validate against a non-default environment in a debug build, tap `Show developer validation controls` and set:
-   - `Developer backend origin`: one reachable backend origin, for example `http://124.222.15.128:18080/` for the accepted Ubuntu deployment or `http://10.0.2.2:18080/` for emulator-to-host validation
+   - `Developer backend origin`: one reachable backend origin, for example `https://chat.lastxuans.sbs/` for the accepted remote deployment or `http://10.0.2.2:18080/` for emulator-to-host validation
    - `Validation user`: a backend user external ID such as `nox-dev`
 4. Return to `Messages` and confirm the status card shows a live IM phase or a concrete failure message.
 
@@ -146,22 +146,22 @@ Docker-host path.
 
 The current accepted remote endpoints are:
 
-- HTTP: `http://124.222.15.128:18080/`
-- WebSocket: `ws://124.222.15.128:18080/ws`
+- HTTP: `https://chat.lastxuans.sbs/`
+- WebSocket: `wss://chat.lastxuans.sbs/ws`
 
 Before launching the app, confirm the published HTTP endpoint responds:
 
 ```powershell
-Invoke-RestMethod http://124.222.15.128:18080/health
+Invoke-RestMethod https://chat.lastxuans.sbs/health
 ```
 
 ### 2. Point the app at the deployed backend
 
-Open `Settings > IM VALIDATION` in the app and confirm the resolved backend origin is `http://124.222.15.128:18080/`.
+Open `Settings > IM VALIDATION` in the app and confirm the resolved backend origin is `https://chat.lastxuans.sbs/`.
 
 If the app is currently pointed elsewhere in a debug build, tap `Show developer validation controls` and enter:
 
-- `Developer backend origin`: `http://124.222.15.128:18080/`
+- `Developer backend origin`: `https://chat.lastxuans.sbs/`
 - `Validation user`: `nox-dev`
 
 No `adb reverse` step is required for this deployed-server flow.
@@ -175,7 +175,7 @@ $env:JAVA_HOME='C:\Program Files\Java\jdk-17'
 $env:Path="${env:JAVA_HOME}\bin;C:\Users\Nox\AppData\Local\Android\Sdk\platform-tools;${env:Path}"
 .\gradlew.bat --no-daemon :app:connectedDebugAndroidTest `
   "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.LiveImBackendValidationTest#emulatorValidationCoversLiveRoundTripAndReloadRecovery" `
-  "-Pandroid.testInstrumentationRunnerArguments.liveImBackendOrigin=http://124.222.15.128:18080/" `
+  "-Pandroid.testInstrumentationRunnerArguments.liveImBackendOrigin=https://chat.lastxuans.sbs/" `
   --stacktrace
 ```
 

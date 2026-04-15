@@ -24,3 +24,8 @@ Backend services should connect to the replacement PostgreSQL host `124.222.15.1
 ## Android boundary
 
 The Android app only talks to HTTPS and WebSocket endpoints exposed by backend services. Direct PostgreSQL access from the mobile runtime is explicitly out of scope for this scaffold.
+
+### Current published app origin
+
+- `https://chat.lastxuans.sbs/`
+- `wss://chat.lastxuans.sbs/ws`

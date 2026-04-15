@@ -121,8 +121,8 @@ class SettingsViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals("http://124.222.15.128:18080/", viewModel.uiState.value.imResolvedBackendOrigin)
-        assertEquals("ws://124.222.15.128:18080/ws", viewModel.uiState.value.imResolvedWebSocketUrl)
+        assertEquals("https://chat.lastxuans.sbs/", viewModel.uiState.value.imResolvedBackendOrigin)
+        assertEquals("wss://chat.lastxuans.sbs/ws", viewModel.uiState.value.imResolvedWebSocketUrl)
         assertEquals("", viewModel.uiState.value.imDeveloperOverrideOrigin)
         assertEquals("nox-dev", viewModel.uiState.value.imDevUserExternalId)
         assertEquals(null, viewModel.uiState.value.imValidationError)
