@@ -103,11 +103,17 @@ fun LoginRoute(
                 errorMessage = null
                 scope.launch {
                     val endpoint = container.resolveImHttpEndpoint()
+                    if (endpoint.baseUrl.isBlank()) {
+                        errorMessage = authFailureMessage(appLanguage, endpoint, IllegalStateException("missing endpoint"))
+                        isLoading = false
+                        return@launch
+                    }
                     try {
                         val response = container.imBackendClient.login(endpoint.baseUrl, username.trim(), password)
                         container.sessionStore.token = response.token
                         container.sessionStore.username = response.user.externalId
                         container.sessionStore.baseUrl = endpoint.baseUrl
+                        container.messagingRepository.refreshBootstrap()
                         onLoggedIn()
                     } catch (e: Exception) {
                         errorMessage = authFailureMessage(appLanguage, endpoint, e)

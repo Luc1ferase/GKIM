@@ -186,6 +186,7 @@ private fun ContactsScreen(
                                     val endpoint = container.resolveImHttpEndpoint()
                                     try {
                                         container.imBackendClient.acceptFriendRequest(endpoint.baseUrl, token, request.id)
+                                        container.messagingRepository.refreshBootstrap()
                                         pendingRequests = pendingRequests.filter { it.id != request.id }
                                     } catch (_: Exception) { }
                                 }
@@ -196,6 +197,7 @@ private fun ContactsScreen(
                                     val endpoint = container.resolveImHttpEndpoint()
                                     try {
                                         container.imBackendClient.rejectFriendRequest(endpoint.baseUrl, token, request.id)
+                                        container.messagingRepository.refreshBootstrap()
                                         pendingRequests = pendingRequests.filter { it.id != request.id }
                                     } catch (_: Exception) { }
                                 }

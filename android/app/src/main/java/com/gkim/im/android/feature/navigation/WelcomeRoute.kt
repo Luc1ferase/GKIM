@@ -1,12 +1,5 @@
 package com.gkim.im.android.feature.navigation
 
-import android.content.Context
-import android.net.Uri
-import android.util.Size
-import android.view.Gravity
-import android.view.ViewGroup
-import android.widget.FrameLayout
-import android.widget.VideoView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,15 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import com.gkim.im.android.R
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.core.designsystem.pick
-import kotlin.math.roundToInt
 
 @Composable
 internal fun WelcomeRoute(
@@ -121,8 +110,8 @@ internal fun WelcomeRoute(
                 )
                 Text(
                     text = appLanguage.pick(
-                        "An architectural-first social shell for realtime messaging, prompting, and engineering culture.",
-                        "一个以建筑感为先的社交壳层，把实时消息、提示工程与工程文化合成在同一个入口。",
+                        "Chat with friends, share ideas, and keep everyday conversations in one place.",
+                        "和朋友聊天、分享灵感，把常用的沟通都放在一个地方。",
                     ),
                     style = MaterialTheme.typography.bodyLarge,
                     color = AetherColors.Surface.copy(alpha = 0.76f),
@@ -149,14 +138,6 @@ internal fun WelcomeRoute(
                 verticalArrangement = Arrangement.spacedBy(18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(
-                    text = appLanguage.pick(
-                        "Use your account credentials to enter the live IM shell and keep the onboarding motion visible behind the native UI.",
-                        "使用账号凭据进入实时 IM 壳层，并让开屏动效持续在原生界面后方保持可见。",
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = AetherColors.Surface.copy(alpha = 0.7f),
-                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -175,7 +156,7 @@ internal fun WelcomeRoute(
                     )
                 }
                 Text(
-                    text = appLanguage.pick("Encrypted connection · V 2.0.4", "加密连接 · V 2.0.4"),
+                    text = appLanguage.pick("V 2.0.4", "V 2.0.4"),
                     style = MaterialTheme.typography.labelMedium,
                     color = AetherColors.Surface.copy(alpha = 0.54f),
                 )
@@ -213,109 +194,6 @@ internal object WelcomeAtmosphereAccentCatalog {
 
 internal object WelcomeVideoOverlayStyle {
     fun scrimAlphas(): List<Float> = listOf(0.03f, 0.09f, 0.36f)
-}
-
-@Composable
-private fun WelcomeVideoBackdrop() {
-    val context = LocalContext.current
-    AndroidView(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag("welcome-video"),
-        factory = {
-            WelcomeVideoCoverContainer(it).apply {
-                bindToWelcomeVideo(
-                    Uri.parse("android.resource://${context.packageName}/${R.raw.welcome_intro_1}")
-                )
-            }
-        },
-        update = { videoContainer ->
-            videoContainer.ensurePlaying()
-        },
-    )
-}
-
-internal object WelcomeVideoCoverLayoutCalculator {
-    fun calculateCoverSize(
-        videoWidthPx: Int,
-        videoHeightPx: Int,
-        viewportWidthPx: Int,
-        viewportHeightPx: Int,
-    ): Size {
-        if (videoWidthPx <= 0 || videoHeightPx <= 0 || viewportWidthPx <= 0 || viewportHeightPx <= 0) {
-            return Size(viewportWidthPx.coerceAtLeast(0), viewportHeightPx.coerceAtLeast(0))
-        }
-
-        val widthScale = viewportWidthPx.toFloat() / videoWidthPx.toFloat()
-        val heightScale = viewportHeightPx.toFloat() / videoHeightPx.toFloat()
-        val coverScale = maxOf(widthScale, heightScale)
-
-        return Size(
-            (videoWidthPx * coverScale).roundToInt(),
-            (videoHeightPx * coverScale).roundToInt(),
-        )
-    }
-}
-
-private class WelcomeVideoCoverContainer(
-    context: Context,
-) : FrameLayout(context) {
-    private val videoView = VideoView(context)
-    private var videoWidthPx: Int = 0
-    private var videoHeightPx: Int = 0
-
-    init {
-        clipChildren = true
-        clipToPadding = true
-        addView(
-            videoView,
-            LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                Gravity.CENTER,
-            ),
-        )
-    }
-
-    fun bindToWelcomeVideo(videoUri: Uri) {
-        videoView.setOnPreparedListener { mediaPlayer ->
-            videoWidthPx = mediaPlayer.videoWidth
-            videoHeightPx = mediaPlayer.videoHeight
-            mediaPlayer.isLooping = true
-            mediaPlayer.setVolume(0f, 0f)
-            applyCoverLayout()
-            videoView.start()
-        }
-        videoView.setVideoURI(videoUri)
-    }
-
-    fun ensurePlaying() {
-        applyCoverLayout()
-        if (!videoView.isPlaying) {
-            videoView.start()
-        }
-    }
-
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        applyCoverLayout()
-    }
-
-    private fun applyCoverLayout() {
-        val scaledSize = WelcomeVideoCoverLayoutCalculator.calculateCoverSize(
-            videoWidthPx = videoWidthPx,
-            videoHeightPx = videoHeightPx,
-            viewportWidthPx = width,
-            viewportHeightPx = height,
-        )
-        val layoutParams = videoView.layoutParams as LayoutParams
-        if (layoutParams.width != scaledSize.width || layoutParams.height != scaledSize.height) {
-            layoutParams.width = scaledSize.width
-            layoutParams.height = scaledSize.height
-            layoutParams.gravity = Gravity.CENTER
-            videoView.layoutParams = layoutParams
-        }
-    }
 }
 
 @Composable

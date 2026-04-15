@@ -2,8 +2,6 @@ package com.gkim.im.android.feature.settings
 
 import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AppThemeMode
-import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
-import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
 import com.gkim.im.android.data.repository.DefaultAigcRepository
 import com.gkim.im.android.data.repository.InMemoryMessagingRepository
 import com.gkim.im.android.data.repository.presetProviders
@@ -108,11 +106,10 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `settings view model exposes and updates IM backend validation inputs`() = runTest(mainDispatcherRule.dispatcher) {
+    fun `settings view model exposes resolved backend origin and developer override state`() = runTest(mainDispatcherRule.dispatcher) {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val preferencesStore = FakePreferencesStore(
-            initialImHttpBaseUrl = DEFAULT_IM_HTTP_BASE_URL,
-            initialImWebSocketUrl = DEFAULT_IM_WEBSOCKET_URL,
+            initialImBackendOrigin = "",
             initialImDevUserExternalId = "nox-dev",
         )
         val secureStore = InMemorySecureKeyValueStore()
@@ -124,33 +121,32 @@ class SettingsViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(DEFAULT_IM_HTTP_BASE_URL, viewModel.uiState.value.imHttpBaseUrl)
-        assertEquals(DEFAULT_IM_WEBSOCKET_URL, viewModel.uiState.value.imWebSocketUrl)
+        assertEquals("http://124.222.15.128:18080/", viewModel.uiState.value.imResolvedBackendOrigin)
+        assertEquals("ws://124.222.15.128:18080/ws", viewModel.uiState.value.imResolvedWebSocketUrl)
+        assertEquals("", viewModel.uiState.value.imDeveloperOverrideOrigin)
         assertEquals("nox-dev", viewModel.uiState.value.imDevUserExternalId)
         assertEquals(null, viewModel.uiState.value.imValidationError)
 
         viewModel.updateImValidationConfig(
-            httpBaseUrl = "https://forward.example.com/",
-            webSocketUrl = "wss://forward.example.com/ws",
+            backendOrigin = "https://forward.example.com/im",
             devUserExternalId = "leo-vance",
         )
         advanceUntilIdle()
 
-        assertEquals("https://forward.example.com/", viewModel.uiState.value.imHttpBaseUrl)
-        assertEquals("wss://forward.example.com/ws", viewModel.uiState.value.imWebSocketUrl)
+        assertEquals("https://forward.example.com/im/", viewModel.uiState.value.imResolvedBackendOrigin)
+        assertEquals("wss://forward.example.com/im/ws", viewModel.uiState.value.imResolvedWebSocketUrl)
+        assertEquals("https://forward.example.com/im/", viewModel.uiState.value.imDeveloperOverrideOrigin)
         assertEquals("leo-vance", viewModel.uiState.value.imDevUserExternalId)
-        assertEquals("https://forward.example.com/", preferencesStore.currentImHttpBaseUrl)
-        assertEquals("wss://forward.example.com/ws", preferencesStore.currentImWebSocketUrl)
+        assertEquals("https://forward.example.com/im/", preferencesStore.currentImBackendOrigin)
         assertEquals("leo-vance", preferencesStore.currentImDevUserExternalId)
 
         viewModel.updateImValidationConfig(
-            httpBaseUrl = "forward.example.com",
-            webSocketUrl = "https://forward.example.com/ws",
+            backendOrigin = "forward.example.com",
             devUserExternalId = "",
         )
         advanceUntilIdle()
 
-        assertEquals("IM validation config is incomplete or invalid.", viewModel.uiState.value.imValidationError)
+        assertEquals("连接设置不完整或格式无效。", viewModel.uiState.value.imValidationError)
 
         collector.cancel()
     }

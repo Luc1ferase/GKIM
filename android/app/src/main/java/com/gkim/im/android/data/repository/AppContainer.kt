@@ -1,6 +1,7 @@
 package com.gkim.im.android.data.repository
 
 import android.content.Context
+import com.gkim.im.android.BuildConfig
 import com.gkim.im.android.core.media.AndroidGeneratedImageSaver
 import com.gkim.im.android.core.media.GeneratedImageSaver
 import com.gkim.im.android.core.rendering.MarkdownDocumentParser
@@ -18,6 +19,7 @@ import com.gkim.im.android.data.remote.api.FeedService
 import com.gkim.im.android.data.remote.api.ServiceFactory
 import com.gkim.im.android.data.remote.im.ImBackendClient
 import com.gkim.im.android.data.remote.im.ImBackendHttpClient
+import com.gkim.im.android.data.remote.im.ImHttpEndpointResolver
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
 import okhttp3.OkHttpClient
 
@@ -51,7 +53,15 @@ class DefaultAppContainer(context: Context) : AppContainer {
     override val imBackendClient: ImBackendClient = imBackendClientImpl
 
     override val markdownParser = MarkdownDocumentParser()
-    override val realtimeChatClient = RealtimeChatClient(okHttpClient, "wss://example.com/realtime")
+    override val realtimeChatClient = RealtimeChatClient(
+        okHttpClient,
+        ImHttpEndpointResolver.resolve(
+            sessionBaseUrl = null,
+            developerOverrideOrigin = null,
+            shippedBackendOrigin = BuildConfig.IM_BACKEND_ORIGIN,
+            allowDeveloperOverrides = false,
+        ).webSocketUrl,
+    )
     override val generatedImageSaver: GeneratedImageSaver = AndroidGeneratedImageSaver(
         context = context,
         httpClient = okHttpClient,
@@ -60,10 +70,14 @@ class DefaultAppContainer(context: Context) : AppContainer {
     override val messagingRepository: MessagingRepository = LiveMessagingRepository(
         backendClient = imBackendClient,
         realtimeGateway = realtimeChatClient,
+        sessionStore = sessionStore,
         preferencesStore = preferencesStore,
         fallbackRepository = fallbackMessagingRepository,
     )
-    override val contactsRepository: ContactsRepository = DefaultContactsRepository(seedContacts, preferencesStore)
+    override val contactsRepository: ContactsRepository = LiveContactsRepository(
+        messagingRepository = messagingRepository,
+        preferencesStore = preferencesStore,
+    )
     override val feedRepository: FeedRepository = DefaultFeedRepository(seedPosts, seedPrompts)
     override val aigcRepository: AigcRepository = DefaultAigcRepository(
         presets = presetProviders,

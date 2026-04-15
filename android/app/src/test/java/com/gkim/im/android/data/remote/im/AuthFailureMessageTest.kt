@@ -11,7 +11,7 @@ class AuthFailureMessageTest {
             appLanguage = AppLanguage.Chinese,
             endpoint = ResolvedImHttpEndpoint(
                 baseUrl = "https://forward.example.com/",
-                source = ImHttpEndpointSource.ImValidation,
+                source = ImEndpointSource.DeveloperOverride,
                 isLoopbackHost = false,
             ),
             error = IllegalStateException("401 unauthorized"),
@@ -26,15 +26,15 @@ class AuthFailureMessageTest {
             appLanguage = AppLanguage.Chinese,
             endpoint = ResolvedImHttpEndpoint(
                 baseUrl = "http://127.0.0.1:18080/",
-                source = ImHttpEndpointSource.ImValidation,
+                source = ImEndpointSource.DeveloperOverride,
                 isLoopbackHost = true,
             ),
             error = IllegalStateException("failed to connect"),
         )
 
         assertTrue(message.contains("127.0.0.1:18080"))
-        assertTrue(message.contains("回环地址"))
-        assertTrue(message.contains("IM验证"))
+        assertTrue(message.contains("本地地址"))
+        assertTrue(message.contains("连接地址"))
     }
 
     @Test
@@ -43,14 +43,30 @@ class AuthFailureMessageTest {
             appLanguage = AppLanguage.Chinese,
             endpoint = ResolvedImHttpEndpoint(
                 baseUrl = "http://10.0.2.2:18080/",
-                source = ImHttpEndpointSource.DefaultPublishedTarget,
+                source = ImEndpointSource.BundledDefault,
                 isLoopbackHost = false,
             ),
             error = IllegalStateException("timeout"),
         )
 
         assertTrue(message.contains("10.0.2.2:18080"))
-        assertTrue(message.contains("模拟器"))
+        assertTrue(message.contains("客户端"))
         assertTrue(!message.contains("用户名或密码错误"))
+    }
+
+    @Test
+    fun `missing validation target tells the operator to configure settings before retrying`() {
+        val message = authFailureMessage(
+            appLanguage = AppLanguage.Chinese,
+            endpoint = ResolvedImHttpEndpoint(
+                baseUrl = "",
+                source = ImEndpointSource.MissingConfiguration,
+                isLoopbackHost = false,
+            ),
+            error = IllegalStateException("missing endpoint"),
+        )
+
+        assertTrue(message.contains("连接信息"))
+        assertTrue(message.contains("稍后再试"))
     }
 }

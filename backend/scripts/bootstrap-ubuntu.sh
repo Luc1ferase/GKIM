@@ -20,6 +20,10 @@ if [[ ! -f "$UNIT_SOURCE" ]]; then
   exit 1
 fi
 
+if ! command -v cargo >/dev/null 2>&1 && [[ -x "$HOME/.cargo/bin/cargo" ]]; then
+  export PATH="$HOME/.cargo/bin:$PATH"
+fi
+
 if ! command -v cargo >/dev/null 2>&1; then
   echo "cargo is required on the Ubuntu host before bootstrapping." >&2
   exit 1

@@ -11,5 +11,5 @@
 
 ## 3. Release validation and evidence
 
-- [ ] 3.1 Verify the new release path with focused Android build checks and at least one end-to-end tag-driven release rehearsal against GitHub so the published APK path is proven.
-- [ ] 3.2 Record the verification, review, score, and GitHub upload evidence in `docs/DELIVERY_WORKFLOW.md`, then update any affected release/operator docs before closing the change.
+- [x] 3.1 Verify the new release path with focused Android build checks and at least one end-to-end tag-driven release rehearsal against GitHub so the published APK path is proven.
+- [x] 3.2 Record the verification, review, score, and GitHub upload evidence in `docs/DELIVERY_WORKFLOW.md`, then update any affected release/operator docs before closing the change.

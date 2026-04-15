@@ -77,6 +77,19 @@ $env:Path="${env:JAVA_HOME}\bin;${env:Path}"
 .\gradlew.bat :app:testDebugUnitTest :app:assembleRelease "-PGKIM_RELEASE_VERSION_NAME=0.2.0" "-PGKIM_RELEASE_VERSION_CODE=2000"
 ```
 
+### Remote rehearsal without signing secrets
+
+If the repository secrets are not configured yet, you can still prove the GitHub-hosted build path by pushing a disposable version tag such as `v0.2.17`.
+
+The expected outcome is:
+
+- the workflow validates the tag and derives release metadata
+- `:app:testDebugUnitTest` passes on GitHub
+- `:app:assembleRelease` produces the release APK on GitHub
+- artifact upload and GitHub Release publication stay blocked by the final `Missing ANDROID_RELEASE_* secrets` guard until all four signing secrets are configured
+
+This is the intended rehearsal path for CI validation before the repository is trusted with the real Android release keystore.
+
 ## Live IM Wiring Handoff
 
 The Android shell now boots the IM feature through the live backend repository path instead of the seed-only in-memory repository.
@@ -84,11 +97,15 @@ The Android shell now boots the IM feature through the live backend repository p
 ### Runtime configuration
 
 1. Launch the app and open `Settings`.
-2. In the `IM VALIDATION` section, set:
-   - `HTTP Base URL`: the reachable backend HTTP origin, for example `http://127.0.0.1:18080/` when validating locally or through a tunnel
-   - `WebSocket URL`: the reachable gateway URL, for example `ws://127.0.0.1:18080/ws`
-   - `Dev User`: a backend user external ID such as `nox-dev`
-3. Return to `Messages` and confirm the status card shows a live IM phase or a concrete failure message.
+2. Open `IM VALIDATION` and review:
+   - `Resolved backend origin`: the current HTTP base origin the app will use
+   - `Derived realtime endpoint`: the WebSocket URL derived automatically from that same origin
+3. If you need to validate against a non-default environment in a debug build, tap `Show developer validation controls` and set:
+   - `Developer backend origin`: one reachable backend origin, for example `http://124.222.15.128:18080/` for the accepted Ubuntu deployment or `http://10.0.2.2:18080/` for emulator-to-host validation
+   - `Validation user`: a backend user external ID such as `nox-dev`
+4. Return to `Messages` and confirm the status card shows a live IM phase or a concrete failure message.
+
+The app now derives the realtime endpoint from the selected backend origin, so operators only manage one IM address instead of separate HTTP and WebSocket fields. The shipped default backend origin comes from `BuildConfig.IM_BACKEND_ORIGIN`, which can be overridden at build time with `GKIM_IM_BACKEND_ORIGIN`.
 
 ### What is wired now
 
@@ -120,9 +137,55 @@ $env:Path="${env:JAVA_HOME}\bin;D:\Android\Sdk\platform-tools;D:\Android\Sdk\emu
 .\gradlew.bat connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#openingConversationRequestsLiveHistoryLoad" --rerun-tasks
 ```
 
-## Emulator IM Validation Workflow
+## Remote IM Validation Workflow
 
-This is now the primary validation path for the Android IM app. The backend runs locally in Docker, and the existing Android emulator exercises the live API suite through host port `18080`.
+Use this workflow when validating the app against the deployed Ubuntu backend instead of the local
+Docker-host path.
+
+### 1. Verify the published backend endpoints
+
+The current accepted remote endpoints are:
+
+- HTTP: `http://124.222.15.128:18080/`
+- WebSocket: `ws://124.222.15.128:18080/ws`
+
+Before launching the app, confirm the published HTTP endpoint responds:
+
+```powershell
+Invoke-RestMethod http://124.222.15.128:18080/health
+```
+
+### 2. Point the app at the deployed backend
+
+Open `Settings > IM VALIDATION` in the app and confirm the resolved backend origin is `http://124.222.15.128:18080/`.
+
+If the app is currently pointed elsewhere in a debug build, tap `Show developer validation controls` and enter:
+
+- `Developer backend origin`: `http://124.222.15.128:18080/`
+- `Validation user`: `nox-dev`
+
+No `adb reverse` step is required for this deployed-server flow.
+
+### 3. Run the focused live validation case
+
+From `android/`:
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Java\jdk-17'
+$env:Path="${env:JAVA_HOME}\bin;C:\Users\Nox\AppData\Local\Android\Sdk\platform-tools;${env:Path}"
+.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest `
+  "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.LiveImBackendValidationTest#emulatorValidationCoversLiveRoundTripAndReloadRecovery" `
+  "-Pandroid.testInstrumentationRunnerArguments.liveImBackendOrigin=http://124.222.15.128:18080/" `
+  --stacktrace
+```
+
+This case covers session issuance, bootstrap/history hydration, realtime send/receive, and
+recovery after reconnect or relaunch against the deployed backend.
+
+## Local Emulator IM Validation Workflow
+
+Use this workflow when validating against a locally containerized backend on the workstation. The
+existing Android emulator exercises the live API suite through host port `18080`.
 
 ### 1. Start the local backend container
 
@@ -143,7 +206,7 @@ Invoke-WebRequest http://127.0.0.1:18080/health | Select-Object -ExpandProperty 
 
 ### 2. Point the emulator at the host backend
 
-The app defaults already target `http://127.0.0.1:18080/` and `ws://127.0.0.1:18080/ws`, so the shortest path is to reverse the host port into the emulator:
+If you want the emulator to hit the host through `adb reverse`, run:
 
 ```powershell
 & 'D:\Android\Sdk\platform-tools\adb.exe' devices -l
@@ -151,7 +214,12 @@ The app defaults already target `http://127.0.0.1:18080/` and `ws://127.0.0.1:18
 & 'D:\Android\Sdk\platform-tools\adb.exe' reverse --list
 ```
 
-If you prefer not to use `adb reverse`, you can instead enter `http://10.0.2.2:18080/` and `ws://10.0.2.2:18080/ws` manually in the app's `IM VALIDATION` settings.
+Then open `Settings > IM VALIDATION`, tap `Show developer validation controls`, and set one developer backend origin:
+
+- `http://127.0.0.1:18080/` when you are using `adb reverse`
+- `http://10.0.2.2:18080/` when you want the emulator to reach the host bridge directly
+
+The app will derive `/ws` automatically from whichever origin you enter.
 
 ### 3. Capture emulator-facing evidence
 

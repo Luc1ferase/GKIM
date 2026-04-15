@@ -77,8 +77,36 @@ runtime schema before serving requests.
 2. Sync this `backend/` directory to `/opt/gkim-im/backend`.
 3. Edit `/etc/gkim-im-backend/gkim-im-backend.env` with real secret values.
 4. Run `./scripts/bootstrap-ubuntu.sh` from `/opt/gkim-im/backend`.
-5. Run `./scripts/smoke-health.sh` to confirm `200 OK`.
-6. Use `./scripts/debug-service.sh` or `sudo journalctl -u gkim-im-backend -f` for logs.
+5. Run `BACKEND_URL=http://127.0.0.1:18080 ./scripts/smoke-health.sh` on the Ubuntu host to confirm the systemd-managed service responds locally.
+6. Run `BACKEND_URL=http://127.0.0.1:18080 DEV_USER_EXTERNAL_ID=nox-dev ./scripts/smoke-session.sh` on the Ubuntu host to confirm auth/bootstrap succeeds before checking any published endpoint.
+7. From your workstation, point `BACKEND_URL` at the published Android-facing origin such as `http://124.222.15.128:18080/`, then re-run `./scripts/smoke-health.sh` plus `./scripts/smoke-session.sh`.
+8. Use `./scripts/debug-service.sh` or `sudo journalctl -u gkim-im-backend -f` for logs.
 
 The repo ships only placeholder values and service scaffolding. SSH auth remains interactive
 or key-based outside version control.
+
+### Current published Android-facing endpoints
+
+- HTTP: `http://124.222.15.128:18080/`
+- WebSocket: `ws://124.222.15.128:18080/ws`
+
+These are the accepted remote validation targets for the current Ubuntu deployment. Android
+validation against the deployed server should use these endpoints directly instead of relying on
+`adb reverse`, local Docker host publishing, or an SSH tunnel.
+
+### Distinguish service failures from published-endpoint failures
+
+Use the same checks in this order whenever the Android app cannot reach the deployed backend:
+
+1. `sudo systemctl is-active gkim-im-backend`
+2. `BACKEND_URL=http://127.0.0.1:18080 ./scripts/smoke-health.sh`
+3. `BACKEND_URL=http://127.0.0.1:18080 DEV_USER_EXTERNAL_ID=nox-dev ./scripts/smoke-session.sh`
+4. `BACKEND_URL=<published-http-origin> ./scripts/smoke-health.sh`
+5. `BACKEND_URL=<published-http-origin> DEV_USER_EXTERNAL_ID=nox-dev ./scripts/smoke-session.sh`
+
+Interpret the results like this:
+
+- `systemctl` or host-local `/health` fails: the Ubuntu service itself is down or misconfigured.
+- host-local `/health` passes but host-local `smoke-session.sh` fails: the backend process is running, but auth/bootstrap or backing services are still broken.
+- host-local checks pass but published-endpoint checks fail: the problem is outside the core backend process, usually bind-address, firewall, reverse-proxy, or port-publication drift.
+- published `smoke-session.sh` passes: the HTTP side is ready for Android validation; use the matching published WebSocket origin in the app's IM Validation settings.

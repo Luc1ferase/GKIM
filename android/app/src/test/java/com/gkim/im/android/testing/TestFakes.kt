@@ -5,8 +5,10 @@ import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.core.model.ContactSortMode
 import com.gkim.im.android.core.security.SecureKeyValueStore
 import com.gkim.im.android.data.local.PreferencesStore
-import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
-import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
+import com.gkim.im.android.data.local.RuntimeSessionStore
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_DEVELOPER_BACKEND_ORIGIN
+import com.gkim.im.android.data.remote.im.normalizeImBackendOriginForStorage
+import com.gkim.im.android.data.remote.im.resolveStoredImBackendOrigin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,8 +20,9 @@ class FakePreferencesStore(
     initialBaseUrl: String = "https://api.example.com/v1",
     initialModel: String = "gpt-image-1",
     initialPresetModels: Map<String, String> = emptyMap(),
-    initialImHttpBaseUrl: String = DEFAULT_IM_HTTP_BASE_URL,
-    initialImWebSocketUrl: String = DEFAULT_IM_WEBSOCKET_URL,
+    initialImBackendOrigin: String = DEFAULT_IM_DEVELOPER_BACKEND_ORIGIN,
+    initialLegacyImHttpBaseUrl: String = "",
+    initialLegacyImWebSocketUrl: String = "",
     initialImDevUserExternalId: String = "nox-dev",
     initialLanguage: AppLanguage = AppLanguage.Chinese,
     initialThemeMode: AppThemeMode = AppThemeMode.Light,
@@ -29,8 +32,15 @@ class FakePreferencesStore(
     private val customBaseUrlState = MutableStateFlow(initialBaseUrl)
     private val customModelState = MutableStateFlow(initialModel)
     private val presetModelStates = initialPresetModels.mapValuesTo(mutableMapOf()) { MutableStateFlow(it.value) }
-    private val imHttpBaseUrlState = MutableStateFlow(initialImHttpBaseUrl)
-    private val imWebSocketUrlState = MutableStateFlow(initialImWebSocketUrl)
+    private val imBackendOriginState = MutableStateFlow(
+        initialImBackendOrigin.takeIf { it.isNotBlank() }?.let(::normalizeImBackendOriginForStorage)
+            ?: resolveStoredImBackendOrigin(
+                storedBackendOrigin = "",
+                legacyHttpBaseUrl = initialLegacyImHttpBaseUrl,
+                legacyWebSocketUrl = initialLegacyImWebSocketUrl,
+                shippedBackendOrigin = "",
+            )
+    )
     private val imDevUserExternalIdState = MutableStateFlow(initialImDevUserExternalId)
     private val appLanguageState = MutableStateFlow(initialLanguage)
     private val appThemeModeState = MutableStateFlow(initialThemeMode)
@@ -42,8 +52,7 @@ class FakePreferencesStore(
     override fun presetProviderModel(providerId: String): Flow<String?> = presetModelStates.getOrPut(providerId) { MutableStateFlow("") }
         .asStateFlow()
         .map { value -> value.takeIf { it.isNotBlank() } }
-    override val imHttpBaseUrl: Flow<String> = imHttpBaseUrlState.asStateFlow()
-    override val imWebSocketUrl: Flow<String> = imWebSocketUrlState.asStateFlow()
+    override val imBackendOrigin: Flow<String> = imBackendOriginState.asStateFlow()
     override val imDevUserExternalId: Flow<String> = imDevUserExternalIdState.asStateFlow()
     override val appLanguage: Flow<AppLanguage> = appLanguageState.asStateFlow()
     override val appThemeMode: Flow<AppThemeMode> = appThemeModeState.asStateFlow()
@@ -63,11 +72,8 @@ class FakePreferencesStore(
     val currentPresetModels: Map<String, String>
         get() = presetModelStates.mapValues { it.value.value }
 
-    val currentImHttpBaseUrl: String
-        get() = imHttpBaseUrlState.value
-
-    val currentImWebSocketUrl: String
-        get() = imWebSocketUrlState.value
+    val currentImBackendOrigin: String
+        get() = imBackendOriginState.value
 
     val currentImDevUserExternalId: String
         get() = imDevUserExternalIdState.value
@@ -98,12 +104,8 @@ class FakePreferencesStore(
         presetModelStates.getOrPut(providerId) { MutableStateFlow("") }.value = value
     }
 
-    override suspend fun setImHttpBaseUrl(value: String) {
-        imHttpBaseUrlState.value = value
-    }
-
-    override suspend fun setImWebSocketUrl(value: String) {
-        imWebSocketUrlState.value = value
+    override suspend fun setImBackendOrigin(value: String) {
+        imBackendOriginState.value = normalizeImBackendOriginForStorage(value)
     }
 
     override suspend fun setImDevUserExternalId(value: String) {
@@ -133,4 +135,19 @@ class InMemorySecureKeyValueStore : SecureKeyValueStore {
     }
 
     fun peek(key: String): String? = values[key]
+}
+
+class FakeRuntimeSessionStore(
+    override var token: String? = null,
+    override var username: String? = null,
+    override var baseUrl: String? = null,
+) : RuntimeSessionStore {
+    override val hasSession: Boolean
+        get() = !token.isNullOrBlank()
+
+    override fun clear() {
+        token = null
+        username = null
+        baseUrl = null
+    }
 }

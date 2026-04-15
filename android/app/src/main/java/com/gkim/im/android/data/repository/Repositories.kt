@@ -1,5 +1,5 @@
 package com.gkim.im.android.data.repository
-
+import com.gkim.im.android.BuildConfig
 import com.gkim.im.android.core.model.AigcMode
 import com.gkim.im.android.core.model.AigcProvider
 import com.gkim.im.android.core.model.AigcTask
@@ -22,11 +22,13 @@ import com.gkim.im.android.core.model.WorkshopPrompt
 import com.gkim.im.android.core.security.SecureKeyValueStore
 import com.gkim.im.android.core.util.sortContacts
 import com.gkim.im.android.data.local.PreferencesStore
+import com.gkim.im.android.data.local.RuntimeSessionStore
 import com.gkim.im.android.data.remote.aigc.MediaInputEncoder
 import com.gkim.im.android.data.remote.aigc.RemoteAigcGenerateRequest
 import com.gkim.im.android.data.remote.aigc.RemoteAigcProviderClient
 import com.gkim.im.android.data.remote.aigc.UnsupportedMediaInputEncoder
 import com.gkim.im.android.data.remote.im.ImBackendClient
+import com.gkim.im.android.data.remote.im.ImHttpEndpointResolver
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -39,6 +41,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -59,7 +62,15 @@ data class MessagingIntegrationState(
     val message: String? = null,
 )
 
+private data class PendingRealtimeMessage(
+    val conversationId: String,
+    val recipientExternalId: String,
+    val clientMessageId: String,
+    val body: String,
+)
+
 interface MessagingRepository {
+    val contacts: StateFlow<List<Contact>>
     val conversations: StateFlow<List<Conversation>>
     val integrationState: StateFlow<MessagingIntegrationState>
     fun conversation(conversationId: String): Flow<Conversation?>
@@ -68,13 +79,19 @@ interface MessagingRepository {
     fun sendMessage(conversationId: String, body: String, attachment: MessageAttachment? = null)
     fun appendAigcResult(conversationId: String, task: AigcTask)
     fun loadConversationHistory(conversationId: String)
+    fun refreshBootstrap()
 }
 
-class InMemoryMessagingRepository(seed: List<Conversation>) : MessagingRepository {
+class InMemoryMessagingRepository(
+    seed: List<Conversation>,
+    contactsSeed: List<Contact> = seedContactsFromConversations(seed),
+) : MessagingRepository {
+    private val contactState = MutableStateFlow(contactsSeed)
     private val conversationState = MutableStateFlow(seed)
     private val integrationStateValue = MutableStateFlow(
         MessagingIntegrationState(phase = MessagingIntegrationPhase.Ready)
     )
+    override val contacts: StateFlow<List<Contact>> = contactState
     override val conversations: StateFlow<List<Conversation>> = conversationState
     override val integrationState: StateFlow<MessagingIntegrationState> = integrationStateValue
 
@@ -165,7 +182,21 @@ class InMemoryMessagingRepository(seed: List<Conversation>) : MessagingRepositor
     }
 
     override fun loadConversationHistory(conversationId: String) = Unit
+
+    override fun refreshBootstrap() = Unit
 }
+
+private fun seedContactsFromConversations(seed: List<Conversation>): List<Contact> =
+    seed.map { conversation ->
+        Contact(
+            id = conversation.contactId,
+            nickname = conversation.contactName,
+            title = conversation.contactTitle,
+            avatarText = conversation.avatarText,
+            addedAt = conversation.lastTimestamp,
+            isOnline = conversation.isOnline,
+        )
+    }.distinctBy { it.id }
 
 interface ContactsRepository {
     val contacts: StateFlow<List<Contact>>
@@ -538,52 +569,67 @@ class DefaultAigcRepository(
     }
 }
 
+class LiveContactsRepository(
+    messagingRepository: MessagingRepository,
+    private val preferencesStore: PreferencesStore,
+    dispatcher: CoroutineDispatcher = Dispatchers.Default,
+) : ContactsRepository {
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+    override val contacts: StateFlow<List<Contact>> = messagingRepository.contacts
+    private val sortState = MutableStateFlow(ContactSortMode.Nickname)
+    override val sortMode: StateFlow<ContactSortMode> = sortState
+    override val sortedContacts: StateFlow<List<Contact>> = combine(contacts, sortMode) { items, mode ->
+        sortContacts(items, mode)
+    }.stateIn(
+        scope,
+        SharingStarted.Eagerly,
+        sortContacts(messagingRepository.contacts.value, ContactSortMode.Nickname),
+    )
+
+    init {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            preferencesStore.contactSortMode.collect { sortState.value = it }
+        }
+    }
+
+    override fun setSortMode(mode: ContactSortMode) {
+        sortState.value = mode
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            preferencesStore.setContactSortMode(mode)
+        }
+    }
+}
+
 class LiveMessagingRepository(
     private val backendClient: ImBackendClient,
     private val realtimeGateway: com.gkim.im.android.data.remote.realtime.RealtimeGateway,
+    private val sessionStore: RuntimeSessionStore,
     private val preferencesStore: PreferencesStore,
     private val fallbackRepository: MessagingRepository,
+    private val shippedBackendOrigin: String = BuildConfig.IM_BACKEND_ORIGIN,
+    private val allowDeveloperOverrides: Boolean = BuildConfig.DEBUG,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : MessagingRepository {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+    private val contactState = MutableStateFlow<List<Contact>>(emptyList())
     private val conversationState = MutableStateFlow<List<Conversation>>(emptyList())
     private val integrationStateValue = MutableStateFlow(MessagingIntegrationState())
     private val loadedConversationIds = mutableSetOf<String>()
+    private val loadingConversationIds = mutableSetOf<String>()
     private val backendConversationIds = mutableSetOf<String>()
+    private val pendingHistoryConversationIds = mutableSetOf<String>()
+    private val pendingRealtimeMessages = mutableListOf<PendingRealtimeMessage>()
 
     private var activeToken: String? = null
     private var activeUserExternalId: String? = null
     private var activeHttpBaseUrl: String? = null
     private var activeWebSocketUrl: String? = null
 
+    override val contacts: StateFlow<List<Contact>> = contactState
     override val conversations: StateFlow<List<Conversation>> = conversationState
     override val integrationState: StateFlow<MessagingIntegrationState> = integrationStateValue
 
     init {
-        scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            combine(
-                preferencesStore.imHttpBaseUrl,
-                preferencesStore.imWebSocketUrl,
-                preferencesStore.imDevUserExternalId,
-            ) { httpBaseUrl, webSocketUrl, devUserExternalId ->
-                Triple(httpBaseUrl, webSocketUrl, devUserExternalId)
-            }.collect { (httpBaseUrl, webSocketUrl, devUserExternalId) ->
-                if (httpBaseUrl.isBlank() || webSocketUrl.isBlank() || devUserExternalId.isBlank()) {
-                    integrationStateValue.value = MessagingIntegrationState(
-                        phase = MessagingIntegrationPhase.Error,
-                        activeUserExternalId = activeUserExternalId,
-                        message = "IM validation config is incomplete or invalid.",
-                    )
-                } else {
-                    try {
-                        bootstrap(httpBaseUrl, webSocketUrl, devUserExternalId)
-                    } catch (error: Throwable) {
-                        if (error is CancellationException) throw error
-                        reportError(error.message ?: "Failed to bootstrap live IM.")
-                    }
-                }
-            }
-        }
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             realtimeGateway.events.collect { handleRealtimeEvent(it) }
         }
@@ -597,19 +643,60 @@ class LiveMessagingRepository(
                 }
             }
         }
+        if (allowDeveloperOverrides) {
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                combine(
+                    preferencesStore.imBackendOrigin,
+                    preferencesStore.imDevUserExternalId,
+                ) { backendOrigin, devUserExternalId ->
+                    backendOrigin to devUserExternalId
+                }.collect { (backendOrigin, devUserExternalId) ->
+                    if (sessionStore.hasSession) return@collect
+                    try {
+                        refreshBootstrapInternal(
+                            backendOrigin = backendOrigin,
+                            devUserExternalId = devUserExternalId,
+                        )
+                    } catch (error: Throwable) {
+                        if (error is CancellationException) throw error
+                        reportError(error.message ?: "Failed to sync messages.")
+                    }
+                }
+            }
+        }
+        if (sessionStore.hasSession) {
+            refreshBootstrap()
+        } else if (!allowDeveloperOverrides) {
+            clearRuntimeState()
+        }
     }
 
     override fun conversation(conversationId: String): Flow<Conversation?> = conversationState.map { conversations ->
-        conversations.firstOrNull { it.id == conversationId }
+        conversations.firstOrNull { it.id == conversationId || it.contactId == conversationId }
     }
 
     override fun ensureConversation(contact: Contact): Conversation {
         val existing = conversationState.value.firstOrNull { it.contactId == contact.id }
         if (existing != null) return existing
 
-        val fallbackConversation = fallbackRepository.ensureConversation(contact)
-        conversationState.value = listOf(fallbackConversation) + conversationState.value
-        return fallbackConversation
+        val timestamp = Instant.now().toString()
+        val placeholderConversation = Conversation(
+            id = contact.id,
+            contactId = contact.id,
+            contactName = contact.nickname,
+            contactTitle = contact.title,
+            avatarText = contact.avatarText,
+            lastMessage = "",
+            lastTimestamp = timestamp,
+            unreadCount = 0,
+            isOnline = contact.isOnline,
+            messages = emptyList(),
+        )
+        conversationState.value = listOf(placeholderConversation) + conversationState.value
+        if (contactState.value.none { existingContact -> existingContact.id == contact.id }) {
+            contactState.value = listOf(contact) + contactState.value
+        }
+        return placeholderConversation
     }
 
     override fun ensureStudioRoom(): Conversation {
@@ -623,22 +710,28 @@ class LiveMessagingRepository(
 
     override fun sendMessage(conversationId: String, body: String, attachment: MessageAttachment?) {
         if (body.isBlank() && attachment == null) return
-        val conversation = conversationState.value.firstOrNull { it.id == conversationId } ?: return
+        val conversation = conversationState.value.firstOrNull {
+            it.id == conversationId || it.contactId == conversationId
+        } ?: return
+        val isBackendConversation = backendConversationIds.contains(conversation.id)
         if (attachment != null) {
-            upsertLocalOutgoingMessage(conversationId, body, attachment)
+            upsertLocalOutgoingMessage(conversation.id, body, attachment)
             return
         }
-        val clientMessageId = "client-${System.currentTimeMillis()}"
-        val sent = realtimeGateway.sendMessage(
+        if (!isBackendConversation) {
+            upsertLocalOutgoingTextMessage(conversation.id, body)
+        }
+        val pendingMessage = PendingRealtimeMessage(
+            conversationId = conversation.id,
             recipientExternalId = conversation.contactId,
-            clientMessageId = clientMessageId,
+            clientMessageId = "client-${System.currentTimeMillis()}",
             body = body,
         )
-        if (!sent) {
-            integrationStateValue.value = integrationStateValue.value.copy(
-                phase = MessagingIntegrationPhase.Error,
-                message = "Failed to send realtime message.",
-            )
+        if (!trySendRealtimeMessage(pendingMessage)) {
+            queueRealtimeMessageForRetry(pendingMessage)
+            reconnectRealtimeForPendingMessages()
+        } else if (!isBackendConversation) {
+            refreshBootstrap()
         }
     }
 
@@ -651,11 +744,104 @@ class LiveMessagingRepository(
     }
 
     override fun loadConversationHistory(conversationId: String) {
-        if (!backendConversationIds.contains(conversationId)) return
-        if (loadedConversationIds.contains(conversationId)) return
-        val token = activeToken ?: return
-        val baseUrl = activeHttpBaseUrl ?: return
+        val resolvedConversationId = conversationState.value.firstOrNull {
+            it.id == conversationId || it.contactId == conversationId
+        }?.id ?: conversationId
+        if (loadedConversationIds.contains(resolvedConversationId) || loadingConversationIds.contains(resolvedConversationId)) return
+        val token = activeToken
+        val baseUrl = activeHttpBaseUrl
+        if (token == null || baseUrl == null || !backendConversationIds.contains(resolvedConversationId)) {
+            pendingHistoryConversationIds.add(resolvedConversationId)
+            return
+        }
 
+        loadConversationHistoryNow(
+            conversationId = resolvedConversationId,
+            baseUrl = baseUrl,
+            token = token,
+        )
+    }
+
+    override fun refreshBootstrap() {
+        scope.launch {
+            try {
+                refreshBootstrapInternal(
+                    backendOrigin = preferencesStore.imBackendOrigin.first(),
+                    devUserExternalId = preferencesStore.imDevUserExternalId.first(),
+                )
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                reportError(error.message ?: "Failed to sync messages.")
+            }
+        }
+    }
+
+    private suspend fun refreshBootstrapInternal(
+        backendOrigin: String,
+        devUserExternalId: String,
+    ) {
+        val storedToken = sessionStore.token?.takeIf { it.isNotBlank() }
+        val resolvedEndpoint = ImHttpEndpointResolver.resolve(
+            sessionBaseUrl = sessionStore.baseUrl,
+            developerOverrideOrigin = backendOrigin,
+            shippedBackendOrigin = shippedBackendOrigin,
+            allowDeveloperOverrides = allowDeveloperOverrides,
+        )
+        if (storedToken != null) {
+            if (
+                resolvedEndpoint.httpBaseUrl.isBlank() ||
+                resolvedEndpoint.webSocketUrl.isBlank()
+            ) {
+                reportError("Stored session is missing a valid server address.")
+                return
+            }
+            bootstrapAuthenticatedSession(
+                httpBaseUrl = resolvedEndpoint.httpBaseUrl,
+                webSocketUrl = resolvedEndpoint.webSocketUrl,
+                token = storedToken,
+                sessionUserExternalId = sessionStore.username?.takeIf { it.isNotBlank() },
+            )
+            return
+        }
+
+        if (!allowDeveloperOverrides) {
+            clearRuntimeState()
+            return
+        }
+
+        val hasAnyValidationInput = backendOrigin.isNotBlank() || devUserExternalId.isNotBlank()
+        if (!hasAnyValidationInput) {
+            clearRuntimeState()
+            return
+        }
+
+        if (
+            resolvedEndpoint.httpBaseUrl.isBlank() ||
+            resolvedEndpoint.webSocketUrl.isBlank() ||
+            devUserExternalId.isBlank()
+        ) {
+            integrationStateValue.value = MessagingIntegrationState(
+                phase = MessagingIntegrationPhase.Error,
+                activeUserExternalId = activeUserExternalId,
+                message = "Connection settings are incomplete or invalid.",
+            )
+            return
+        }
+
+        bootstrapDevelopmentSession(
+            httpBaseUrl = resolvedEndpoint.httpBaseUrl,
+            webSocketUrl = resolvedEndpoint.webSocketUrl,
+            devUserExternalId = devUserExternalId,
+        )
+    }
+
+    private fun loadConversationHistoryNow(
+        conversationId: String,
+        baseUrl: String,
+        token: String,
+    ) {
+        if (!loadingConversationIds.add(conversationId)) return
+        pendingHistoryConversationIds.remove(conversationId)
         scope.launch {
             try {
                 val history = backendClient.loadHistory(
@@ -680,18 +866,18 @@ class LiveMessagingRepository(
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
                 reportError(error.message ?: "Failed to load conversation history.")
+            } finally {
+                loadingConversationIds.remove(conversationId)
             }
         }
     }
 
-    private suspend fun bootstrap(
+    private suspend fun bootstrapDevelopmentSession(
         httpBaseUrl: String,
         webSocketUrl: String,
         devUserExternalId: String,
     ) {
-        realtimeGateway.disconnect()
-        loadedConversationIds.clear()
-        backendConversationIds.clear()
+        resetRuntimeForBootstrap()
         integrationStateValue.value = MessagingIntegrationState(
             phase = MessagingIntegrationPhase.Authenticating,
             activeUserExternalId = devUserExternalId,
@@ -707,14 +893,90 @@ class LiveMessagingRepository(
             activeUserExternalId = session.user.externalId,
         )
         val bootstrap = backendClient.loadBootstrap(httpBaseUrl, session.token)
-        conversationState.value = bootstrap.toBootstrapState(activeUserExternalId = session.user.externalId).conversations
-        backendConversationIds += conversationState.value.map { it.id }
+        applyBootstrapState(
+            bootstrapState = bootstrap.toBootstrapState(activeUserExternalId = session.user.externalId),
+            resolvedUserExternalId = session.user.externalId,
+        )
+        flushPendingHistoryLoads()
 
         integrationStateValue.value = MessagingIntegrationState(
             phase = MessagingIntegrationPhase.RealtimeConnecting,
             activeUserExternalId = session.user.externalId,
         )
         realtimeGateway.connect(token = session.token, endpointOverride = webSocketUrl)
+    }
+
+    private suspend fun bootstrapAuthenticatedSession(
+        httpBaseUrl: String,
+        webSocketUrl: String,
+        token: String,
+        sessionUserExternalId: String?,
+    ) {
+        resetRuntimeForBootstrap()
+        integrationStateValue.value = MessagingIntegrationState(
+            phase = MessagingIntegrationPhase.Bootstrapping,
+            activeUserExternalId = sessionUserExternalId,
+        )
+        activeToken = token
+        activeUserExternalId = sessionUserExternalId
+        activeHttpBaseUrl = httpBaseUrl
+        activeWebSocketUrl = webSocketUrl
+
+        val bootstrap = backendClient.loadBootstrap(httpBaseUrl, token)
+        applyBootstrapState(
+            bootstrapState = bootstrap.toBootstrapState(
+                activeUserExternalId = bootstrap.user.externalId,
+            ),
+            resolvedUserExternalId = bootstrap.user.externalId,
+        )
+        flushPendingHistoryLoads()
+
+        integrationStateValue.value = MessagingIntegrationState(
+            phase = MessagingIntegrationPhase.RealtimeConnecting,
+            activeUserExternalId = bootstrap.user.externalId,
+        )
+        realtimeGateway.connect(token = token, endpointOverride = webSocketUrl)
+    }
+
+    private fun resetRuntimeForBootstrap() {
+        realtimeGateway.disconnect()
+        loadedConversationIds.clear()
+        loadingConversationIds.clear()
+        backendConversationIds.clear()
+        pendingRealtimeMessages.clear()
+        activeToken = null
+        activeUserExternalId = null
+        activeHttpBaseUrl = null
+        activeWebSocketUrl = null
+        conversationState.value = emptyList()
+        contactState.value = emptyList()
+    }
+
+    private fun applyBootstrapState(
+        bootstrapState: com.gkim.im.android.data.remote.im.ImBootstrapState,
+        resolvedUserExternalId: String,
+    ) {
+        activeUserExternalId = resolvedUserExternalId
+        contactState.value = bootstrapState.contacts
+        conversationState.value = bootstrapState.conversations
+        backendConversationIds += conversationState.value.map { it.id }
+    }
+
+    private fun flushPendingHistoryLoads() {
+        val token = activeToken ?: return
+        val baseUrl = activeHttpBaseUrl ?: return
+        pendingHistoryConversationIds
+            .filter { conversationId ->
+                backendConversationIds.contains(conversationId) &&
+                    !loadedConversationIds.contains(conversationId)
+            }
+            .forEach { conversationId ->
+                loadConversationHistoryNow(
+                    conversationId = conversationId,
+                    baseUrl = baseUrl,
+                    token = token,
+                )
+            }
     }
 
     private fun handleRealtimeEvent(event: com.gkim.im.android.data.remote.im.ImGatewayEvent) {
@@ -725,6 +987,7 @@ class LiveMessagingRepository(
                     activeUserExternalId = event.user.externalId,
                     message = null,
                 )
+                flushPendingRealtimeMessages()
             }
 
             is com.gkim.im.android.data.remote.im.ImGatewayEvent.MessageSent -> {
@@ -801,6 +1064,54 @@ class LiveMessagingRepository(
         )
     }
 
+    private fun trySendRealtimeMessage(message: PendingRealtimeMessage): Boolean =
+        realtimeGateway.sendMessage(
+            recipientExternalId = message.recipientExternalId,
+            clientMessageId = message.clientMessageId,
+            body = message.body,
+        )
+
+    private fun queueRealtimeMessageForRetry(message: PendingRealtimeMessage) {
+        pendingRealtimeMessages.removeAll { pending -> pending.clientMessageId == message.clientMessageId }
+        pendingRealtimeMessages += message
+    }
+
+    private fun reconnectRealtimeForPendingMessages() {
+        val token = activeToken
+        val webSocketUrl = activeWebSocketUrl
+        if (token == null || webSocketUrl == null) {
+            reportError("Message delivery failed.")
+            return
+        }
+        integrationStateValue.value = integrationStateValue.value.copy(
+            phase = MessagingIntegrationPhase.RealtimeConnecting,
+            message = "Connection interrupted. Reconnecting...",
+        )
+        realtimeGateway.disconnect()
+        realtimeGateway.connect(token = token, endpointOverride = webSocketUrl)
+    }
+
+    private fun flushPendingRealtimeMessages() {
+        if (pendingRealtimeMessages.isEmpty()) return
+        val iterator = pendingRealtimeMessages.iterator()
+        var needsBootstrapRefresh = false
+        while (iterator.hasNext()) {
+            val pendingMessage = iterator.next()
+            if (trySendRealtimeMessage(pendingMessage)) {
+                if (!backendConversationIds.contains(pendingMessage.conversationId)) {
+                    needsBootstrapRefresh = true
+                }
+                iterator.remove()
+            } else {
+                reportError("Message delivery failed.")
+                return
+            }
+        }
+        if (needsBootstrapRefresh) {
+            refreshBootstrap()
+        }
+    }
+
     private fun upsertLocalOutgoingMessage(
         conversationId: String,
         body: String,
@@ -832,6 +1143,30 @@ class LiveMessagingRepository(
         }
     }
 
+    private fun upsertLocalOutgoingTextMessage(
+        conversationId: String,
+        body: String,
+    ) {
+        val timestamp = Instant.now().toString()
+        conversationState.value = conversationState.value.map { conversation ->
+            if (conversation.id != conversationId) {
+                conversation
+            } else {
+                conversation.copy(
+                    messages = conversation.messages + ChatMessage(
+                        id = "local-$timestamp",
+                        direction = MessageDirection.Outgoing,
+                        kind = MessageKind.Text,
+                        body = body,
+                        createdAt = timestamp,
+                    ),
+                    lastMessage = body,
+                    lastTimestamp = timestamp,
+                )
+            }
+        }
+    }
+
     private fun upsertMessage(
         conversationId: String,
         message: ChatMessage,
@@ -850,6 +1185,22 @@ class LiveMessagingRepository(
                 )
             }
         }
+    }
+
+    private fun clearRuntimeState() {
+        realtimeGateway.disconnect()
+        loadedConversationIds.clear()
+        loadingConversationIds.clear()
+        backendConversationIds.clear()
+        pendingHistoryConversationIds.clear()
+        pendingRealtimeMessages.clear()
+        activeToken = null
+        activeUserExternalId = null
+        activeHttpBaseUrl = null
+        activeWebSocketUrl = null
+        contactState.value = emptyList()
+        conversationState.value = emptyList()
+        integrationStateValue.value = MessagingIntegrationState()
     }
 }
 

@@ -32,6 +32,7 @@ import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.core.designsystem.PillAction
 import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.data.remote.im.UserSearchResultDto
+import com.gkim.im.android.data.remote.im.authFailureMessage
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.remote.im.resolveImHttpEndpoint
 import kotlinx.coroutines.launch
@@ -77,6 +78,12 @@ fun UserSearchRoute(container: AppContainer, onBack: () -> Unit) {
                     val token = container.sessionStore.token ?: return@OutlinedTextField
                     scope.launch {
                         val endpoint = container.resolveImHttpEndpoint()
+                        if (endpoint.baseUrl.isBlank()) {
+                            feedbackMessage = authFailureMessage(appLanguage, endpoint, IllegalStateException("missing endpoint"))
+                            results = emptyList()
+                            isSearching = false
+                            return@launch
+                        }
                         try {
                             results = container.imBackendClient.searchUsers(endpoint.baseUrl, token, newQuery.trim())
                         } catch (_: Exception) {

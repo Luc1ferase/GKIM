@@ -8,7 +8,7 @@ import com.gkim.im.android.data.remote.im.DevSessionResponseDto
 import com.gkim.im.android.data.remote.im.AuthResponseDto
 import com.gkim.im.android.data.remote.im.FriendRequestViewDto
 import com.gkim.im.android.data.remote.im.ImBackendClient
-import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
+import com.gkim.im.android.data.remote.im.DEFAULT_IM_DEVELOPER_BACKEND_ORIGIN
 import com.gkim.im.android.data.remote.im.ImGatewayEvent
 import com.gkim.im.android.data.remote.im.MessageHistoryPageDto
 import com.gkim.im.android.data.remote.im.MessageRecordDto
@@ -16,7 +16,9 @@ import com.gkim.im.android.data.remote.im.UserSearchResultDto
 import com.gkim.im.android.data.remote.realtime.RealtimeGateway
 import com.gkim.im.android.core.model.Contact
 import com.gkim.im.android.testing.FakePreferencesStore
+import com.gkim.im.android.testing.FakeRuntimeSessionStore
 import com.gkim.im.android.testing.MainDispatcherRule
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,6 +48,7 @@ class LiveMessagingRepositoryTest {
         val repository = LiveMessagingRepository(
             backendClient = backendClient,
             realtimeGateway = realtimeGateway,
+            sessionStore = FakeRuntimeSessionStore(),
             preferencesStore = FakePreferencesStore(),
             fallbackRepository = InMemoryMessagingRepository(seedConversations),
             dispatcher = dispatcher,
@@ -57,11 +60,68 @@ class LiveMessagingRepositoryTest {
         assertEquals("nox-dev", repository.integrationState.value.activeUserExternalId)
         assertEquals("session-token-1", backendClient.issuedToken)
         assertEquals("session-token-1", realtimeGateway.connectedToken)
-        assertEquals(DEFAULT_IM_WEBSOCKET_URL, realtimeGateway.connectedEndpoint)
+        assertEquals("ws://10.0.2.2:18080/ws", realtimeGateway.connectedEndpoint)
+        assertEquals(1, repository.contacts.value.size)
+        assertEquals("leo-vance", repository.contacts.value.single().id)
         assertEquals(1, repository.conversations.value.size)
         assertEquals("conversation-1", repository.conversations.value.single().id)
         assertEquals("leo-vance", repository.conversations.value.single().contactId)
         assertEquals("Hello Nox", repository.conversations.value.single().lastMessage)
+    }
+
+    @Test
+    fun `repository prefers stored authenticated session over dev bootstrap defaults`() = runTest(mainDispatcherRule.dispatcher) {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val backendClient = FakeImBackendClient()
+        val realtimeGateway = FakeRealtimeGateway()
+        val repository = LiveMessagingRepository(
+            backendClient = backendClient,
+            realtimeGateway = realtimeGateway,
+            sessionStore = FakeRuntimeSessionStore(
+                token = "stored-token",
+                username = "nox-dev",
+                baseUrl = "https://release.example.com/im/",
+            ),
+            preferencesStore = FakePreferencesStore(
+                initialImBackendOrigin = DEFAULT_IM_DEVELOPER_BACKEND_ORIGIN,
+                initialImDevUserExternalId = "nox-dev",
+            ),
+            fallbackRepository = InMemoryMessagingRepository(seedConversations),
+            dispatcher = dispatcher,
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(MessagingIntegrationPhase.Ready, repository.integrationState.value.phase)
+        assertEquals(null, backendClient.issuedToken)
+        assertEquals(listOf("stored-token"), backendClient.bootstrapTokens)
+        assertEquals("stored-token", realtimeGateway.connectedToken)
+        assertEquals("wss://release.example.com/im/ws", realtimeGateway.connectedEndpoint)
+    }
+
+    @Test
+    fun `repository migrates legacy websocket or http preferences through single backend origin`() = runTest(mainDispatcherRule.dispatcher) {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val backendClient = FakeImBackendClient()
+        val realtimeGateway = FakeRealtimeGateway()
+        val preferencesStore = FakePreferencesStore(
+            initialImBackendOrigin = "",
+            initialLegacyImHttpBaseUrl = "",
+            initialLegacyImWebSocketUrl = "ws://legacy.example.com/ws",
+        )
+        val repository = LiveMessagingRepository(
+            backendClient = backendClient,
+            realtimeGateway = realtimeGateway,
+            sessionStore = FakeRuntimeSessionStore(),
+            preferencesStore = preferencesStore,
+            fallbackRepository = InMemoryMessagingRepository(seedConversations),
+            dispatcher = dispatcher,
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(MessagingIntegrationPhase.Ready, repository.integrationState.value.phase)
+        assertEquals("ws://legacy.example.com/ws", realtimeGateway.connectedEndpoint)
     }
 
     @Test
@@ -72,6 +132,7 @@ class LiveMessagingRepositoryTest {
         val repository = LiveMessagingRepository(
             backendClient = backendClient,
             realtimeGateway = realtimeGateway,
+            sessionStore = FakeRuntimeSessionStore(),
             preferencesStore = FakePreferencesStore(),
             fallbackRepository = InMemoryMessagingRepository(seedConversations),
             dispatcher = dispatcher,
@@ -89,6 +150,35 @@ class LiveMessagingRepositoryTest {
     }
 
     @Test
+    fun `repository honors history request that arrives before bootstrap completes`() = runTest(mainDispatcherRule.dispatcher) {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val bootstrapGate = CompletableDeferred<Unit>()
+        val backendClient = FakeImBackendClient(bootstrapGate = bootstrapGate)
+        val realtimeGateway = FakeRealtimeGateway()
+        val repository = LiveMessagingRepository(
+            backendClient = backendClient,
+            realtimeGateway = realtimeGateway,
+            sessionStore = FakeRuntimeSessionStore(),
+            preferencesStore = FakePreferencesStore(),
+            fallbackRepository = InMemoryMessagingRepository(seedConversations),
+            dispatcher = dispatcher,
+        )
+
+        repository.loadConversationHistory("conversation-1")
+        advanceUntilIdle()
+        assertTrue(backendClient.historyRequests.isEmpty())
+
+        bootstrapGate.complete(Unit)
+        advanceUntilIdle()
+
+        val conversation = repository.conversations.value.single()
+        assertEquals(listOf("conversation-1"), backendClient.historyRequests)
+        assertEquals(2, conversation.messages.size)
+        assertEquals("First outbound", conversation.messages.first().body)
+        assertEquals("Inbound reply", conversation.messages.last().body)
+    }
+
+    @Test
     fun `repository surfaces history failure through integration state`() = runTest(mainDispatcherRule.dispatcher) {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val backendClient = FakeImBackendClient(
@@ -98,6 +188,7 @@ class LiveMessagingRepositoryTest {
         val repository = LiveMessagingRepository(
             backendClient = backendClient,
             realtimeGateway = realtimeGateway,
+            sessionStore = FakeRuntimeSessionStore(),
             preferencesStore = FakePreferencesStore(),
             fallbackRepository = InMemoryMessagingRepository(seedConversations),
             dispatcher = dispatcher,
@@ -123,6 +214,7 @@ class LiveMessagingRepositoryTest {
         val repository = LiveMessagingRepository(
             backendClient = backendClient,
             realtimeGateway = realtimeGateway,
+            sessionStore = FakeRuntimeSessionStore(),
             preferencesStore = FakePreferencesStore(),
             fallbackRepository = InMemoryMessagingRepository(seedConversations),
             dispatcher = dispatcher,
@@ -143,6 +235,7 @@ class LiveMessagingRepositoryTest {
         val repository = LiveMessagingRepository(
             backendClient = backendClient,
             realtimeGateway = realtimeGateway,
+            sessionStore = FakeRuntimeSessionStore(),
             preferencesStore = FakePreferencesStore(),
             fallbackRepository = InMemoryMessagingRepository(seedConversations),
             dispatcher = dispatcher,
@@ -175,6 +268,7 @@ class LiveMessagingRepositoryTest {
         val repository = LiveMessagingRepository(
             backendClient = backendClient,
             realtimeGateway = realtimeGateway,
+            sessionStore = FakeRuntimeSessionStore(),
             preferencesStore = FakePreferencesStore(),
             fallbackRepository = InMemoryMessagingRepository(seedConversations),
             dispatcher = dispatcher,
@@ -235,12 +329,39 @@ class LiveMessagingRepositoryTest {
         assertEquals("2026-04-08T09:03:05Z", conversation.messages.last().readAt)
     }
 
+    @Test
+    fun `repository reconnects and retries outbound message after realtime send failure`() = runTest(mainDispatcherRule.dispatcher) {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val backendClient = FakeImBackendClient()
+        val realtimeGateway = FakeRealtimeGateway(sendMessageFailuresRemaining = 1)
+        val repository = LiveMessagingRepository(
+            backendClient = backendClient,
+            realtimeGateway = realtimeGateway,
+            sessionStore = FakeRuntimeSessionStore(),
+            preferencesStore = FakePreferencesStore(),
+            fallbackRepository = InMemoryMessagingRepository(seedConversations),
+            dispatcher = dispatcher,
+        )
+
+        advanceUntilIdle()
+        repository.sendMessage(conversationId = "conversation-1", body = "Retry me")
+        advanceUntilIdle()
+
+        assertEquals(2, realtimeGateway.connectCalls.size)
+        assertEquals(listOf("Retry me", "Retry me"), realtimeGateway.sentMessageBodies)
+        assertEquals(MessagingIntegrationPhase.Ready, repository.integrationState.value.phase)
+        assertEquals("nox-dev", repository.integrationState.value.activeUserExternalId)
+        assertEquals("session-token-1", realtimeGateway.connectedToken)
+    }
+
     private class FakeImBackendClient(
         private val sessionFailure: Throwable? = null,
         private val bootstrapFailure: Throwable? = null,
         private val historyFailure: Throwable? = null,
+        private val bootstrapGate: CompletableDeferred<Unit>? = null,
     ) : ImBackendClient {
         var issuedToken: String? = null
+        val bootstrapTokens = mutableListOf<String>()
         val historyRequests = mutableListOf<String>()
 
         override suspend fun issueDevSession(baseUrl: String, externalId: String): DevSessionResponseDto {
@@ -303,6 +424,8 @@ class LiveMessagingRepositoryTest {
 
         override suspend fun loadBootstrap(baseUrl: String, token: String): BootstrapBundleDto {
             bootstrapFailure?.let { throw it }
+            bootstrapGate?.await()
+            bootstrapTokens += token
             return BootstrapBundleDto(
                 user = BackendUserDto(
                     id = "user-nox",
@@ -428,8 +551,15 @@ class LiveMessagingRepositoryTest {
         private val failureState = MutableStateFlow<String?>(null)
         private val eventFlow = MutableSharedFlow<ImGatewayEvent>(extraBufferCapacity = 8)
 
+        constructor(sendMessageFailuresRemaining: Int = 0) {
+            this.sendMessageFailuresRemaining = sendMessageFailuresRemaining
+        }
+
         var connectedToken: String? = null
         var connectedEndpoint: String? = null
+        var sendMessageFailuresRemaining: Int = 0
+        val connectCalls = mutableListOf<Pair<String?, String?>>()
+        val sentMessageBodies = mutableListOf<String>()
 
         override val isConnected: StateFlow<Boolean> = connectedState.asStateFlow()
         override val lastFailure: StateFlow<String?> = failureState.asStateFlow()
@@ -438,6 +568,7 @@ class LiveMessagingRepositoryTest {
         override fun connect(token: String?, endpointOverride: String?) {
             connectedToken = token
             connectedEndpoint = endpointOverride
+            connectCalls += token to endpointOverride
             connectedState.value = true
             eventFlow.tryEmit(
                 ImGatewayEvent.SessionRegistered(
@@ -460,7 +591,14 @@ class LiveMessagingRepositoryTest {
             recipientExternalId: String,
             clientMessageId: String?,
             body: String,
-        ): Boolean = true
+        ): Boolean {
+            sentMessageBodies += body
+            if (sendMessageFailuresRemaining > 0) {
+                sendMessageFailuresRemaining -= 1
+                return false
+            }
+            return true
+        }
 
         override fun markRead(conversationId: String, messageId: String): Boolean = true
 

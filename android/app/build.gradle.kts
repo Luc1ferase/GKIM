@@ -7,8 +7,12 @@ fun Project.intGradleProperty(name: String, fallback: Int): Int {
     return stringGradleOrEnvProperty(name)?.toIntOrNull() ?: fallback
 }
 
+fun String.asBuildConfigStringLiteral(): String =
+    "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
 val releaseVersionName = stringGradleOrEnvProperty("GKIM_RELEASE_VERSION_NAME") ?: "0.1.0"
 val releaseVersionCode = intGradleProperty("GKIM_RELEASE_VERSION_CODE", 1)
+val imBackendOrigin = stringGradleOrEnvProperty("GKIM_IM_BACKEND_ORIGIN") ?: "http://124.222.15.128:18080/"
 val releaseStoreFilePath = stringGradleOrEnvProperty("GKIM_RELEASE_STORE_FILE")
 val releaseStorePassword = stringGradleOrEnvProperty("GKIM_RELEASE_STORE_PASSWORD")
 val releaseKeyAlias = stringGradleOrEnvProperty("GKIM_RELEASE_KEY_ALIAS")
@@ -51,6 +55,7 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        buildConfigField("String", "IM_BACKEND_ORIGIN", imBackendOrigin.asBuildConfigStringLiteral())
     }
 
     signingConfigs {
@@ -147,6 +152,8 @@ dependencies {
     implementation("androidx.camera:camera-camera2:1.4.2")
     implementation("androidx.camera:camera-lifecycle:1.4.2")
     implementation("androidx.camera:camera-view:1.4.2")
+    implementation("androidx.media3:media3-exoplayer:1.4.1")
+    implementation("androidx.media3:media3-ui:1.4.1")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
     testImplementation("junit:junit:4.13.2")

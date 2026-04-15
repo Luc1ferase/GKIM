@@ -1,5 +1,4 @@
 package com.gkim.im.android.feature.chat
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -167,14 +166,17 @@ fun ChatRoute(
     conversationId: String,
     mediaPickerControllerFactory: MediaPickerControllerFactory? = null,
 ) {
-    val viewModel = viewModel<ChatViewModel>(factory = simpleViewModelFactory {
-        ChatViewModel(
-            conversationId = conversationId,
-            messagingRepository = container.messagingRepository,
-            aigcRepository = container.aigcRepository,
-            generatedImageSaver = container.generatedImageSaver,
-        )
-    })
+    val viewModel = viewModel<ChatViewModel>(
+        key = "chat-$conversationId-${System.identityHashCode(container)}",
+        factory = simpleViewModelFactory {
+            ChatViewModel(
+                conversationId = conversationId,
+                messagingRepository = container.messagingRepository,
+                aigcRepository = container.aigcRepository,
+                generatedImageSaver = container.generatedImageSaver,
+            )
+        },
+    )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var prompt by remember { mutableStateOf("") }
     var chatAttachmentMedia by remember { mutableStateOf<MediaInput?>(null) }

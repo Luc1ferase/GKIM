@@ -1,79 +1,226 @@
 package com.gkim.im.android.data.remote.im
 
-import com.gkim.im.android.core.model.AppLanguage
+import com.gkim.im.android.BuildConfig
 import com.gkim.im.android.core.designsystem.pick
+import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.data.local.PreferencesStore
 import com.gkim.im.android.data.local.SessionStore
 import com.gkim.im.android.data.repository.AppContainer
 import kotlinx.coroutines.flow.first
 import java.net.URI
 
-const val DEFAULT_IM_HTTP_BASE_URL = "http://10.0.2.2:18080/"
+const val DEFAULT_IM_DEVELOPER_BACKEND_ORIGIN = "http://10.0.2.2:18080/"
+const val DEFAULT_IM_HTTP_BASE_URL = DEFAULT_IM_DEVELOPER_BACKEND_ORIGIN
 const val DEFAULT_IM_WEBSOCKET_URL = "ws://10.0.2.2:18080/ws"
 
-enum class ImHttpEndpointSource {
+private const val IM_REALTIME_PATH_SEGMENT = "ws"
+
+enum class ImEndpointSource {
     Session,
-    ImValidation,
-    DefaultPublishedTarget,
+    DeveloperOverride,
+    BundledDefault,
+    MissingConfiguration,
 }
+
+typealias ImHttpEndpointSource = ImEndpointSource
 
 data class ResolvedImHttpEndpoint(
     val baseUrl: String,
-    val source: ImHttpEndpointSource,
+    val source: ImEndpointSource,
     val isLoopbackHost: Boolean,
+    val webSocketUrl: String = deriveWebSocketUrl(baseUrl),
+    val backendOrigin: String = baseUrl,
+    val httpBaseUrl: String = baseUrl,
+    val isCleartext: Boolean = isCleartextOrigin(baseUrl),
 )
 
 object ImHttpEndpointResolver {
     fun resolve(
         sessionBaseUrl: String?,
-        validationBaseUrl: String?,
+        developerOverrideOrigin: String?,
+        shippedBackendOrigin: String,
+        allowDeveloperOverrides: Boolean,
     ): ResolvedImHttpEndpoint {
-        val sessionCandidate = sessionBaseUrl?.trim().orEmpty()
-        if (sessionCandidate.isNotBlank()) {
-            val normalized = normalize(sessionCandidate)
-            return ResolvedImHttpEndpoint(
-                baseUrl = normalized,
-                source = ImHttpEndpointSource.Session,
-                isLoopbackHost = isLoopbackHost(normalized),
-            )
+        normalizeBackendOrigin(sessionBaseUrl)?.let { normalized ->
+            return resolvedEndpoint(normalized, ImEndpointSource.Session)
         }
 
-        val validationCandidate = validationBaseUrl?.trim().orEmpty()
-        if (validationCandidate.isNotBlank()) {
-            val normalized = normalize(validationCandidate)
-            return ResolvedImHttpEndpoint(
-                baseUrl = normalized,
-                source = ImHttpEndpointSource.ImValidation,
-                isLoopbackHost = isLoopbackHost(normalized),
-            )
+        val developerCandidate = developerOverrideOrigin?.trim().orEmpty()
+        if (developerCandidate.isNotBlank()) {
+            if (!allowDeveloperOverrides) {
+                return bundledOrMissing(shippedBackendOrigin)
+            }
+
+            normalizeBackendOrigin(developerCandidate)?.let { normalized ->
+                return resolvedEndpoint(normalized, ImEndpointSource.DeveloperOverride)
+            }
+
+            return missingConfiguration()
         }
 
-        return ResolvedImHttpEndpoint(
-            baseUrl = DEFAULT_IM_HTTP_BASE_URL,
-            source = ImHttpEndpointSource.DefaultPublishedTarget,
-            isLoopbackHost = false,
-        )
+        return bundledOrMissing(shippedBackendOrigin)
     }
 
     suspend fun resolve(
         sessionStore: SessionStore,
         preferencesStore: PreferencesStore,
+        shippedBackendOrigin: String = BuildConfig.IM_BACKEND_ORIGIN,
+        allowDeveloperOverrides: Boolean = BuildConfig.DEBUG,
     ): ResolvedImHttpEndpoint = resolve(
         sessionBaseUrl = sessionStore.baseUrl,
-        validationBaseUrl = preferencesStore.imHttpBaseUrl.first(),
+        developerOverrideOrigin = preferencesStore.imBackendOrigin.first(),
+        shippedBackendOrigin = shippedBackendOrigin,
+        allowDeveloperOverrides = allowDeveloperOverrides,
     )
 
-    private fun normalize(baseUrl: String): String =
-        if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
-
-    private fun isLoopbackHost(baseUrl: String): Boolean {
-        val host = runCatching { URI(normalize(baseUrl)).host?.lowercase() }.getOrNull()
-        return host == "127.0.0.1" || host == "localhost" || host == "0.0.0.0"
+    private fun bundledOrMissing(shippedBackendOrigin: String): ResolvedImHttpEndpoint {
+        normalizeBackendOrigin(shippedBackendOrigin)?.let { normalized ->
+            return resolvedEndpoint(normalized, ImEndpointSource.BundledDefault)
+        }
+        return missingConfiguration()
     }
+
+    private fun resolvedEndpoint(
+        backendOrigin: String,
+        source: ImEndpointSource,
+    ): ResolvedImHttpEndpoint {
+        val normalized = normalizeBackendOrigin(backendOrigin).orEmpty()
+        return ResolvedImHttpEndpoint(
+            baseUrl = normalized,
+            source = source,
+            isLoopbackHost = isLoopbackHost(normalized),
+            webSocketUrl = deriveWebSocketUrl(normalized),
+            backendOrigin = normalized,
+            httpBaseUrl = normalized,
+            isCleartext = isCleartextOrigin(normalized),
+        )
+    }
+
+    private fun missingConfiguration(): ResolvedImHttpEndpoint =
+        ResolvedImHttpEndpoint(
+            baseUrl = "",
+            source = ImEndpointSource.MissingConfiguration,
+            isLoopbackHost = false,
+            webSocketUrl = "",
+            backendOrigin = "",
+            httpBaseUrl = "",
+            isCleartext = false,
+        )
 }
 
 suspend fun AppContainer.resolveImHttpEndpoint(): ResolvedImHttpEndpoint =
     ImHttpEndpointResolver.resolve(sessionStore = sessionStore, preferencesStore = preferencesStore)
+
+fun resolveStoredImBackendOrigin(
+    storedBackendOrigin: String,
+    legacyHttpBaseUrl: String,
+    legacyWebSocketUrl: String,
+    shippedBackendOrigin: String,
+): String {
+    normalizeBackendOrigin(storedBackendOrigin)?.let { return it }
+    normalizeBackendOrigin(legacyHttpBaseUrl)?.let { return it }
+    deriveBackendOriginFromWebSocketUrl(legacyWebSocketUrl)?.let { return it }
+    return normalizeBackendOrigin(shippedBackendOrigin).orEmpty()
+}
+
+fun normalizeImBackendOriginForStorage(value: String): String {
+    val candidate = value.trim()
+    if (candidate.isBlank()) return ""
+    return normalizeBackendOrigin(candidate) ?: candidate
+}
+
+fun normalizeBackendOrigin(value: String?): String? {
+    val candidate = value?.trim().orEmpty()
+    if (candidate.isBlank()) return null
+    return runCatching {
+        val uri = URI(candidate)
+        val scheme = uri.scheme?.lowercase()
+        val host = uri.host?.lowercase()
+        if (scheme !in setOf("http", "https") || host.isNullOrBlank()) {
+            null
+        } else {
+            URI(
+                scheme,
+                uri.userInfo,
+                host,
+                uri.port,
+                normalizePath(uri.path),
+                null,
+                null,
+            ).toString()
+        }
+    }.getOrNull()
+}
+
+fun deriveWebSocketUrl(backendOrigin: String): String {
+    val normalized = normalizeBackendOrigin(backendOrigin).orEmpty()
+    if (normalized.isBlank()) return ""
+    val uri = URI(normalized)
+    val webSocketScheme = if (uri.scheme.equals("https", ignoreCase = true)) "wss" else "ws"
+    return URI(
+        webSocketScheme,
+        uri.userInfo,
+        uri.host,
+        uri.port,
+        normalizeRealtimePath(uri.path),
+        null,
+        null,
+    ).toString()
+}
+
+fun deriveBackendOriginFromWebSocketUrl(value: String?): String? {
+    val candidate = value?.trim().orEmpty()
+    if (candidate.isBlank()) return null
+    return runCatching {
+        val uri = URI(candidate)
+        val scheme = uri.scheme?.lowercase()
+        val host = uri.host?.lowercase()
+        if (scheme !in setOf("ws", "wss") || host.isNullOrBlank()) {
+            null
+        } else {
+            val httpScheme = if (scheme == "wss") "https" else "http"
+            val path = normalizePath(removeRealtimeSuffix(uri.path))
+            URI(
+                httpScheme,
+                uri.userInfo,
+                host,
+                uri.port,
+                path,
+                null,
+                null,
+            ).toString()
+        }
+    }.getOrNull()
+}
+
+private fun normalizePath(path: String?): String {
+    val candidate = path?.takeIf { it.isNotBlank() } ?: "/"
+    return if (candidate.endsWith("/")) candidate else "$candidate/"
+}
+
+private fun normalizeRealtimePath(path: String?): String {
+    val basePath = normalizePath(path).removeSuffix("/")
+    return if (basePath == "") "/$IM_REALTIME_PATH_SEGMENT" else "$basePath/$IM_REALTIME_PATH_SEGMENT"
+}
+
+private fun removeRealtimeSuffix(path: String?): String {
+    val candidate = path?.trim().orEmpty()
+    if (candidate.isBlank()) return "/"
+    val suffix = "/$IM_REALTIME_PATH_SEGMENT"
+    return if (candidate.endsWith(suffix)) {
+        candidate.removeSuffix(suffix).ifBlank { "/" }
+    } else {
+        candidate
+    }
+}
+
+private fun isLoopbackHost(baseUrl: String): Boolean {
+    val host = runCatching { URI(baseUrl).host?.lowercase() }.getOrNull()
+    return host == "127.0.0.1" || host == "localhost" || host == "0.0.0.0" || host == "10.0.2.2"
+}
+
+private fun isCleartextOrigin(baseUrl: String): Boolean =
+    runCatching { URI(baseUrl).scheme.equals("http", ignoreCase = true) }.getOrDefault(false)
 
 fun authFailureMessage(
     appLanguage: AppLanguage,
@@ -81,6 +228,13 @@ fun authFailureMessage(
     error: Throwable,
 ): String {
     val message = error.message.orEmpty()
+    if (endpoint.httpBaseUrl.isBlank()) {
+        return appLanguage.pick(
+            "Connection details are unavailable right now. Please try again later.",
+            "当前连接信息暂不可用，请稍后再试。",
+        )
+    }
+
     if (
         message.contains("401") ||
         message.contains("unauthorized", ignoreCase = true) ||
@@ -89,16 +243,16 @@ fun authFailureMessage(
         return appLanguage.pick("Invalid username or password", "用户名或密码错误")
     }
 
-    val selectedBaseUrl = endpoint.baseUrl.removeSuffix("/")
+    val selectedBaseUrl = endpoint.httpBaseUrl.removeSuffix("/")
     return if (endpoint.isLoopbackHost) {
         appLanguage.pick(
-            "Cannot reach the backend at $selectedBaseUrl. The client is still targeting a loopback address; update Settings > IM Validation HTTP Base URL.",
-            "无法连接到 $selectedBaseUrl。当前客户端仍在使用回环地址，请先到 设置 > IM验证 更新 HTTP 基础 URL。",
+            "Cannot reach the backend at $selectedBaseUrl. The app is still using a local address; update the connection address and try again.",
+            "无法连接到 $selectedBaseUrl。当前应用仍在使用本地地址，请更新连接地址后重试。",
         )
     } else {
         appLanguage.pick(
-            "Cannot reach the backend at $selectedBaseUrl. Check that the server is running and reachable from the emulator.",
-            "无法连接到 $selectedBaseUrl。请检查服务端是否已启动，并确认该地址可被模拟器访问。",
+            "Cannot reach the backend at $selectedBaseUrl. Check that the server is running and reachable from the client.",
+            "无法连接到 $selectedBaseUrl。请检查服务端是否已启动，并确认当前客户端可以访问该地址。",
         )
     }
 }

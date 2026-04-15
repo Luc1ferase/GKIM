@@ -11,8 +11,8 @@ import com.gkim.im.android.data.remote.aigc.MediaInputEncoder
 import com.gkim.im.android.data.remote.aigc.RemoteAigcGenerateRequest
 import com.gkim.im.android.data.remote.aigc.RemoteAigcGenerateResult
 import com.gkim.im.android.data.remote.aigc.RemoteAigcProviderClient
-import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
-import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
+import com.gkim.im.android.data.remote.im.normalizeImBackendOriginForStorage
+import com.gkim.im.android.data.remote.im.resolveStoredImBackendOrigin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,14 +20,22 @@ import kotlinx.coroutines.flow.map
 
 internal class UiTestPreferencesStore(
     initialActiveProviderId: String = "hunyuan",
+    initialImBackendOrigin: String = "",
 ) : PreferencesStore {
     private val contactSortModeState = MutableStateFlow(ContactSortMode.Nickname)
     private val activeProviderIdState = MutableStateFlow(initialActiveProviderId)
     private val customBaseUrlState = MutableStateFlow("https://api.example.com/v1")
     private val customModelState = MutableStateFlow("gpt-image-1")
     private val presetModelStates = mutableMapOf<String, MutableStateFlow<String>>()
-    private val imHttpBaseUrlState = MutableStateFlow(DEFAULT_IM_HTTP_BASE_URL)
-    private val imWebSocketUrlState = MutableStateFlow(DEFAULT_IM_WEBSOCKET_URL)
+    private val imBackendOriginState = MutableStateFlow(
+        initialImBackendOrigin.takeIf { it.isNotBlank() }?.let(::normalizeImBackendOriginForStorage)
+            ?: resolveStoredImBackendOrigin(
+                storedBackendOrigin = "",
+                legacyHttpBaseUrl = "",
+                legacyWebSocketUrl = "",
+                shippedBackendOrigin = "",
+            )
+    )
     private val imDevUserExternalIdState = MutableStateFlow("nox-dev")
     private val appLanguageState = MutableStateFlow(AppLanguage.Chinese)
     private val appThemeModeState = MutableStateFlow(AppThemeMode.Light)
@@ -39,8 +47,7 @@ internal class UiTestPreferencesStore(
     override fun presetProviderModel(providerId: String): Flow<String?> = presetModelStates.getOrPut(providerId) { MutableStateFlow("") }
         .asStateFlow()
         .map { value -> value.takeIf { it.isNotBlank() } }
-    override val imHttpBaseUrl: Flow<String> = imHttpBaseUrlState.asStateFlow()
-    override val imWebSocketUrl: Flow<String> = imWebSocketUrlState.asStateFlow()
+    override val imBackendOrigin: Flow<String> = imBackendOriginState.asStateFlow()
     override val imDevUserExternalId: Flow<String> = imDevUserExternalIdState.asStateFlow()
     override val appLanguage: Flow<AppLanguage> = appLanguageState.asStateFlow()
     override val appThemeMode: Flow<AppThemeMode> = appThemeModeState.asStateFlow()
@@ -51,11 +58,8 @@ internal class UiTestPreferencesStore(
     val currentThemeMode: AppThemeMode
         get() = appThemeModeState.value
 
-    val currentImHttpBaseUrl: String
-        get() = imHttpBaseUrlState.value
-
-    val currentImWebSocketUrl: String
-        get() = imWebSocketUrlState.value
+    val currentImBackendOrigin: String
+        get() = imBackendOriginState.value
 
     val currentImDevUserExternalId: String
         get() = imDevUserExternalIdState.value
@@ -80,12 +84,8 @@ internal class UiTestPreferencesStore(
         presetModelStates.getOrPut(providerId) { MutableStateFlow("") }.value = value
     }
 
-    override suspend fun setImHttpBaseUrl(value: String) {
-        imHttpBaseUrlState.value = value
-    }
-
-    override suspend fun setImWebSocketUrl(value: String) {
-        imWebSocketUrlState.value = value
+    override suspend fun setImBackendOrigin(value: String) {
+        imBackendOriginState.value = normalizeImBackendOriginForStorage(value)
     }
 
     override suspend fun setImDevUserExternalId(value: String) {

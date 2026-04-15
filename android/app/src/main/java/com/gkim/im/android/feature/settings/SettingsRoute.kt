@@ -1,5 +1,6 @@
 package com.gkim.im.android.feature.settings
 
+import com.gkim.im.android.BuildConfig
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -43,8 +44,7 @@ import com.gkim.im.android.core.model.CustomProviderConfig
 import com.gkim.im.android.core.model.PresetProviderConfig
 import com.gkim.im.android.core.util.messagingIntegrationStatusLabel
 import com.gkim.im.android.data.local.PreferencesStore
-import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
-import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
+import com.gkim.im.android.data.remote.im.ImHttpEndpointResolver
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.MessagingIntegrationPhase
@@ -61,8 +61,9 @@ internal data class SettingsUiState(
     val activeProviderId: String = "",
     val customProvider: CustomProviderConfig = CustomProviderConfig("", "", ""),
     val activePresetProviderConfig: PresetProviderConfig? = null,
-    val imHttpBaseUrl: String = "",
-    val imWebSocketUrl: String = "",
+    val imResolvedBackendOrigin: String = "",
+    val imResolvedWebSocketUrl: String = "",
+    val imDeveloperOverrideOrigin: String = "",
     val imDevUserExternalId: String = "",
     val imValidationError: String? = null,
     val messagingIntegrationState: MessagingIntegrationState = MessagingIntegrationState(),
@@ -100,11 +101,10 @@ internal class SettingsViewModel(
     )
 
     private val imValidationConfig = combine(
-        preferencesStore.imHttpBaseUrl,
-        preferencesStore.imWebSocketUrl,
+        preferencesStore.imBackendOrigin,
         preferencesStore.imDevUserExternalId,
-    ) { httpBaseUrl, webSocketUrl, devUserExternalId ->
-        Triple(httpBaseUrl, webSocketUrl, devUserExternalId)
+    ) { backendOrigin, devUserExternalId ->
+        backendOrigin to devUserExternalId
     }
 
     private val providerConfig = combine(
@@ -137,16 +137,27 @@ internal class SettingsViewModel(
     }
 
     val uiState = combine(providerSettings, imValidationConfig, messagingRepository.integrationState) { providerSettings, validationConfig, messagingIntegrationState ->
-        val (imHttpBaseUrl, imWebSocketUrl, imDevUserExternalId) = validationConfig
+        val (imDeveloperOverrideOrigin, imDevUserExternalId) = validationConfig
+        val resolvedEndpoint = ImHttpEndpointResolver.resolve(
+            sessionBaseUrl = null,
+            developerOverrideOrigin = imDeveloperOverrideOrigin,
+            shippedBackendOrigin = BuildConfig.IM_BACKEND_ORIGIN,
+            allowDeveloperOverrides = BuildConfig.DEBUG,
+        )
         SettingsUiState(
             providers = providerSettings.providers,
             activeProviderId = providerSettings.activeProviderId,
             customProvider = providerSettings.customProvider,
             activePresetProviderConfig = providerSettings.presetProviderConfigs[providerSettings.activeProviderId],
-            imHttpBaseUrl = imHttpBaseUrl,
-            imWebSocketUrl = imWebSocketUrl,
+            imResolvedBackendOrigin = resolvedEndpoint.backendOrigin,
+            imResolvedWebSocketUrl = resolvedEndpoint.webSocketUrl,
+            imDeveloperOverrideOrigin = imDeveloperOverrideOrigin,
             imDevUserExternalId = imDevUserExternalId,
-            imValidationError = validationErrorFor(imHttpBaseUrl, imWebSocketUrl, imDevUserExternalId),
+            imValidationError = validationErrorFor(
+                appLanguage = providerSettings.appLanguage,
+                backendOrigin = imDeveloperOverrideOrigin,
+                devUserExternalId = imDevUserExternalId,
+            ),
             messagingIntegrationState = messagingIntegrationState,
             appLanguage = providerSettings.appLanguage,
             themeMode = providerSettings.themeMode,
@@ -158,9 +169,15 @@ internal class SettingsViewModel(
             providers = repository.providers.value,
             activeProviderId = repository.activeProviderId.value,
             customProvider = repository.customProvider.value,
-            imHttpBaseUrl = DEFAULT_IM_HTTP_BASE_URL,
-            imWebSocketUrl = DEFAULT_IM_WEBSOCKET_URL,
-            imDevUserExternalId = "nox-dev",
+            imResolvedBackendOrigin = BuildConfig.IM_BACKEND_ORIGIN,
+            imResolvedWebSocketUrl = ImHttpEndpointResolver.resolve(
+                sessionBaseUrl = null,
+                developerOverrideOrigin = null,
+                shippedBackendOrigin = BuildConfig.IM_BACKEND_ORIGIN,
+                allowDeveloperOverrides = BuildConfig.DEBUG,
+            ).webSocketUrl,
+            imDeveloperOverrideOrigin = "",
+            imDevUserExternalId = "",
             messagingIntegrationState = messagingRepository.integrationState.value,
             appLanguage = AppLanguage.Chinese,
             themeMode = AppThemeMode.Light,
@@ -179,13 +196,11 @@ internal class SettingsViewModel(
         )
     }
     fun updateImValidationConfig(
-        httpBaseUrl: String? = null,
-        webSocketUrl: String? = null,
+        backendOrigin: String? = null,
         devUserExternalId: String? = null,
     ) {
         viewModelScope.launch {
-            httpBaseUrl?.let { preferencesStore.setImHttpBaseUrl(it) }
-            webSocketUrl?.let { preferencesStore.setImWebSocketUrl(it) }
+            backendOrigin?.let { preferencesStore.setImBackendOrigin(it) }
             devUserExternalId?.let { preferencesStore.setImDevUserExternalId(it) }
         }
     }
@@ -197,17 +212,20 @@ internal class SettingsViewModel(
     }
 
     private fun validationErrorFor(
-        httpBaseUrl: String,
-        webSocketUrl: String,
+        appLanguage: AppLanguage,
+        backendOrigin: String,
         devUserExternalId: String,
     ): String? {
-        val httpValid = httpBaseUrl.startsWith("http://") || httpBaseUrl.startsWith("https://")
-        val webSocketValid = webSocketUrl.startsWith("ws://") || webSocketUrl.startsWith("wss://")
-        val userValid = devUserExternalId.isNotBlank()
-        return if (httpValid && webSocketValid && userValid) {
-            null
+        val hasOverride = backendOrigin.isNotBlank()
+        if (!hasOverride) return null
+        val backendValid = backendOrigin.startsWith("http://") || backendOrigin.startsWith("https://")
+        return if (!backendValid || devUserExternalId.isBlank()) {
+            appLanguage.pick(
+                "Connection settings are incomplete or invalid.",
+                "连接设置不完整或格式无效。",
+            )
         } else {
-            "IM validation config is incomplete or invalid."
+            null
         }
     }
 }
@@ -226,9 +244,9 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
     var baseUrl by remember(uiState.customProvider.baseUrl) { mutableStateOf(uiState.customProvider.baseUrl) }
     var model by remember(uiState.activeProviderId, activeModelValue) { mutableStateOf(activeModelValue) }
     var apiKey by remember(uiState.activeProviderId, activeApiKeyValue) { mutableStateOf(activeApiKeyValue) }
-    var imHttpBaseUrl by remember(uiState.imHttpBaseUrl) { mutableStateOf(uiState.imHttpBaseUrl) }
-    var imWebSocketUrl by remember(uiState.imWebSocketUrl) { mutableStateOf(uiState.imWebSocketUrl) }
+    var imDeveloperOverrideOrigin by remember(uiState.imDeveloperOverrideOrigin) { mutableStateOf(uiState.imDeveloperOverrideOrigin) }
     var imDevUserExternalId by remember(uiState.imDevUserExternalId) { mutableStateOf(uiState.imDevUserExternalId) }
+    var showImDeveloperControls by rememberSaveable { mutableStateOf(false) }
 
     SettingsScreen(
         uiState = uiState,
@@ -236,9 +254,10 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
         baseUrl = baseUrl,
         model = model,
         apiKey = apiKey,
-        imHttpBaseUrl = imHttpBaseUrl,
-        imWebSocketUrl = imWebSocketUrl,
+        imDeveloperOverrideOrigin = imDeveloperOverrideOrigin,
+        imResolvedWebSocketUrl = uiState.imResolvedWebSocketUrl,
         imDevUserExternalId = imDevUserExternalId,
+        showImDeveloperControls = showImDeveloperControls,
         onBaseUrlChanged = {
             baseUrl = it
             viewModel.updateCustom(baseUrl = it)
@@ -259,18 +278,15 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
                 viewModel.updatePresetProvider(apiKey = it)
             }
         },
-        onImHttpBaseUrlChanged = {
-            imHttpBaseUrl = it
-            viewModel.updateImValidationConfig(httpBaseUrl = it)
-        },
-        onImWebSocketUrlChanged = {
-            imWebSocketUrl = it
-            viewModel.updateImValidationConfig(webSocketUrl = it)
+        onImBackendOriginChanged = {
+            imDeveloperOverrideOrigin = it
+            viewModel.updateImValidationConfig(backendOrigin = it)
         },
         onImDevUserExternalIdChanged = {
             imDevUserExternalId = it
             viewModel.updateImValidationConfig(devUserExternalId = it)
         },
+        onToggleImDeveloperControls = { showImDeveloperControls = !showImDeveloperControls },
         onNavigateToDestination = { destination = it },
         onSelectProvider = viewModel::setActiveProvider,
         onSelectLanguage = viewModel::setAppLanguage,
@@ -286,15 +302,16 @@ private fun SettingsScreen(
     baseUrl: String,
     model: String,
     apiKey: String,
-    imHttpBaseUrl: String,
-    imWebSocketUrl: String,
+    imDeveloperOverrideOrigin: String,
+    imResolvedWebSocketUrl: String,
     imDevUserExternalId: String,
+    showImDeveloperControls: Boolean,
     onBaseUrlChanged: (String) -> Unit,
     onModelChanged: (String) -> Unit,
     onApiKeyChanged: (String) -> Unit,
-    onImHttpBaseUrlChanged: (String) -> Unit,
-    onImWebSocketUrlChanged: (String) -> Unit,
+    onImBackendOriginChanged: (String) -> Unit,
     onImDevUserExternalIdChanged: (String) -> Unit,
+    onToggleImDeveloperControls: () -> Unit,
     onNavigateToDestination: (SettingsDestination) -> Unit,
     onSelectProvider: (String) -> Unit,
     onSelectLanguage: (AppLanguage) -> Unit,
@@ -341,12 +358,13 @@ private fun SettingsScreen(
 
             SettingsDestination.ImValidation -> SettingsImValidationScreen(
                 uiState = uiState,
-                imHttpBaseUrl = imHttpBaseUrl,
-                imWebSocketUrl = imWebSocketUrl,
+                imDeveloperOverrideOrigin = imDeveloperOverrideOrigin,
+                imResolvedWebSocketUrl = imResolvedWebSocketUrl,
                 imDevUserExternalId = imDevUserExternalId,
-                onImHttpBaseUrlChanged = onImHttpBaseUrlChanged,
-                onImWebSocketUrlChanged = onImWebSocketUrlChanged,
+                showImDeveloperControls = showImDeveloperControls,
+                onImBackendOriginChanged = onImBackendOriginChanged,
                 onImDevUserExternalIdChanged = onImDevUserExternalIdChanged,
+                onToggleImDeveloperControls = onToggleImDeveloperControls,
                 onBack = { onNavigateToDestination(SettingsDestination.Menu) },
             )
 
@@ -372,14 +390,17 @@ private fun SettingsMenuScreen(
         "${uiState.appLanguage.menuEnglishLabel()} · ${uiState.themeMode.menuEnglishLabel()}",
         "${uiState.appLanguage.menuChineseLabel()} · ${uiState.themeMode.menuChineseLabel()}",
     )
-    val validationSummary = uiState.imValidationError ?: appLanguage.pick("Ready for IM validation", "已准备好进行 IM 验证")
+    val validationSummary = uiState.imValidationError ?: appLanguage.pick(
+        "Backend ${uiState.imResolvedBackendOrigin.removeSuffix("/")}",
+        "后端 ${uiState.imResolvedBackendOrigin.removeSuffix("/")}",
+    )
 
     PageHeader(
         eyebrow = appLanguage.pick("Settings", "设置"),
         title = appLanguage.pick("Preferences", "偏好设置"),
         description = appLanguage.pick(
-            "Open a focused settings surface for appearance, AI infrastructure, IM validation, or upcoming account actions.",
-            "选择一个聚焦设置页，分别管理外观、AI 基础设施、IM 验证，以及即将接入的账号动作。",
+            "Manage appearance, AI services, connection info, and account options.",
+            "管理外观、AI 服务、连接信息和账号选项。",
         ),
         leadingLabel = appLanguage.pick("Back", "返回"),
         onLeading = onBack,
@@ -401,13 +422,13 @@ private fun SettingsMenuScreen(
         ) { onNavigateToDestination(SettingsDestination.AiProvider) }
         SettingsMenuEntry(
             testTag = "settings-menu-im-validation",
-            label = appLanguage.pick("IM Validation", "IM 验证"),
+            label = appLanguage.pick("Connection", "连接信息"),
             summary = validationSummary,
         ) { onNavigateToDestination(SettingsDestination.ImValidation) }
         SettingsMenuEntry(
             testTag = "settings-menu-account",
             label = appLanguage.pick("Account", "账号"),
-            summary = appLanguage.pick("Login and registration actions staged for onboarding.", "登录和注册动作已预留，待欢迎页接入后启用。"),
+            summary = appLanguage.pick("Manage sign-in and session details.", "管理登录与会话信息。"),
         ) { onNavigateToDestination(SettingsDestination.Account) }
     }
 }
@@ -564,21 +585,22 @@ private fun SettingsAiProviderScreen(
 @Composable
 private fun SettingsImValidationScreen(
     uiState: SettingsUiState,
-    imHttpBaseUrl: String,
-    imWebSocketUrl: String,
+    imDeveloperOverrideOrigin: String,
+    imResolvedWebSocketUrl: String,
     imDevUserExternalId: String,
-    onImHttpBaseUrlChanged: (String) -> Unit,
-    onImWebSocketUrlChanged: (String) -> Unit,
+    showImDeveloperControls: Boolean,
+    onImBackendOriginChanged: (String) -> Unit,
     onImDevUserExternalIdChanged: (String) -> Unit,
+    onToggleImDeveloperControls: () -> Unit,
     onBack: () -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
     PageHeader(
         eyebrow = appLanguage.pick("Settings", "设置"),
-        title = appLanguage.pick("IM Validation", "IM 验证"),
+        title = appLanguage.pick("Connection", "连接信息"),
         description = appLanguage.pick(
-            "Point the emulator shell at the IM backend endpoints used for validation and troubleshooting.",
-            "配置模拟器连接 IM 后端时使用的验证与排障地址。",
+            "Review the current server address and connection status for messaging.",
+            "查看消息服务当前使用的地址和连接状态。",
         ),
         leadingLabel = appLanguage.pick("Back", "返回"),
         onLeading = onBack,
@@ -589,24 +611,28 @@ private fun SettingsImValidationScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         GlassCard {
-            Text(text = appLanguage.pick("IM VALIDATION", "IM 验证"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
-            OutlinedTextField(
-                value = imHttpBaseUrl,
-                onValueChange = onImHttpBaseUrlChanged,
-                modifier = Modifier.fillMaxWidth().testTag("settings-im-http-base-url"),
-                label = { Text(appLanguage.pick("HTTP Base URL", "HTTP 基础 URL")) },
+            Text(text = appLanguage.pick("MESSAGE CONNECTION", "消息连接"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
+            Text(
+                text = appLanguage.pick("Resolved backend origin", "当前后端地址"),
+                style = MaterialTheme.typography.bodyMedium,
+                color = AetherColors.OnSurfaceVariant,
             )
-            OutlinedTextField(
-                value = imWebSocketUrl,
-                onValueChange = onImWebSocketUrlChanged,
-                modifier = Modifier.fillMaxWidth().testTag("settings-im-websocket-url"),
-                label = { Text(appLanguage.pick("WebSocket URL", "WebSocket URL")) },
+            Text(
+                text = uiState.imResolvedBackendOrigin,
+                style = MaterialTheme.typography.bodyLarge,
+                color = AetherColors.OnSurface,
+                modifier = Modifier.testTag("settings-im-resolved-backend-origin"),
             )
-            OutlinedTextField(
-                value = imDevUserExternalId,
-                onValueChange = onImDevUserExternalIdChanged,
-                modifier = Modifier.fillMaxWidth().testTag("settings-im-dev-user"),
-                label = { Text(appLanguage.pick("Dev User", "开发用户")) },
+            Text(
+                text = appLanguage.pick("Derived realtime endpoint", "派生的实时连接地址"),
+                style = MaterialTheme.typography.bodyMedium,
+                color = AetherColors.OnSurfaceVariant,
+            )
+            Text(
+                text = imResolvedWebSocketUrl,
+                style = MaterialTheme.typography.bodyLarge,
+                color = AetherColors.OnSurface,
+                modifier = Modifier.testTag("settings-im-resolved-websocket-url"),
             )
             Text(
                 text = when {
@@ -621,18 +647,49 @@ private fun SettingsImValidationScreen(
                 },
                 modifier = Modifier.testTag("settings-im-validation-status"),
             )
+            if (BuildConfig.DEBUG) {
+                OutlinedButton(
+                    onClick = onToggleImDeveloperControls,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings-im-developer-toggle"),
+                ) {
+                    Text(
+                        appLanguage.pick(
+                            if (showImDeveloperControls) "Hide advanced connection settings" else "Show advanced connection settings",
+                            if (showImDeveloperControls) "隐藏高级连接设置" else "显示高级连接设置",
+                        )
+                    )
+                }
+            }
+            if (BuildConfig.DEBUG && showImDeveloperControls) {
+                OutlinedTextField(
+                    value = imDeveloperOverrideOrigin,
+                    onValueChange = onImBackendOriginChanged,
+                    modifier = Modifier.fillMaxWidth().testTag("settings-im-backend-origin"),
+                    label = { Text(appLanguage.pick("Alternate server origin", "备用服务地址")) },
+                )
+                OutlinedTextField(
+                    value = imDevUserExternalId,
+                    onValueChange = onImDevUserExternalIdChanged,
+                    modifier = Modifier.fillMaxWidth().testTag("settings-im-dev-user"),
+                    label = { Text(appLanguage.pick("Test account", "测试账号")) },
+                )
+            }
         }
 
-        GlassCard {
-            Text(text = appLanguage.pick("BACKEND-ONLY DATABASE NOTE", "仅后端数据库说明"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
-            Text(
-                text = appLanguage.pick(
-                    "Backend services can target 124.222.15.128:5432 through secret-managed environment values. PostgreSQL credentials and any optional TLS trust material stay on the backend and are never packaged into the Android client.",
-                    "后端服务可以通过受密钥管理的环境变量连接到 124.222.15.128:5432。PostgreSQL 凭据以及任何可选 TLS 信任材料都只保留在后端，绝不会打包进 Android 客户端。",
-                ),
-                style = MaterialTheme.typography.bodyLarge,
-                color = AetherColors.OnSurfaceVariant,
-            )
+        if (BuildConfig.DEBUG) {
+            GlassCard {
+                Text(text = appLanguage.pick("DEBUG NOTE", "调试说明"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
+                Text(
+                    text = appLanguage.pick(
+                        "Server-side database credentials stay on the backend and are never bundled into the Android client.",
+                        "服务端数据库凭据只保留在后端，不会打包进 Android 客户端。",
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = AetherColors.OnSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -646,8 +703,8 @@ private fun SettingsAccountScreen(
         eyebrow = appLanguage.pick("Settings", "设置"),
         title = appLanguage.pick("Account", "账号"),
         description = appLanguage.pick(
-            "Account onboarding actions are staged here so the welcome/auth flow can plug into the same settings surface in the next phase.",
-            "账号引导动作会从这里接入，下一阶段欢迎页和鉴权流会复用这一设置入口。",
+            "Manage your sign-in status and account entry points.",
+            "管理登录状态和账号入口。",
         ),
         leadingLabel = appLanguage.pick("Back", "返回"),
         onLeading = onBack,
@@ -661,8 +718,8 @@ private fun SettingsAccountScreen(
             Text(text = appLanguage.pick("SESSION", "会话"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
             Text(
                 text = appLanguage.pick(
-                    "The shell is still using the temporary development session seam until the authenticated welcome flow lands.",
-                    "在欢迎页鉴权流接入前，当前壳层仍然使用临时开发会话过渡。",
+                    "Your signed-in session is stored securely after login so the app can restore the IM shell on the next launch.",
+                    "登录后会安全保存你的会话，方便下次启动时直接恢复 IM 壳层。",
                 ),
                 style = MaterialTheme.typography.bodyLarge,
                 color = AetherColors.OnSurfaceVariant,
@@ -673,8 +730,8 @@ private fun SettingsAccountScreen(
             Text(text = appLanguage.pick("ACCOUNT ACTIONS", "账号动作"), style = MaterialTheme.typography.labelLarge, color = AetherColors.Primary)
             Text(
                 text = appLanguage.pick(
-                    "These actions are visible now so the shell information architecture is ready before the real auth flows arrive.",
-                    "先把入口形态落位，后续接入真实注册/登录流程时就不需要再次重做设置结构。",
+                    "The current release already uses the welcome login and registration flow for server-backed access.",
+                    "当前版本已经通过欢迎页登录和注册接入服务端。",
                 ),
                 style = MaterialTheme.typography.bodyLarge,
                 color = AetherColors.OnSurfaceVariant,

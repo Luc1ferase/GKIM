@@ -1,7 +1,6 @@
 package com.gkim.im.android.feature.navigation
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
 import com.gkim.im.android.data.remote.im.ImBackendHttpClient
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
@@ -15,23 +14,24 @@ class LiveAuthEndpointValidationTest {
     @Test
     fun emulatorCanRegisterLoginAndBootstrapThroughPublishedHostBridgeEndpoint() = runBlocking {
         val client = ImBackendHttpClient(OkHttpClient.Builder().build())
+        val httpBaseUrl = LiveEndpointOverrides.httpBaseUrl()
         val username = "codex_${System.currentTimeMillis()}"
         val password = "Passw0rd!"
         val displayName = "Codex Validation"
 
         val registerResponse = client.register(
-            baseUrl = DEFAULT_IM_HTTP_BASE_URL,
+            baseUrl = httpBaseUrl,
             username = username,
             password = password,
             displayName = displayName,
         )
         val loginResponse = client.login(
-            baseUrl = DEFAULT_IM_HTTP_BASE_URL,
+            baseUrl = httpBaseUrl,
             username = username,
             password = password,
         )
         val bootstrap = client.loadBootstrap(
-            baseUrl = DEFAULT_IM_HTTP_BASE_URL,
+            baseUrl = httpBaseUrl,
             token = loginResponse.token,
         )
 

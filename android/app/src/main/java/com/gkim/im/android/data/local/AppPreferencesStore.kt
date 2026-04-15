@@ -7,8 +7,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AppThemeMode
 import com.gkim.im.android.core.model.ContactSortMode
-import com.gkim.im.android.data.remote.im.DEFAULT_IM_HTTP_BASE_URL
-import com.gkim.im.android.data.remote.im.DEFAULT_IM_WEBSOCKET_URL
+import com.gkim.im.android.data.remote.im.normalizeImBackendOriginForStorage
+import com.gkim.im.android.data.remote.im.resolveStoredImBackendOrigin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -19,8 +19,7 @@ interface PreferencesStore {
     val activeProviderId: Flow<String>
     val customBaseUrl: Flow<String>
     val customModel: Flow<String>
-    val imHttpBaseUrl: Flow<String>
-    val imWebSocketUrl: Flow<String>
+    val imBackendOrigin: Flow<String>
     val imDevUserExternalId: Flow<String>
     val appLanguage: Flow<AppLanguage>
     val appThemeMode: Flow<AppThemeMode>
@@ -31,8 +30,7 @@ interface PreferencesStore {
     suspend fun setCustomModel(value: String)
     fun presetProviderModel(providerId: String): Flow<String?>
     suspend fun setPresetProviderModel(providerId: String, value: String)
-    suspend fun setImHttpBaseUrl(value: String)
-    suspend fun setImWebSocketUrl(value: String)
+    suspend fun setImBackendOrigin(value: String)
     suspend fun setImDevUserExternalId(value: String)
     suspend fun setAppLanguage(value: AppLanguage)
     suspend fun setAppThemeMode(value: AppThemeMode)
@@ -43,8 +41,9 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
     private val providerKey = stringPreferencesKey("active_provider_id")
     private val customBaseUrlKey = stringPreferencesKey("custom_provider_base_url")
     private val customModelKey = stringPreferencesKey("custom_provider_model")
-    private val imHttpBaseUrlKey = stringPreferencesKey("im_http_base_url")
-    private val imWebSocketUrlKey = stringPreferencesKey("im_websocket_url")
+    private val imBackendOriginKey = stringPreferencesKey("im_backend_origin")
+    private val legacyImHttpBaseUrlKey = stringPreferencesKey("im_http_base_url")
+    private val legacyImWebSocketUrlKey = stringPreferencesKey("im_websocket_url")
     private val imDevUserExternalIdKey = stringPreferencesKey("im_dev_user_external_id")
     private val appLanguageKey = stringPreferencesKey("app_language")
     private val appThemeModeKey = stringPreferencesKey("app_theme_mode")
@@ -71,16 +70,21 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
         prefs[presetModelKey(providerId)]
     }
 
-    override val imHttpBaseUrl: Flow<String> = context.preferencesStore.data.map { prefs ->
-        prefs[imHttpBaseUrlKey] ?: DEFAULT_IM_HTTP_BASE_URL
-    }
-
-    override val imWebSocketUrl: Flow<String> = context.preferencesStore.data.map { prefs ->
-        prefs[imWebSocketUrlKey] ?: DEFAULT_IM_WEBSOCKET_URL
+    override val imBackendOrigin: Flow<String> = context.preferencesStore.data.map { prefs ->
+        val storedBackendOrigin = prefs[imBackendOriginKey].orEmpty()
+        when {
+            storedBackendOrigin.isNotBlank() -> normalizeImBackendOriginForStorage(storedBackendOrigin)
+            else -> resolveStoredImBackendOrigin(
+                storedBackendOrigin = "",
+                legacyHttpBaseUrl = prefs[legacyImHttpBaseUrlKey].orEmpty(),
+                legacyWebSocketUrl = prefs[legacyImWebSocketUrlKey].orEmpty(),
+                shippedBackendOrigin = "",
+            )
+        }
     }
 
     override val imDevUserExternalId: Flow<String> = context.preferencesStore.data.map { prefs ->
-        prefs[imDevUserExternalIdKey] ?: "nox-dev"
+        prefs[imDevUserExternalIdKey].orEmpty()
     }
 
     override val appLanguage: Flow<AppLanguage> = context.preferencesStore.data.map { prefs ->
@@ -111,12 +115,17 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
         context.preferencesStore.edit { it[presetModelKey(providerId)] = value }
     }
 
-    override suspend fun setImHttpBaseUrl(value: String) {
-        context.preferencesStore.edit { it[imHttpBaseUrlKey] = value }
-    }
-
-    override suspend fun setImWebSocketUrl(value: String) {
-        context.preferencesStore.edit { it[imWebSocketUrlKey] = value }
+    override suspend fun setImBackendOrigin(value: String) {
+        val storedValue = normalizeImBackendOriginForStorage(value)
+        context.preferencesStore.edit { prefs ->
+            if (storedValue.isBlank()) {
+                prefs.remove(imBackendOriginKey)
+            } else {
+                prefs[imBackendOriginKey] = storedValue
+            }
+            prefs.remove(legacyImHttpBaseUrlKey)
+            prefs.remove(legacyImWebSocketUrlKey)
+        }
     }
 
     override suspend fun setImDevUserExternalId(value: String) {

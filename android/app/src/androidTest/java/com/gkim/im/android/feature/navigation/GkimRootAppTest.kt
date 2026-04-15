@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.lifecycle.Lifecycle
 import com.gkim.im.android.core.media.MediaPickerController
 import com.gkim.im.android.core.media.MediaPickerControllerFactory
 import com.gkim.im.android.core.media.GeneratedImageSaveResult
@@ -87,6 +88,39 @@ class GkimRootAppTest {
         composeRule.onNodeWithTag("welcome-login-button").fetchSemanticsNode()
         composeRule.onNodeWithTag("welcome-register-button").fetchSemanticsNode()
         assertTrue(!nodeExists("bottom-nav"))
+    }
+
+    @Test
+    fun welcomeScreenUsesSimplifiedProductCopyWithoutTechnicalHelperText() {
+        setApp(UiTestAppContainer(), initialAuthStart = RootAuthStart.Unauthenticated)
+
+        composeRule.onNodeWithText("和朋友聊天、分享灵感，把常用的沟通都放在一个地方。").fetchSemanticsNode()
+        assertTrue(textNodeMissing("一个以建筑感为先的社交壳层，把实时消息、提示工程与工程文化合成在同一个入口。"))
+        assertTrue(textNodeMissing("使用账号凭据进入实时 IM 壳层，并让开屏动效持续在原生界面后方保持可见。"))
+        assertTrue(textNodeMissing("加密连接"))
+    }
+
+    @Test
+    fun welcomeVideoReportsActivePlaybackStateOnLaunch() {
+        setApp(UiTestAppContainer(), initialAuthStart = RootAuthStart.Unauthenticated)
+
+        composeRule.waitUntil(10_000) { nodeExists("welcome-video-state-playing") }
+
+        composeRule.onNodeWithTag("welcome-video-state-playing").fetchSemanticsNode()
+        assertTrue(!nodeExists("welcome-video-state-fallback"))
+    }
+
+    @Test
+    fun welcomeVideoRecoversPlayingStateAfterActivityResume() {
+        setApp(UiTestAppContainer(), initialAuthStart = RootAuthStart.Unauthenticated)
+
+        composeRule.waitUntil(10_000) { nodeExists("welcome-video-state-playing") }
+
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.STARTED)
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+
+        composeRule.waitUntil(10_000) { nodeExists("welcome-video-state-playing") }
+        assertTrue(!nodeExists("welcome-video-state-fallback"))
     }
 
     @Test
@@ -953,22 +987,27 @@ class GkimRootAppTest {
         openSettingsFromSpace()
         composeRule.onNodeWithTag("settings-menu-im-validation").performClick()
         composeRule.onNodeWithTag("settings-detail-im-validation").fetchSemanticsNode()
-        composeRule.onNodeWithTag("settings-im-http-base-url").performTextReplacement("https://forward.example.com/")
-        composeRule.onNodeWithTag("settings-im-websocket-url").performTextReplacement("wss://forward.example.com/ws")
+        assertTrue(!nodeExists("settings-im-http-base-url"))
+        assertTrue(!nodeExists("settings-im-websocket-url"))
+        composeRule.onNodeWithTag("settings-im-resolved-backend-origin").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-im-resolved-websocket-url").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-im-developer-toggle").performClick()
+        composeRule.onNodeWithTag("settings-im-backend-origin").performTextReplacement("https://forward.example.com/")
         composeRule.onNodeWithTag("settings-im-dev-user").performTextReplacement("leo-vance")
         composeRule.waitUntil(5_000) {
-            container.preferencesStore.currentImHttpBaseUrl == "https://forward.example.com/" &&
-                container.preferencesStore.currentImWebSocketUrl == "wss://forward.example.com/ws" &&
+            container.preferencesStore.currentImBackendOrigin == "https://forward.example.com/" &&
                 container.preferencesStore.currentImDevUserExternalId == "leo-vance"
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithTag("settings-im-validation-status").assertTextContains("live IM 已连接")
+        composeRule.onNodeWithTag("settings-im-resolved-backend-origin").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-im-resolved-websocket-url").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-im-validation-status").assertTextContains("已连接")
 
         composeRule.onNodeWithTag("settings-im-dev-user").performTextClearance()
         composeRule.waitUntil(5_000) { container.preferencesStore.currentImDevUserExternalId.isEmpty() }
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("IM validation config is incomplete or invalid.").fetchSemanticsNode()
+        composeRule.onNodeWithText("连接设置不完整或格式无效。").fetchSemanticsNode()
     }
 
     @Test

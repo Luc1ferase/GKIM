@@ -62,7 +62,10 @@ internal class MessagesViewModel(repository: MessagingRepository) : ViewModel() 
 
 @Composable
 fun MessagesRoute(navController: NavHostController, container: AppContainer) {
-    val viewModel = viewModel<MessagesViewModel>(factory = simpleViewModelFactory { MessagesViewModel(container.messagingRepository) })
+    val viewModel = viewModel<MessagesViewModel>(
+        key = "messages-${System.identityHashCode(container)}",
+        factory = simpleViewModelFactory { MessagesViewModel(container.messagingRepository) },
+    )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     MessagesScreen(
@@ -136,8 +139,8 @@ private fun MessagesScreen(
                 )
                 Text(
                     text = appLanguage.pick(
-                        "Live IM conversations will appear after bootstrap completes or when a fallback room is opened from Contacts.",
-                        "完成 live IM 引导后，这里会出现会话；也可以先从联系人入口打开回退房间。",
+                        "Your conversations will appear here after you sign in and start chatting with contacts.",
+                        "登录后开始和联系人聊天，这里就会出现你的会话。",
                     ),
                     style = MaterialTheme.typography.bodyLarge,
                     color = AetherColors.OnSurfaceVariant,

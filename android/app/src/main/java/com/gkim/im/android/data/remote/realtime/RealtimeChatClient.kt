@@ -79,7 +79,14 @@ class RealtimeChatClient(
         )
     }
 
-    override fun send(payload: String): Boolean = socket?.send(payload) ?: false
+    override fun send(payload: String): Boolean {
+        val sent = socket?.send(payload) ?: false
+        if (!sent) {
+            _isConnected.value = false
+            _lastFailure.value = "WebSocket send failed"
+        }
+        return sent
+    }
 
     override fun sendMessage(
         recipientExternalId: String,

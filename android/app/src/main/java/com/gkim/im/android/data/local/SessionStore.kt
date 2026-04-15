@@ -5,7 +5,15 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
-class SessionStore(context: Context) {
+interface RuntimeSessionStore {
+    var token: String?
+    var username: String?
+    var baseUrl: String?
+    val hasSession: Boolean
+    fun clear()
+}
+
+class SessionStore(context: Context) : RuntimeSessionStore {
     private val prefs: SharedPreferences
 
     init {
@@ -21,22 +29,22 @@ class SessionStore(context: Context) {
         )
     }
 
-    var token: String?
+    override var token: String?
         get() = prefs.getString(KEY_TOKEN, null)
         set(value) = prefs.edit().putString(KEY_TOKEN, value).apply()
 
-    var username: String?
+    override var username: String?
         get() = prefs.getString(KEY_USERNAME, null)
         set(value) = prefs.edit().putString(KEY_USERNAME, value).apply()
 
-    var baseUrl: String?
+    override var baseUrl: String?
         get() = prefs.getString(KEY_BASE_URL, null)
         set(value) = prefs.edit().putString(KEY_BASE_URL, value).apply()
 
-    val hasSession: Boolean
+    override val hasSession: Boolean
         get() = !token.isNullOrBlank()
 
-    fun clear() {
+    override fun clear() {
         prefs.edit()
             .remove(KEY_TOKEN)
             .remove(KEY_USERNAME)
