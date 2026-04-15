@@ -11,4 +11,4 @@
 ## 3. Verification And Release Handoff
 
 - [x] 3.1 Add or update targeted tests covering session-driven IM bootstrap and release endpoint resolution, then run the relevant Android verification commands.
-- [ ] 3.2 Create a clean commit, push the branch, trigger the remote APK build path, and monitor the result until the release compile outcome is known.
+- [x] 3.2 Create a clean commit, push the branch, trigger the remote APK build path, and monitor the result until the release compile outcome is known.
