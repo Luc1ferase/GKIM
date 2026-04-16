@@ -1,12 +1,13 @@
 use crate::auth::{AuthResponse, AuthService, LoginError, RegisterError};
 use crate::config::AppConfig;
+use base64::Engine;
 use crate::im::service::ImService;
 use crate::session::{SessionIssue, SessionService};
 use crate::social::{FriendRequestError, FriendRequestView, SocialService, UserSearchResult};
 use crate::ws::{serve_socket, ConnectionHub, GatewayEvent};
 use axum::{
     extract::{ws::WebSocketUpgrade, Path, Query, State},
-    http::{HeaderMap, StatusCode},
+    http::{header::CONTENT_TYPE, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
@@ -84,6 +85,17 @@ struct FriendRequestBody {
     to_user_id: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DirectImageMessageRequest {
+    recipient_external_id: String,
+    client_message_id: Option<String>,
+    #[serde(default)]
+    body: String,
+    content_type: String,
+    image_base64: String,
+}
+
 impl AppError {
     fn bad_request(message: impl Into<String>) -> Self {
         Self {
@@ -153,6 +165,11 @@ pub fn build_router(config: AppConfig, pool: PgPool) -> Router {
         .route(
             "/api/conversations/:conversation_id/messages",
             get(get_message_history),
+        )
+        .route("/api/direct-messages/image", post(send_direct_image_message_handler))
+        .route(
+            "/api/messages/:message_id/attachment",
+            get(get_message_attachment),
         )
         .with_state(AppState {
             service_name: config.service_name,
@@ -426,6 +443,112 @@ async fn get_message_history(
         .map_err(|error| AppError::internal(format!("load message history: {error}")))?;
 
     Ok(Json(page))
+}
+
+async fn send_direct_image_message_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<DirectImageMessageRequest>,
+) -> Result<Json<crate::im::model::SendMessageResult>, AppError> {
+    let user = authenticated_user(&state, &headers).await?;
+    let image_bytes = base64::engine::general_purpose::STANDARD
+        .decode(request.image_base64.trim())
+        .map_err(|_| AppError::bad_request("`imageBase64` must be valid base64"))?;
+
+    let send_result = state
+        .im_service
+        .send_direct_image_message(
+            &user.external_id,
+            &request.recipient_external_id,
+            request.client_message_id.as_deref(),
+            &request.body,
+            &request.content_type,
+            image_bytes,
+        )
+        .await
+        .map_err(|error| AppError::internal(format!("send direct image message: {error}")))?;
+
+    fan_out_direct_message(
+        &state.connection_hub,
+        &state.im_service,
+        &user.external_id,
+        &send_result,
+    )
+    .await
+    .map_err(|error| AppError::internal(format!("fan out direct image message: {error}")))?;
+
+    Ok(Json(send_result))
+}
+
+async fn get_message_attachment(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(message_id): Path<String>,
+) -> Result<Response, AppError> {
+    let user = authenticated_user(&state, &headers).await?;
+    let Some(attachment) = state
+        .im_service
+        .attachment_for_user(&user.external_id, &message_id)
+        .await
+        .map_err(|error| AppError::internal(format!("load message attachment: {error}")))? else {
+        return Err(AppError::not_found("message attachment was not found"));
+    };
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(CONTENT_TYPE, attachment.content_type)
+        .body(axum::body::Body::from(attachment.data))
+        .map_err(|error| AppError::internal(format!("build attachment response: {error}")))
+}
+
+async fn fan_out_direct_message(
+    hub: &ConnectionHub,
+    im_service: &ImService,
+    sender_external_id: &str,
+    send_result: &crate::im::model::SendMessageResult,
+) -> anyhow::Result<()> {
+    hub.send_to_user(
+        sender_external_id,
+        GatewayEvent::MessageSent {
+            conversation_id: send_result.conversation_id.clone(),
+            message: send_result.message.clone(),
+        },
+    )
+    .await;
+
+    let delivered_connections = hub
+        .send_to_user(
+            &send_result.recipient_external_id,
+            GatewayEvent::MessageReceived {
+                conversation_id: send_result.conversation_id.clone(),
+                unread_count: send_result.recipient_unread_count,
+                message: send_result.message.clone(),
+            },
+        )
+        .await;
+
+    if delivered_connections > 0 {
+        let delivery = im_service
+            .mark_message_delivered(
+                &send_result.recipient_external_id,
+                &send_result.conversation_id,
+                &send_result.message.id,
+            )
+            .await?;
+
+        hub.send_to_user(
+            sender_external_id,
+            GatewayEvent::MessageDelivered {
+                conversation_id: delivery.conversation_id,
+                message_id: delivery.message_id,
+                recipient_external_id: delivery.recipient_external_id,
+                delivered_at: delivery.delivered_at,
+            },
+        )
+        .await;
+    }
+
+    Ok(())
 }
 
 async fn authenticated_user(

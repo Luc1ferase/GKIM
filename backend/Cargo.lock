@@ -504,6 +504,7 @@ dependencies = [
  "anyhow",
  "argon2",
  "axum",
+ "base64",
  "futures-util",
  "hex",
  "http-body-util",

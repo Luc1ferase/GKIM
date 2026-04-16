@@ -3,6 +3,8 @@ package com.gkim.im.android.data.remote.im
 import com.gkim.im.android.core.model.ChatMessage
 import com.gkim.im.android.core.model.Contact
 import com.gkim.im.android.core.model.Conversation
+import com.gkim.im.android.core.model.AttachmentType
+import com.gkim.im.android.core.model.MessageAttachment
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
 import kotlinx.serialization.Serializable
@@ -31,6 +33,14 @@ data class ContactProfileDto(
 )
 
 @Serializable
+data class MessageAttachmentDto(
+    val type: String,
+    val contentType: String,
+    val fetchPath: String,
+    val sizeBytes: Long,
+)
+
+@Serializable
 data class MessageRecordDto(
     val id: String,
     val conversationId: String,
@@ -41,8 +51,13 @@ data class MessageRecordDto(
     val createdAt: String,
     val deliveredAt: String? = null,
     val readAt: String? = null,
+    val attachment: MessageAttachmentDto? = null,
 ) {
-    fun toChatMessage(activeUserExternalId: String): ChatMessage = ChatMessage(
+    fun toChatMessage(
+        activeUserExternalId: String,
+        backendBaseUrl: String? = null,
+        authToken: String? = null,
+    ): ChatMessage = ChatMessage(
         id = id,
         direction = if (senderExternalId == activeUserExternalId) {
             MessageDirection.Outgoing
@@ -57,8 +72,26 @@ data class MessageRecordDto(
         createdAt = createdAt,
         deliveredAt = deliveredAt,
         readAt = readAt,
+        attachment = attachment?.toMessageAttachment(backendBaseUrl = backendBaseUrl, authToken = authToken),
     )
 }
+
+@Serializable
+data class SendDirectImageMessageRequestDto(
+    val recipientExternalId: String,
+    val clientMessageId: String? = null,
+    val body: String,
+    val contentType: String,
+    val imageBase64: String,
+)
+
+@Serializable
+data class SendDirectMessageResultDto(
+    val conversationId: String,
+    val recipientExternalId: String,
+    val recipientUnreadCount: Int,
+    val message: MessageRecordDto,
+)
 
 @Serializable
 data class ConversationSummaryDto(
@@ -125,7 +158,11 @@ data class BootstrapBundleDto(
     val contacts: List<ContactProfileDto>,
     val conversations: List<ConversationSummaryDto>,
 ) {
-    fun toBootstrapState(activeUserExternalId: String): ImBootstrapState = ImBootstrapState(
+    fun toBootstrapState(
+        activeUserExternalId: String,
+        backendBaseUrl: String? = null,
+        authToken: String? = null,
+    ): ImBootstrapState = ImBootstrapState(
         user = user,
         contacts = contacts.map { contact ->
             Contact(
@@ -144,12 +181,20 @@ data class BootstrapBundleDto(
                 contactName = conversation.contact.displayName,
                 contactTitle = conversation.contact.title,
                 avatarText = conversation.contact.avatarText,
-                lastMessage = conversation.lastMessage?.body ?: "",
+                lastMessage = conversation.lastMessage?.summaryText().orEmpty(),
                 lastTimestamp = conversation.lastMessage?.createdAt ?: conversation.contact.addedAt,
                 unreadCount = conversation.unreadCount,
                 isOnline = false,
                 messages = conversation.lastMessage
-                    ?.let { listOf(it.toChatMessage(activeUserExternalId)) }
+                    ?.let {
+                        listOf(
+                            it.toChatMessage(
+                                activeUserExternalId = activeUserExternalId,
+                                backendBaseUrl = backendBaseUrl,
+                                authToken = authToken,
+                            )
+                        )
+                    }
                     ?: emptyList(),
             )
         },
@@ -168,8 +213,44 @@ data class MessageHistoryPageDto(
     val messages: List<MessageRecordDto>,
     val hasMore: Boolean,
 ) {
-    fun toChatMessages(activeUserExternalId: String): List<ChatMessage> =
-        messages.map { it.toChatMessage(activeUserExternalId) }
+    fun toChatMessages(
+        activeUserExternalId: String,
+        backendBaseUrl: String? = null,
+        authToken: String? = null,
+    ): List<ChatMessage> = messages.map {
+        it.toChatMessage(
+            activeUserExternalId = activeUserExternalId,
+            backendBaseUrl = backendBaseUrl,
+            authToken = authToken,
+        )
+    }
+}
+
+private fun MessageAttachmentDto.toMessageAttachment(
+    backendBaseUrl: String?,
+    authToken: String?,
+): MessageAttachment {
+    val resolvedPreview = if (backendBaseUrl.isNullOrBlank() || fetchPath.startsWith("http")) {
+        fetchPath
+    } else {
+        val normalizedBase = if (backendBaseUrl.endsWith("/")) backendBaseUrl.dropLast(1) else backendBaseUrl
+        "$normalizedBase$fetchPath"
+    }
+    return MessageAttachment(
+        type = when (type.lowercase()) {
+            "video" -> AttachmentType.Video
+            else -> AttachmentType.Image
+        },
+        preview = resolvedPreview,
+        authToken = authToken,
+    )
+}
+
+private fun MessageRecordDto.summaryText(): String = when {
+    body.isNotBlank() -> body
+    attachment?.type?.lowercase() == "video" -> "Sent a video"
+    attachment != null -> "Sent an image"
+    else -> ""
 }
 
 sealed interface ImGatewayEvent {

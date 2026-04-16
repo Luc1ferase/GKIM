@@ -15,6 +15,7 @@ path = "src/main.rs"
 anyhow = "1.0"
 argon2 = "0.5"
 axum = { version = "0.7", features = ["http1", "json", "macros", "tokio", "ws"] }
+base64 = "0.22"
 futures-util = "0.3"
 hex = "0.4"
 serde = { version = "1.0", features = ["derive"] }

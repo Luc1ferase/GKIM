@@ -158,6 +158,14 @@ private class LoginEndpointRecordingBackendClient : ImBackendClient {
         error("loadBootstrap should not be called in login endpoint configuration test")
     }
 
+    override suspend fun sendDirectImageMessage(
+        baseUrl: String,
+        token: String,
+        request: com.gkim.im.android.data.remote.im.SendDirectImageMessageRequestDto,
+    ): com.gkim.im.android.data.remote.im.SendDirectMessageResultDto {
+        error("sendDirectImageMessage should not be called in login endpoint configuration test")
+    }
+
     override suspend fun loadHistory(
         baseUrl: String,
         token: String,

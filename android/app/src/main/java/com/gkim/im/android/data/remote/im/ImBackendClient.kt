@@ -10,6 +10,11 @@ interface ImBackendClient {
     suspend fun acceptFriendRequest(baseUrl: String, token: String, requestId: String): FriendRequestViewDto
     suspend fun rejectFriendRequest(baseUrl: String, token: String, requestId: String): FriendRequestViewDto
     suspend fun loadBootstrap(baseUrl: String, token: String): BootstrapBundleDto
+    suspend fun sendDirectImageMessage(
+        baseUrl: String,
+        token: String,
+        request: SendDirectImageMessageRequestDto,
+    ): SendDirectMessageResultDto
     suspend fun loadHistory(
         baseUrl: String,
         token: String,

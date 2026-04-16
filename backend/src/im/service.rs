@@ -1,6 +1,7 @@
 use crate::im::{
     model::{
-        BootstrapBundle, DeliveryUpdate, MessageHistoryPage, ReadReceiptUpdate, SendMessageResult,
+        BootstrapBundle, DeliveryUpdate, MessageHistoryPage, NewMessageAttachment,
+        ReadReceiptUpdate, SendMessageResult, StoredMessageAttachment,
     },
     repository::ImRepository,
 };
@@ -102,7 +103,54 @@ impl ImService {
                 recipient_external_id,
                 client_message_id,
                 body.trim(),
+                None,
             )
+            .await
+    }
+
+    pub async fn send_direct_image_message(
+        &self,
+        sender_external_id: &str,
+        recipient_external_id: &str,
+        client_message_id: Option<&str>,
+        body: &str,
+        content_type: &str,
+        bytes: Vec<u8>,
+    ) -> Result<SendMessageResult> {
+        ensure!(
+            content_type.trim().starts_with("image/"),
+            "image content type must start with `image/`"
+        );
+        ensure!(!bytes.is_empty(), "image payload must not be empty");
+
+        self.repository
+            .persist_direct_message(
+                sender_external_id,
+                recipient_external_id,
+                client_message_id,
+                body.trim(),
+                Some(&NewMessageAttachment {
+                    attachment_type: "image".to_string(),
+                    content_type: content_type.trim().to_string(),
+                    bytes,
+                }),
+            )
+            .await
+    }
+
+    pub async fn attachment_for_user(
+        &self,
+        external_id: &str,
+        message_id: &str,
+    ) -> Result<Option<StoredMessageAttachment>> {
+        let user = self
+            .repository
+            .find_user_by_external_id(external_id)
+            .await?
+            .ok_or_else(|| anyhow!("user `{external_id}` was not found"))?;
+
+        self.repository
+            .load_message_attachment_for_user(&user.id, message_id)
             .await
     }
 

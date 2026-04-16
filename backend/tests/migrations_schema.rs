@@ -20,6 +20,16 @@ fn auth_migration_sql() -> String {
         .to_lowercase()
 }
 
+fn attachment_migration_sql() -> String {
+    let migration_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("migrations")
+        .join("202604160001_direct_message_attachments.sql");
+
+    std::fs::read_to_string(&migration_path)
+        .unwrap_or_else(|error| panic!("failed to read {}: {error}", migration_path.display()))
+        .to_lowercase()
+}
+
 #[test]
 fn bootstrap_migration_defines_core_im_tables() {
     let sql = bootstrap_migration_sql();
@@ -82,6 +92,26 @@ fn auth_migration_adds_username_password_and_friend_requests() {
         assert!(
             sql.contains(snippet),
             "expected auth migration to contain `{snippet}`"
+        );
+    }
+}
+
+#[test]
+fn attachment_migration_defines_direct_message_attachment_storage() {
+    let sql = attachment_migration_sql();
+
+    for snippet in [
+        "create table message_attachments",
+        "message_id uuid primary key",
+        "attachment_type text not null",
+        "content_type text not null",
+        "storage_key text not null unique",
+        "byte_size bigint not null",
+        "data bytea not null",
+    ] {
+        assert!(
+            sql.contains(snippet),
+            "expected attachment migration to contain `{snippet}`"
         );
     }
 }

@@ -22,6 +22,7 @@ import com.gkim.im.android.data.local.AppPreferencesStore
 import com.gkim.im.android.data.local.SessionStore
 import com.gkim.im.android.data.remote.im.ImBackendHttpClient
 import com.gkim.im.android.data.remote.im.ImGatewayEvent
+import com.gkim.im.android.data.remote.im.SendDirectImageMessageRequestDto
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.DefaultAppContainer
 import com.gkim.im.android.data.repository.MessagingIntegrationPhase
@@ -53,6 +54,7 @@ class LiveImBackendValidationTest {
     private lateinit var appContainer: DefaultAppContainer
     private lateinit var swapContainer: (DefaultAppContainer) -> Unit
     private lateinit var noxToken: String
+    private lateinit var counterpartToken: String
     private lateinit var conversationId: String
     private lateinit var latestHistoryBody: String
     private var contentInitialized = false
@@ -74,6 +76,7 @@ class LiveImBackendValidationTest {
             .body
 
         val counterpartSession = backendClient.issueDevSession(httpBaseUrl, "leo-vance")
+        counterpartToken = counterpartSession.token
         counterpartGateway = com.gkim.im.android.data.remote.realtime.RealtimeChatClient(
             OkHttpClient.Builder().build(),
             webSocketUrl,
@@ -106,6 +109,7 @@ class LiveImBackendValidationTest {
     fun emulatorValidationCoversLiveRoundTripAndReloadRecovery() = runBlocking {
         val outboundBody = "Emulator outbound ${System.currentTimeMillis()}"
         val inboundBody = "Emulator reply ${System.currentTimeMillis()}"
+        val missedBody = "Missed while reconnecting ${System.currentTimeMillis()}"
 
         composeRule.waitUntil(VALIDATION_TIMEOUT_MS) { nodeExists("conversation-row-$conversationId") }
         composeRule.onNodeWithTag("conversation-row-$conversationId").performClick()
@@ -146,6 +150,40 @@ class LiveImBackendValidationTest {
         composeRule.waitUntil(VALIDATION_TIMEOUT_MS) { textExists(inboundBody) }
         Log.d(TAG, "inbound reply became visible in chat UI")
 
+        val uploadedImage = backendClient.sendDirectImageMessage(
+            baseUrl = httpBaseUrl,
+            token = counterpartToken,
+            request = SendDirectImageMessageRequestDto(
+                recipientExternalId = "nox-dev",
+                clientMessageId = "emu-image-${System.currentTimeMillis()}",
+                body = "",
+                contentType = "image/png",
+                imageBase64 = "aGVsbG8taW1hZ2U=",
+            ),
+        )
+        composeRule.waitUntil(VALIDATION_TIMEOUT_MS) {
+            nodeExists("chat-message-attachment-${uploadedImage.message.id}")
+        }
+        Log.d(TAG, "image message became visible in chat UI id=${uploadedImage.message.id}")
+
+        appContainer.realtimeChatClient.disconnect()
+        waitFor(timeoutMs = VALIDATION_TIMEOUT_MS) { !appContainer.realtimeChatClient.isConnected.value }
+        Log.d(TAG, "app realtime connection forced closed")
+
+        counterpartGateway.sendMessage(
+            recipientExternalId = "nox-dev",
+            clientMessageId = "emu-missed-${System.currentTimeMillis()}",
+            body = missedBody,
+        )
+        Log.d(TAG, "counterpart sent missed message during disconnect: $missedBody")
+
+        appContainer.realtimeChatClient.connect(
+            token = noxToken,
+            endpointOverride = webSocketUrl,
+        )
+        waitForConversationMessage(missedBody)
+        Log.d(TAG, "missed message recovered after forced reconnect")
+
         setLiveApp()
         waitFor(timeoutMs = VALIDATION_TIMEOUT_MS) {
             appContainer.messagingRepository.integrationState.value.phase == MessagingIntegrationPhase.Ready
@@ -172,6 +210,7 @@ class LiveImBackendValidationTest {
         )
         waitForConversationMessage(outboundBody)
         waitForConversationMessage(inboundBody)
+        waitForConversationMessage(missedBody)
         composeRule.onNodeWithTag("chat-timeline").performScrollToNode(hasText(inboundBody, substring = true))
         composeRule.waitUntil(VALIDATION_TIMEOUT_MS) { textExists(inboundBody) }
         Log.d(TAG, "relaunch recovery confirmed with inbound body visible")

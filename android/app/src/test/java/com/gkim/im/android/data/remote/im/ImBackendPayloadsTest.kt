@@ -224,4 +224,41 @@ class ImBackendPayloadsTest {
         assertTrue(error is ImGatewayEvent.Error)
         assertEquals("message.send_failed", (error as ImGatewayEvent.Error).code)
     }
+
+    @Test
+    fun `message payload keeps attachment descriptor when mapped to chat state`() {
+        val history = json.decodeFromString<MessageHistoryPageDto>(
+            """
+            {
+              "conversationId": "conversation-1",
+              "messages": [
+                {
+                  "id": "message-image-1",
+                  "conversationId": "conversation-1",
+                  "senderUserId": "user-leo",
+                  "senderExternalId": "leo-vance",
+                  "kind": "text",
+                  "body": "",
+                  "createdAt": "2026-04-08T09:04:00Z",
+                  "deliveredAt": null,
+                  "readAt": null,
+                  "attachment": {
+                    "type": "image",
+                    "contentType": "image/png",
+                    "fetchPath": "/api/messages/message-image-1/attachment",
+                    "sizeBytes": 11
+                  }
+                }
+              ],
+              "hasMore": false
+            }
+            """.trimIndent(),
+        )
+
+        val message = history.toChatMessages(activeUserExternalId = "nox-dev").single()
+
+        assertEquals(MessageDirection.Incoming, message.direction)
+        assertEquals(AttachmentType.Image, message.attachment?.type)
+        assertEquals("/api/messages/message-image-1/attachment", message.attachment?.preview)
+    }
 }

@@ -1,6 +1,7 @@
 use crate::im::model::{
-    ContactProfile, ConversationSummary, DeliveryUpdate, MessageRecord, ReadReceiptUpdate,
-    SendMessageResult, UserProfile,
+    ContactProfile, ConversationSummary, DeliveryUpdate, MessageAttachment, MessageRecord,
+    NewMessageAttachment, ReadReceiptUpdate, SendMessageResult, StoredMessageAttachment,
+    UserProfile,
 };
 use anyhow::{anyhow, Context, Result};
 use sqlx::{postgres::PgRow, PgPool, Postgres, Row, Transaction};
@@ -88,7 +89,10 @@ impl ImRepository {
                 last_message.body as last_message_body,
                 to_char(last_message.created_at at time zone 'utc', '{RFC3339_UTC_SQL}') as last_message_created_at,
                 to_char(last_receipt.delivered_at at time zone 'utc', '{RFC3339_UTC_SQL}') as last_message_delivered_at,
-                to_char(last_receipt.read_at at time zone 'utc', '{RFC3339_UTC_SQL}') as last_message_read_at
+                to_char(last_receipt.read_at at time zone 'utc', '{RFC3339_UTC_SQL}') as last_message_read_at,
+                last_attachment.attachment_type as last_message_attachment_type,
+                last_attachment.content_type as last_message_attachment_content_type,
+                last_attachment.byte_size::bigint as last_message_attachment_size_bytes
              from conversation_members cm
              join users peer on peer.id = cm.peer_user_id
              left join contacts c
@@ -101,6 +105,8 @@ impl ImRepository {
                 order by m.created_at desc, m.id desc
                 limit 1
              ) last_message on true
+             left join message_attachments last_attachment
+                on last_attachment.message_id = last_message.id
              left join users last_sender on last_sender.id = last_message.sender_user_id
              left join message_receipts last_receipt
                 on last_receipt.message_id = last_message.id
@@ -176,10 +182,14 @@ impl ImRepository {
                 m.body,
                 to_char(m.created_at at time zone 'utc', '{RFC3339_UTC_SQL}') as created_at,
                 to_char(receipt.delivered_at at time zone 'utc', '{RFC3339_UTC_SQL}') as delivered_at,
-                to_char(receipt.read_at at time zone 'utc', '{RFC3339_UTC_SQL}') as read_at
+                to_char(receipt.read_at at time zone 'utc', '{RFC3339_UTC_SQL}') as read_at,
+                attachment.attachment_type as attachment_type,
+                attachment.content_type as attachment_content_type,
+                attachment.byte_size::bigint as attachment_size_bytes
              from conversation_members cm
              join messages m on m.conversation_id = cm.conversation_id
              join users sender on sender.id = m.sender_user_id
+             left join message_attachments attachment on attachment.message_id = m.id
              left join message_receipts receipt
                 on receipt.message_id = m.id
                and receipt.user_id = case
@@ -219,6 +229,7 @@ impl ImRepository {
         recipient_external_id: &str,
         client_message_id: Option<&str>,
         body: &str,
+        attachment: Option<&NewMessageAttachment>,
     ) -> Result<SendMessageResult> {
         let mut tx = self
             .pool
@@ -284,16 +295,32 @@ impl ImRepository {
             .with_context(|| {
                 format!("insert message from `{sender_external_id}` to `{recipient_external_id}`")
             })?;
+        let message_id: String = row
+            .try_get("id")
+            .context("read inserted `id`")?;
+
+        if let Some(attachment) = attachment {
+            sqlx::query(
+                "insert into message_attachments (message_id, attachment_type, content_type, storage_key, byte_size, data)
+                 values (($1)::uuid, $2, $3, $4, $5, $6)",
+            )
+            .bind(&message_id)
+            .bind(&attachment.attachment_type)
+            .bind(&attachment.content_type)
+            .bind(format!("message-{message_id}"))
+            .bind(attachment.bytes.len() as i64)
+            .bind(&attachment.bytes)
+            .execute(&mut *tx)
+            .await
+            .context("insert message attachment")?;
+        }
 
         sqlx::query(
             "insert into message_receipts (message_id, user_id)
              values (($1)::uuid, ($2)::uuid)
              on conflict (message_id, user_id) do nothing",
         )
-        .bind(
-            row.try_get::<String, _>("id")
-                .context("read inserted `id`")?,
-        )
+        .bind(&message_id)
         .bind(&recipient.id)
         .execute(&mut *tx)
         .await
@@ -331,7 +358,7 @@ impl ImRepository {
             recipient_external_id: recipient.external_id,
             recipient_unread_count: unread_count,
             message: MessageRecord {
-                id: row.try_get("id").context("read inserted message `id`")?,
+                id: message_id.clone(),
                 conversation_id: row
                     .try_get("conversation_id")
                     .context("read inserted message `conversation_id`")?,
@@ -350,8 +377,49 @@ impl ImRepository {
                     .context("read inserted message `created_at`")?,
                 delivered_at: None,
                 read_at: None,
+                attachment: attachment.map(|attachment| MessageAttachment {
+                    attachment_type: attachment.attachment_type.clone(),
+                    content_type: attachment.content_type.clone(),
+                    fetch_path: fetch_path_for_message(&message_id),
+                    size_bytes: attachment.bytes.len() as i64,
+                }),
             },
         })
+    }
+
+    pub async fn load_message_attachment_for_user(
+        &self,
+        user_id: &str,
+        message_id: &str,
+    ) -> Result<Option<StoredMessageAttachment>> {
+        let row = sqlx::query(
+            "select
+                attachment.content_type,
+                attachment.data
+             from conversation_members cm
+             join messages m on m.conversation_id = cm.conversation_id
+             join message_attachments attachment on attachment.message_id = m.id
+             where cm.user_id::text = $1
+               and m.id::text = $2
+             limit 1",
+        )
+        .bind(user_id)
+        .bind(message_id)
+        .fetch_optional(&self.pool)
+        .await
+        .with_context(|| {
+            format!("load message attachment `{message_id}` for user `{user_id}`")
+        })?;
+
+        row.map(|row| {
+            Ok(StoredMessageAttachment {
+                content_type: required_string(&row, "content_type")?,
+                data: row
+                    .try_get::<Vec<u8>, _>("data")
+                    .context("read `data` from message attachment")?,
+            })
+        })
+        .transpose()
     }
 
     pub async fn mark_message_delivered(
@@ -623,6 +691,13 @@ fn map_conversation_summary(row: PgRow) -> Result<ConversationSummary> {
 
     let last_message = if let Some(id) = optional_string(&row, "last_message_id")? {
         Some(MessageRecord {
+            attachment: message_attachment_from_row(
+                &row,
+                &id,
+                "last_message_attachment_type",
+                "last_message_attachment_content_type",
+                "last_message_attachment_size_bytes",
+            )?,
             id,
             conversation_id: required_string(&row, "last_message_conversation_id")?,
             sender_user_id: required_string(&row, "last_message_sender_user_id")?,
@@ -649,8 +724,16 @@ fn map_conversation_summary(row: PgRow) -> Result<ConversationSummary> {
 }
 
 fn map_message(row: PgRow) -> Result<MessageRecord> {
+    let id = required_string(&row, "id")?;
     Ok(MessageRecord {
-        id: required_string(&row, "id")?,
+        attachment: message_attachment_from_row(
+            &row,
+            &id,
+            "attachment_type",
+            "attachment_content_type",
+            "attachment_size_bytes",
+        )?,
+        id,
         conversation_id: required_string(&row, "conversation_id")?,
         sender_user_id: required_string(&row, "sender_user_id")?,
         sender_external_id: required_string(&row, "sender_external_id")?,
@@ -662,8 +745,36 @@ fn map_message(row: PgRow) -> Result<MessageRecord> {
     })
 }
 
+fn message_attachment_from_row(
+    row: &PgRow,
+    message_id: &str,
+    type_column: &str,
+    content_type_column: &str,
+    size_column: &str,
+) -> Result<Option<MessageAttachment>> {
+    let Some(attachment_type) = optional_string(row, type_column)? else {
+        return Ok(None);
+    };
+
+    Ok(Some(MessageAttachment {
+        attachment_type,
+        content_type: required_string(row, content_type_column)?,
+        fetch_path: fetch_path_for_message(message_id),
+        size_bytes: required_i64(row, size_column)?,
+    }))
+}
+
+fn fetch_path_for_message(message_id: &str) -> String {
+    format!("/api/messages/{message_id}/attachment")
+}
+
 fn required_string(row: &PgRow, column: &str) -> Result<String> {
     row.try_get::<String, _>(column)
+        .with_context(|| format!("read required column `{column}`"))
+}
+
+fn required_i64(row: &PgRow, column: &str) -> Result<i64> {
+    row.try_get::<i64, _>(column)
         .with_context(|| format!("read required column `{column}`"))
 }
 

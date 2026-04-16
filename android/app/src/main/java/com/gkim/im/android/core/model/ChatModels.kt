@@ -21,6 +21,7 @@ data class MessageAttachment(
     val preview: String,
     val prompt: String? = null,
     val generationId: String? = null,
+    val authToken: String? = null,
 )
 
 data class ChatMessage(

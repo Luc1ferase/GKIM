@@ -43,6 +43,12 @@ private interface ImBackendService {
     @GET("api/bootstrap")
     suspend fun loadBootstrap(@Header("Authorization") authorization: String): BootstrapBundleDto
 
+    @POST("api/direct-messages/image")
+    suspend fun sendDirectImageMessage(
+        @Header("Authorization") authorization: String,
+        @Body request: SendDirectImageMessageRequestDto,
+    ): SendDirectMessageResultDto
+
     @GET("api/conversations/{conversationId}/messages")
     suspend fun loadHistory(
         @Header("Authorization") authorization: String,
@@ -81,6 +87,15 @@ class ImBackendHttpClient(
 
     override suspend fun loadBootstrap(baseUrl: String, token: String): BootstrapBundleDto =
         serviceFor(baseUrl).loadBootstrap(bearerToken(token))
+
+    override suspend fun sendDirectImageMessage(
+        baseUrl: String,
+        token: String,
+        request: SendDirectImageMessageRequestDto,
+    ): SendDirectMessageResultDto = serviceFor(baseUrl).sendDirectImageMessage(
+        authorization = bearerToken(token),
+        request = request,
+    )
 
     override suspend fun loadHistory(
         baseUrl: String,

@@ -23,6 +23,16 @@ pub struct ContactProfile {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MessageAttachment {
+    #[serde(rename = "type")]
+    pub attachment_type: String,
+    pub content_type: String,
+    pub fetch_path: String,
+    pub size_bytes: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MessageRecord {
     pub id: String,
     pub conversation_id: String,
@@ -33,6 +43,7 @@ pub struct MessageRecord {
     pub created_at: String,
     pub delivered_at: Option<String>,
     pub read_at: Option<String>,
+    pub attachment: Option<MessageAttachment>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -87,4 +98,17 @@ pub struct ReadReceiptUpdate {
     pub sender_external_id: String,
     pub unread_count: i64,
     pub read_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NewMessageAttachment {
+    pub attachment_type: String,
+    pub content_type: String,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoredMessageAttachment {
+    pub content_type: String,
+    pub data: Vec<u8>,
 }

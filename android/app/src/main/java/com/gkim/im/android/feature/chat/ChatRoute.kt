@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -36,6 +37,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
 import com.gkim.im.android.core.media.GeneratedImageSaveResult
@@ -580,6 +582,7 @@ private fun ChatMessageRow(
     conversation: Conversation?,
     message: ChatMessage,
 ) {
+    val context = LocalContext.current
     val isOutgoing = message.direction == MessageDirection.Outgoing
     val hasAttachment = message.attachment != null
     val hasBody = message.body.isNotBlank()
@@ -669,7 +672,7 @@ private fun ChatMessageRow(
                 }
                 message.attachment?.let { attachment ->
                     AsyncImage(
-                        model = attachment.preview,
+                        model = messageAttachmentModel(context, attachment),
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -748,6 +751,18 @@ private fun AigcTask.asGeneratedMessageAttachment(): MessageAttachment? {
         prompt = prompt,
         generationId = id,
     )
+}
+
+private fun messageAttachmentModel(
+    context: android.content.Context,
+    attachment: MessageAttachment,
+): Any = if (attachment.authToken.isNullOrBlank()) {
+    attachment.preview
+} else {
+    ImageRequest.Builder(context)
+        .data(attachment.preview)
+        .addHeader("Authorization", "Bearer ${attachment.authToken}")
+        .build()
 }
 
 internal fun generationFeedback(task: AigcTask): GenerationFeedback = when (task.status) {

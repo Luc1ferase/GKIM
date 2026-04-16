@@ -1468,6 +1468,14 @@ private class RecordingImBackendClient(
         )
     }
 
+    override suspend fun sendDirectImageMessage(
+        baseUrl: String,
+        token: String,
+        request: com.gkim.im.android.data.remote.im.SendDirectImageMessageRequestDto,
+    ): com.gkim.im.android.data.remote.im.SendDirectMessageResultDto {
+        error("sendDirectImageMessage is not configured for GkimRootAppTest")
+    }
+
     override suspend fun loadHistory(
         baseUrl: String,
         token: String,

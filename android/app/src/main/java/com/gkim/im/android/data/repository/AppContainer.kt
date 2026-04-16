@@ -17,6 +17,8 @@ import com.gkim.im.android.data.remote.aigc.TongyiImageProviderClient
 import com.gkim.im.android.data.remote.api.AigcService
 import com.gkim.im.android.data.remote.api.FeedService
 import com.gkim.im.android.data.remote.api.ServiceFactory
+import com.gkim.im.android.data.remote.im.AndroidChatAttachmentEncoder
+import com.gkim.im.android.data.remote.im.ChatAttachmentEncoder
 import com.gkim.im.android.data.remote.im.ImBackendClient
 import com.gkim.im.android.data.remote.im.ImBackendHttpClient
 import com.gkim.im.android.data.remote.im.ImHttpEndpointResolver
@@ -50,6 +52,11 @@ class DefaultAppContainer(context: Context) : AppContainer {
     private val feedService = retrofit.create(FeedService::class.java)
     private val fallbackMessagingRepository = InMemoryMessagingRepository(seedConversations)
     private val imBackendClientImpl = ImBackendHttpClient(okHttpClient)
+    private val mediaInputEncoder = AndroidMediaInputEncoder(context)
+    private val chatAttachmentEncoder: ChatAttachmentEncoder = AndroidChatAttachmentEncoder(
+        httpClient = okHttpClient,
+        mediaInputEncoder = mediaInputEncoder,
+    )
     override val imBackendClient: ImBackendClient = imBackendClientImpl
 
     override val markdownParser = MarkdownDocumentParser()
@@ -73,6 +80,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
         sessionStore = sessionStore,
         preferencesStore = preferencesStore,
         fallbackRepository = fallbackMessagingRepository,
+        chatAttachmentEncoder = chatAttachmentEncoder,
     )
     override val contactsRepository: ContactsRepository = LiveContactsRepository(
         messagingRepository = messagingRepository,
@@ -87,6 +95,6 @@ class DefaultAppContainer(context: Context) : AppContainer {
             "hunyuan" to HunyuanImageProviderClient(httpClient = okHttpClient),
             "tongyi" to TongyiImageProviderClient(httpClient = okHttpClient),
         ),
-        mediaInputEncoder = AndroidMediaInputEncoder(context),
+        mediaInputEncoder = mediaInputEncoder,
     )
 }

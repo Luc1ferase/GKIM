@@ -147,6 +147,49 @@ class RealtimeChatClientTest {
         assertNotNull(client.lastFailure.value)
     }
 
+    @Test
+    fun `client reconnects automatically after websocket closes`() = runTest {
+        server.enqueue(
+            MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    webSocket.close(1001, "server restart")
+                }
+            }),
+        )
+        server.enqueue(
+            MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    webSocket.send(
+                        """
+                        {
+                          "type": "session.registered",
+                          "connectionId": "ws-201",
+                          "activeConnections": 1,
+                          "user": {
+                            "id": "user-nox",
+                            "externalId": "nox-dev",
+                            "displayName": "Nox Dev",
+                            "title": "IM Milestone Owner",
+                            "avatarText": "NX"
+                          }
+                        }
+                        """.trimIndent(),
+                    )
+                }
+            }),
+        )
+
+        client.connect(token = "session-token-9")
+
+        repeat(100) {
+            if (server.requestCount >= 2 && client.isConnected.value) return@repeat
+            Thread.sleep(20)
+        }
+
+        assertEquals(2, server.requestCount)
+        assertTrue(client.isConnected.value)
+    }
+
     private fun waitUntilConnected() {
         repeat(50) {
             if (client.isConnected.value) return

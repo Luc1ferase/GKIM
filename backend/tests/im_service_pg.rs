@@ -8,6 +8,8 @@ const BOOTSTRAP_MIGRATION_SQL: &str =
     include_str!("../migrations/202604080001_bootstrap_im_schema.sql");
 const AUTH_MIGRATION_SQL: &str =
     include_str!("../migrations/202604100001_auth_and_friend_requests.sql");
+const ATTACHMENT_MIGRATION_SQL: &str =
+    include_str!("../migrations/202604160001_direct_message_attachments.sql");
 
 struct TestDatabase {
     admin_pool: PgPool,
@@ -32,6 +34,7 @@ impl TestDatabase {
         let pool = PgPool::connect(&database_url).await?;
         raw_sql(BOOTSTRAP_MIGRATION_SQL).execute(&pool).await?;
         raw_sql(AUTH_MIGRATION_SQL).execute(&pool).await?;
+        raw_sql(ATTACHMENT_MIGRATION_SQL).execute(&pool).await?;
 
         Ok(Some(Self {
             admin_pool,

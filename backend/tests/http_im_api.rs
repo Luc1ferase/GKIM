@@ -6,7 +6,7 @@ use axum::{
 use gkim_im_backend::{app::build_router, config::AppConfig, migrations::apply_runtime_migrations};
 use http_body_util::BodyExt;
 use serde_json::{json, Value};
-use sqlx::{raw_sql, PgPool};
+use sqlx::{postgres::PgPoolOptions, raw_sql, PgPool};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tower::util::ServiceExt;
@@ -15,6 +15,8 @@ const BOOTSTRAP_MIGRATION_SQL: &str =
     include_str!("../migrations/202604080001_bootstrap_im_schema.sql");
 const AUTH_MIGRATION_SQL: &str =
     include_str!("../migrations/202604100001_auth_and_friend_requests.sql");
+const ATTACHMENT_MIGRATION_SQL: &str =
+    include_str!("../migrations/202604160001_direct_message_attachments.sql");
 
 struct TestDatabase {
     admin_pool: PgPool,
@@ -49,6 +51,7 @@ impl TestDatabase {
         if include_auth_migration {
             raw_sql(AUTH_MIGRATION_SQL).execute(&pool).await?;
         }
+        raw_sql(ATTACHMENT_MIGRATION_SQL).execute(&pool).await?;
 
         Ok(Some(Self {
             admin_pool,
@@ -170,6 +173,40 @@ async fn insert_receipt(
     .bind(user_id)
     .bind(delivered_at)
     .bind(read_at)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+async fn insert_mutual_contacts(pool: &PgPool, user_a_id: &str, user_b_id: &str) -> Result<()> {
+    sqlx::query(
+        "insert into contacts (user_id, contact_user_id)
+         values (($1)::uuid, ($2)::uuid), (($2)::uuid, ($1)::uuid)",
+    )
+    .bind(user_a_id)
+    .bind(user_b_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+async fn insert_message_attachment(
+    pool: &PgPool,
+    message_id: &str,
+    content_type: &str,
+    bytes: &[u8],
+) -> Result<()> {
+    sqlx::query(
+        "insert into message_attachments (message_id, attachment_type, content_type, storage_key, byte_size, data)
+         values (($1)::uuid, 'image', $2, $3, $4, $5)",
+    )
+    .bind(message_id)
+    .bind(content_type)
+    .bind(format!("message-{message_id}"))
+    .bind(bytes.len() as i64)
+    .bind(bytes)
     .execute(pool)
     .await?;
 
@@ -614,6 +651,206 @@ async fn auth_and_friend_request_endpoints_round_trip() -> Result<()> {
     assert_eq!(contact_json[0]["contactStatus"], "contact");
 
     database.cleanup().await
+}
+
+#[tokio::test]
+async fn bootstrap_and_history_include_attachment_descriptors() -> Result<()> {
+    let Some(database) = TestDatabase::new().await? else {
+        eprintln!("skipping attachment bootstrap/history test because GKIM_TEST_DATABASE_URL is not set");
+        return Ok(());
+    };
+
+    let conversation_id = seed_bootstrap_data(&database.pool).await?;
+    let leo_id = user_id(&database.pool, "leo-vance").await?;
+
+    let image_message_id = insert_message(
+        &database.pool,
+        &conversation_id,
+        &leo_id,
+        "",
+        "2026-04-06T13:47:00Z",
+    )
+    .await?;
+    insert_message_attachment(
+        &database.pool,
+        &image_message_id,
+        "image/png",
+        b"history-image",
+    )
+    .await?;
+
+    let app = build_router(
+        AppConfig {
+            service_name: "gkim-im-backend".to_string(),
+            bind_addr: "127.0.0.1:8080".to_string(),
+            database_url: "postgres://example".to_string(),
+            log_filter: "info".to_string(),
+        },
+        database.pool.clone(),
+    );
+
+    let token = issue_dev_session_token(app.clone(), "nox-dev").await?;
+
+    let bootstrap = app
+        .clone()
+        .oneshot(
+            Request::get("/api/bootstrap")
+                .header("authorization", format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await?;
+    let (_, bootstrap_json) = json_response(bootstrap).await?;
+    assert_eq!(
+        bootstrap_json["conversations"][0]["lastMessage"]["attachment"]["type"],
+        "image"
+    );
+    assert_eq!(
+        bootstrap_json["conversations"][0]["lastMessage"]["attachment"]["contentType"],
+        "image/png"
+    );
+    assert_eq!(
+        bootstrap_json["conversations"][0]["lastMessage"]["attachment"]["fetchPath"],
+        format!("/api/messages/{image_message_id}/attachment")
+    );
+
+    let history = app
+        .oneshot(
+            Request::get(format!(
+                "/api/conversations/{conversation_id}/messages?limit=5"
+            ))
+            .header("authorization", format!("Bearer {token}"))
+            .body(Body::empty())
+            .unwrap(),
+        )
+        .await?;
+    let (_, history_json) = json_response(history).await?;
+    let attachment_message = history_json["messages"]
+        .as_array()
+        .expect("messages array should exist")
+        .iter()
+        .find(|message| message["id"] == image_message_id)
+        .expect("image message should be present");
+    assert_eq!(attachment_message["attachment"]["type"], "image");
+    assert_eq!(attachment_message["attachment"]["contentType"], "image/png");
+
+    database.cleanup().await
+}
+
+#[tokio::test]
+async fn authenticated_direct_image_message_upload_and_fetch_round_trip() -> Result<()> {
+    let Some(database) = TestDatabase::new().await? else {
+        eprintln!("skipping direct image message HTTP test because GKIM_TEST_DATABASE_URL is not set");
+        return Ok(());
+    };
+
+    let nox_id = user_id(&database.pool, "nox-dev").await?;
+    let leo_id = user_id(&database.pool, "leo-vance").await?;
+    insert_mutual_contacts(&database.pool, &nox_id, &leo_id).await?;
+
+    let app = build_router(
+        AppConfig {
+            service_name: "gkim-im-backend".to_string(),
+            bind_addr: "127.0.0.1:8080".to_string(),
+            database_url: "postgres://example".to_string(),
+            log_filter: "info".to_string(),
+        },
+        database.pool.clone(),
+    );
+
+    let token = issue_dev_session_token(app.clone(), "nox-dev").await?;
+
+    let upload = app
+        .clone()
+        .oneshot(
+            Request::post("/api/direct-messages/image")
+                .header("authorization", format!("Bearer {token}"))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    json!({
+                        "recipientExternalId": "leo-vance",
+                        "clientMessageId": "client-image-1",
+                        "body": "Look at this render",
+                        "contentType": "image/png",
+                        "imageBase64": "aGVsbG8taW1hZ2U="
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await?;
+    let (upload_status, upload_json) = json_response(upload).await?;
+    assert_eq!(upload_status, StatusCode::OK);
+    assert_eq!(upload_json["message"]["body"], "Look at this render");
+    assert_eq!(upload_json["message"]["attachment"]["type"], "image");
+    assert_eq!(upload_json["message"]["attachment"]["contentType"], "image/png");
+    assert_eq!(upload_json["message"]["attachment"]["sizeBytes"], 11);
+
+    let fetch_path = upload_json["message"]["attachment"]["fetchPath"]
+        .as_str()
+        .expect("fetch path should exist")
+        .to_string();
+
+    let fetch = app
+        .oneshot(
+            Request::get(fetch_path)
+                .header("authorization", format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await?;
+    assert_eq!(fetch.status(), StatusCode::OK);
+    assert_eq!(
+        fetch.headers().get("content-type").and_then(|value| value.to_str().ok()),
+        Some("image/png")
+    );
+    let bytes = fetch.into_body().collect().await?.to_bytes();
+    assert_eq!(bytes.as_ref(), b"hello-image");
+
+    database.cleanup().await
+}
+
+#[tokio::test]
+async fn direct_image_message_routes_require_authentication() -> Result<()> {
+    let pool = PgPoolOptions::new().connect_lazy("postgres://postgres:postgres@localhost/gkim_placeholder")?;
+    let app = build_router(
+        AppConfig {
+            service_name: "gkim-im-backend".to_string(),
+            bind_addr: "127.0.0.1:8080".to_string(),
+            database_url: "postgres://example".to_string(),
+            log_filter: "info".to_string(),
+        },
+        pool,
+    );
+
+    let upload = app
+        .clone()
+        .oneshot(
+            Request::post("/api/direct-messages/image")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    json!({
+                        "recipientExternalId": "leo-vance",
+                        "contentType": "image/png",
+                        "imageBase64": "aGVsbG8="
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await?;
+    assert_eq!(upload.status(), StatusCode::UNAUTHORIZED);
+
+    let fetch = app
+        .oneshot(
+            Request::get("/api/messages/message-1/attachment")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await?;
+    assert_eq!(fetch.status(), StatusCode::UNAUTHORIZED);
+
+    Ok(())
 }
 
 #[tokio::test]

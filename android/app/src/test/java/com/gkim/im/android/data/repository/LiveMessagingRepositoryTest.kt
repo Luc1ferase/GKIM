@@ -11,10 +11,17 @@ import com.gkim.im.android.data.remote.im.ImBackendClient
 import com.gkim.im.android.data.remote.im.DEFAULT_IM_DEVELOPER_BACKEND_ORIGIN
 import com.gkim.im.android.data.remote.im.ImGatewayEvent
 import com.gkim.im.android.data.remote.im.MessageHistoryPageDto
+import com.gkim.im.android.data.remote.im.MessageAttachmentDto
 import com.gkim.im.android.data.remote.im.MessageRecordDto
+import com.gkim.im.android.data.remote.im.SendDirectImageMessageRequestDto
+import com.gkim.im.android.data.remote.im.SendDirectMessageResultDto
+import com.gkim.im.android.data.remote.im.ChatAttachmentEncoder
 import com.gkim.im.android.data.remote.im.UserSearchResultDto
+import com.gkim.im.android.data.remote.aigc.EncodedMediaPayload
 import com.gkim.im.android.data.remote.realtime.RealtimeGateway
+import com.gkim.im.android.core.model.AttachmentType
 import com.gkim.im.android.core.model.Contact
+import com.gkim.im.android.core.model.MessageAttachment
 import com.gkim.im.android.testing.FakePreferencesStore
 import com.gkim.im.android.testing.FakeRuntimeSessionStore
 import com.gkim.im.android.testing.MainDispatcherRule
@@ -354,6 +361,122 @@ class LiveMessagingRepositoryTest {
         assertEquals("session-token-1", realtimeGateway.connectedToken)
     }
 
+    @Test
+    fun `repository uploads backend image attachments instead of keeping them local only`() = runTest(mainDispatcherRule.dispatcher) {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val backendClient = FakeImBackendClient()
+        val realtimeGateway = FakeRealtimeGateway()
+        val repository = LiveMessagingRepository(
+            backendClient = backendClient,
+            realtimeGateway = realtimeGateway,
+            sessionStore = FakeRuntimeSessionStore(),
+            preferencesStore = FakePreferencesStore(),
+            fallbackRepository = InMemoryMessagingRepository(seedConversations),
+            chatAttachmentEncoder = FakeChatAttachmentEncoder(),
+            dispatcher = dispatcher,
+        )
+
+        advanceUntilIdle()
+        repository.sendMessage(
+            conversationId = "conversation-1",
+            body = "Look at this render",
+            attachment = MessageAttachment(
+                type = AttachmentType.Image,
+                preview = "content://chat/image-1",
+            ),
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, backendClient.sentImageRequests.size)
+        assertEquals("leo-vance", backendClient.sentImageRequests.single().recipientExternalId)
+        assertEquals("image/png", backendClient.sentImageRequests.single().contentType)
+
+        val conversation = repository.conversations.value.single()
+        assertEquals("Look at this render", conversation.lastMessage)
+        assertEquals(
+            "http://10.0.2.2:18080/api/messages/message-image-uploaded/attachment",
+            conversation.messages.last().attachment?.preview,
+        )
+    }
+
+    @Test
+    fun `repository reloads loaded history after realtime session is re-registered`() = runTest(mainDispatcherRule.dispatcher) {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val backendClient = FakeImBackendClient()
+        val realtimeGateway = FakeRealtimeGateway()
+        val repository = LiveMessagingRepository(
+            backendClient = backendClient,
+            realtimeGateway = realtimeGateway,
+            sessionStore = FakeRuntimeSessionStore(),
+            preferencesStore = FakePreferencesStore(),
+            fallbackRepository = InMemoryMessagingRepository(seedConversations),
+            dispatcher = dispatcher,
+        )
+
+        advanceUntilIdle()
+        repository.loadConversationHistory("conversation-1")
+        advanceUntilIdle()
+
+        backendClient.historyPayload = MessageHistoryPageDto(
+            conversationId = "conversation-1",
+            hasMore = false,
+            messages = listOf(
+                MessageRecordDto(
+                    id = "message-1",
+                    conversationId = "conversation-1",
+                    senderUserId = "user-nox",
+                    senderExternalId = "nox-dev",
+                    kind = "text",
+                    body = "First outbound",
+                    createdAt = "2026-04-08T09:01:00Z",
+                    deliveredAt = "2026-04-08T09:01:01Z",
+                    readAt = "2026-04-08T09:01:03Z",
+                ),
+                MessageRecordDto(
+                    id = "message-2",
+                    conversationId = "conversation-1",
+                    senderUserId = "user-leo",
+                    senderExternalId = "leo-vance",
+                    kind = "text",
+                    body = "Inbound reply",
+                    createdAt = "2026-04-08T09:02:00Z",
+                    deliveredAt = null,
+                    readAt = null,
+                ),
+                MessageRecordDto(
+                    id = "message-3",
+                    conversationId = "conversation-1",
+                    senderUserId = "user-leo",
+                    senderExternalId = "leo-vance",
+                    kind = "text",
+                    body = "Recovered after reconnect",
+                    createdAt = "2026-04-08T09:03:00Z",
+                    deliveredAt = null,
+                    readAt = null,
+                ),
+            ),
+        )
+
+        realtimeGateway.emit(
+            ImGatewayEvent.SessionRegistered(
+                connectionId = "ws-78",
+                activeConnections = 1,
+                user = BackendUserDto(
+                    id = "user-nox",
+                    externalId = "nox-dev",
+                    displayName = "Nox Dev",
+                    title = "IM Milestone Owner",
+                    avatarText = "NX",
+                ),
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(2, backendClient.bootstrapTokens.size)
+        assertEquals(listOf("conversation-1", "conversation-1"), backendClient.historyRequests)
+        assertEquals("Recovered after reconnect", repository.conversations.value.single().lastMessage)
+    }
+
     private class FakeImBackendClient(
         private val sessionFailure: Throwable? = null,
         private val bootstrapFailure: Throwable? = null,
@@ -363,6 +486,35 @@ class LiveMessagingRepositoryTest {
         var issuedToken: String? = null
         val bootstrapTokens = mutableListOf<String>()
         val historyRequests = mutableListOf<String>()
+        val sentImageRequests = mutableListOf<SendDirectImageMessageRequestDto>()
+        var historyPayload = MessageHistoryPageDto(
+            conversationId = "conversation-1",
+            hasMore = false,
+            messages = listOf(
+                MessageRecordDto(
+                    id = "message-1",
+                    conversationId = "conversation-1",
+                    senderUserId = "user-nox",
+                    senderExternalId = "nox-dev",
+                    kind = "text",
+                    body = "First outbound",
+                    createdAt = "2026-04-08T09:01:00Z",
+                    deliveredAt = "2026-04-08T09:01:01Z",
+                    readAt = "2026-04-08T09:01:03Z",
+                ),
+                MessageRecordDto(
+                    id = "message-2",
+                    conversationId = "conversation-1",
+                    senderUserId = "user-leo",
+                    senderExternalId = "leo-vance",
+                    kind = "text",
+                    body = "Inbound reply",
+                    createdAt = "2026-04-08T09:02:00Z",
+                    deliveredAt = null,
+                    readAt = null,
+                ),
+            ),
+        )
 
         override suspend fun issueDevSession(baseUrl: String, externalId: String): DevSessionResponseDto {
             sessionFailure?.let { throw it }
@@ -481,31 +633,34 @@ class LiveMessagingRepositoryTest {
         ): MessageHistoryPageDto {
             historyFailure?.let { throw it }
             historyRequests += conversationId
-            return MessageHistoryPageDto(
-                conversationId = conversationId,
-                hasMore = false,
-                messages = listOf(
-                    MessageRecordDto(
-                        id = "message-1",
-                        conversationId = conversationId,
-                        senderUserId = "user-nox",
-                        senderExternalId = "nox-dev",
-                        kind = "text",
-                        body = "First outbound",
-                        createdAt = "2026-04-08T09:01:00Z",
-                        deliveredAt = "2026-04-08T09:01:01Z",
-                        readAt = "2026-04-08T09:01:03Z",
-                    ),
-                    MessageRecordDto(
-                        id = "message-2",
-                        conversationId = conversationId,
-                        senderUserId = "user-leo",
-                        senderExternalId = "leo-vance",
-                        kind = "text",
-                        body = "Inbound reply",
-                        createdAt = "2026-04-08T09:02:00Z",
-                        deliveredAt = null,
-                        readAt = null,
+            return historyPayload.copy(conversationId = conversationId)
+        }
+
+        override suspend fun sendDirectImageMessage(
+            baseUrl: String,
+            token: String,
+            request: SendDirectImageMessageRequestDto,
+        ): SendDirectMessageResultDto {
+            sentImageRequests += request
+            return SendDirectMessageResultDto(
+                conversationId = "conversation-1",
+                recipientExternalId = request.recipientExternalId,
+                recipientUnreadCount = 1,
+                message = MessageRecordDto(
+                    id = "message-image-uploaded",
+                    conversationId = "conversation-1",
+                    senderUserId = "user-nox",
+                    senderExternalId = "nox-dev",
+                    kind = "text",
+                    body = request.body,
+                    createdAt = "2026-04-08T09:04:00Z",
+                    deliveredAt = null,
+                    readAt = null,
+                    attachment = MessageAttachmentDto(
+                        type = "image",
+                        contentType = request.contentType,
+                        fetchPath = "/api/messages/message-image-uploaded/attachment",
+                        sizeBytes = 11,
                     ),
                 ),
             )
@@ -542,6 +697,15 @@ class LiveMessagingRepositoryTest {
                 toUserExternalId = "leo-vance",
                 status = status,
                 createdAt = "2026-04-08T09:00:00Z",
+            )
+        }
+    }
+
+    private class FakeChatAttachmentEncoder : ChatAttachmentEncoder {
+        override suspend fun encode(attachment: MessageAttachment): EncodedMediaPayload {
+            return EncodedMediaPayload(
+                base64Data = "aGVsbG8taW1hZ2U=",
+                mimeType = "image/png",
             )
         }
     }

@@ -27,8 +27,11 @@ import com.gkim.im.android.data.remote.aigc.MediaInputEncoder
 import com.gkim.im.android.data.remote.aigc.RemoteAigcGenerateRequest
 import com.gkim.im.android.data.remote.aigc.RemoteAigcProviderClient
 import com.gkim.im.android.data.remote.aigc.UnsupportedMediaInputEncoder
+import com.gkim.im.android.data.remote.im.ChatAttachmentEncoder
 import com.gkim.im.android.data.remote.im.ImBackendClient
 import com.gkim.im.android.data.remote.im.ImHttpEndpointResolver
+import com.gkim.im.android.data.remote.im.SendDirectImageMessageRequestDto
+import com.gkim.im.android.data.remote.im.UnsupportedChatAttachmentEncoder
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -606,6 +609,7 @@ class LiveMessagingRepository(
     private val sessionStore: RuntimeSessionStore,
     private val preferencesStore: PreferencesStore,
     private val fallbackRepository: MessagingRepository,
+    private val chatAttachmentEncoder: ChatAttachmentEncoder = UnsupportedChatAttachmentEncoder(),
     private val shippedBackendOrigin: String = BuildConfig.IM_BACKEND_ORIGIN,
     private val allowDeveloperOverrides: Boolean = BuildConfig.DEBUG,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
@@ -624,6 +628,7 @@ class LiveMessagingRepository(
     private var activeUserExternalId: String? = null
     private var activeHttpBaseUrl: String? = null
     private var activeWebSocketUrl: String? = null
+    private var hasObservedRealtimeSessionRegistration = false
 
     override val contacts: StateFlow<List<Contact>> = contactState
     override val conversations: StateFlow<List<Conversation>> = conversationState
@@ -715,7 +720,11 @@ class LiveMessagingRepository(
         } ?: return
         val isBackendConversation = backendConversationIds.contains(conversation.id)
         if (attachment != null) {
-            upsertLocalOutgoingMessage(conversation.id, body, attachment)
+            if (!isBackendConversation) {
+                upsertLocalOutgoingMessage(conversation.id, body, attachment)
+            } else {
+                sendBackendAttachmentMessage(conversation, body, attachment)
+            }
             return
         }
         if (!isBackendConversation) {
@@ -839,8 +848,12 @@ class LiveMessagingRepository(
         conversationId: String,
         baseUrl: String,
         token: String,
+        forceReload: Boolean = false,
     ) {
         if (!loadingConversationIds.add(conversationId)) return
+        if (forceReload) {
+            loadedConversationIds.remove(conversationId)
+        }
         pendingHistoryConversationIds.remove(conversationId)
         scope.launch {
             try {
@@ -850,7 +863,11 @@ class LiveMessagingRepository(
                     conversationId = conversationId,
                 )
                 loadedConversationIds.add(conversationId)
-                val mappedMessages = history.toChatMessages(activeUserExternalId = activeUserExternalId.orEmpty())
+                val mappedMessages = history.toChatMessages(
+                    activeUserExternalId = activeUserExternalId.orEmpty(),
+                    backendBaseUrl = baseUrl,
+                    authToken = token,
+                )
                 conversationState.value = conversationState.value.map { conversation ->
                     if (conversation.id != conversationId) {
                         conversation
@@ -858,7 +875,7 @@ class LiveMessagingRepository(
                         val latest = mappedMessages.lastOrNull()
                         conversation.copy(
                             messages = mappedMessages,
-                            lastMessage = latest?.body ?: conversation.lastMessage,
+                            lastMessage = latest?.let(::conversationPreviewText) ?: conversation.lastMessage,
                             lastTimestamp = latest?.createdAt ?: conversation.lastTimestamp,
                         )
                     }
@@ -894,7 +911,11 @@ class LiveMessagingRepository(
         )
         val bootstrap = backendClient.loadBootstrap(httpBaseUrl, session.token)
         applyBootstrapState(
-            bootstrapState = bootstrap.toBootstrapState(activeUserExternalId = session.user.externalId),
+            bootstrapState = bootstrap.toBootstrapState(
+                activeUserExternalId = session.user.externalId,
+                backendBaseUrl = httpBaseUrl,
+                authToken = session.token,
+            ),
             resolvedUserExternalId = session.user.externalId,
         )
         flushPendingHistoryLoads()
@@ -926,6 +947,8 @@ class LiveMessagingRepository(
         applyBootstrapState(
             bootstrapState = bootstrap.toBootstrapState(
                 activeUserExternalId = bootstrap.user.externalId,
+                backendBaseUrl = httpBaseUrl,
+                authToken = token,
             ),
             resolvedUserExternalId = bootstrap.user.externalId,
         )
@@ -944,6 +967,7 @@ class LiveMessagingRepository(
         loadingConversationIds.clear()
         backendConversationIds.clear()
         pendingRealtimeMessages.clear()
+        hasObservedRealtimeSessionRegistration = false
         activeToken = null
         activeUserExternalId = null
         activeHttpBaseUrl = null
@@ -955,10 +979,20 @@ class LiveMessagingRepository(
     private fun applyBootstrapState(
         bootstrapState: com.gkim.im.android.data.remote.im.ImBootstrapState,
         resolvedUserExternalId: String,
+        preserveLoadedMessages: Boolean = false,
     ) {
         activeUserExternalId = resolvedUserExternalId
         contactState.value = bootstrapState.contacts
-        conversationState.value = bootstrapState.conversations
+        val existingConversations = conversationState.value.associateBy { it.id }
+        conversationState.value = bootstrapState.conversations.map { incoming ->
+            val existing = existingConversations[incoming.id]
+            if (!preserveLoadedMessages || existing == null || !loadedConversationIds.contains(incoming.id)) {
+                incoming
+            } else {
+                incoming.copy(messages = existing.messages)
+            }
+        }
+        backendConversationIds.clear()
         backendConversationIds += conversationState.value.map { it.id }
     }
 
@@ -982,18 +1016,27 @@ class LiveMessagingRepository(
     private fun handleRealtimeEvent(event: com.gkim.im.android.data.remote.im.ImGatewayEvent) {
         when (event) {
             is com.gkim.im.android.data.remote.im.ImGatewayEvent.SessionRegistered -> {
+                val needsResync = hasObservedRealtimeSessionRegistration
+                hasObservedRealtimeSessionRegistration = true
                 integrationStateValue.value = integrationStateValue.value.copy(
                     phase = MessagingIntegrationPhase.Ready,
                     activeUserExternalId = event.user.externalId,
                     message = null,
                 )
                 flushPendingRealtimeMessages()
+                if (needsResync) {
+                    resyncAfterReconnect()
+                }
             }
 
             is com.gkim.im.android.data.remote.im.ImGatewayEvent.MessageSent -> {
                 upsertMessage(
                     conversationId = event.conversationId,
-                    message = event.message.toChatMessage(activeUserExternalId.orEmpty()),
+                    message = event.message.toChatMessage(
+                        activeUserExternalId = activeUserExternalId.orEmpty(),
+                        backendBaseUrl = activeHttpBaseUrl,
+                        authToken = activeToken,
+                    ),
                     unreadCount = null,
                 )
             }
@@ -1001,7 +1044,11 @@ class LiveMessagingRepository(
             is com.gkim.im.android.data.remote.im.ImGatewayEvent.MessageReceived -> {
                 upsertMessage(
                     conversationId = event.conversationId,
-                    message = event.message.toChatMessage(activeUserExternalId.orEmpty()),
+                    message = event.message.toChatMessage(
+                        activeUserExternalId = activeUserExternalId.orEmpty(),
+                        backendBaseUrl = activeHttpBaseUrl,
+                        authToken = activeToken,
+                    ),
                     unreadCount = event.unreadCount,
                 )
             }
@@ -1062,6 +1109,77 @@ class LiveMessagingRepository(
             phase = MessagingIntegrationPhase.Error,
             message = message,
         )
+    }
+
+    private fun sendBackendAttachmentMessage(
+        conversation: Conversation,
+        body: String,
+        attachment: MessageAttachment,
+    ) {
+        val token = activeToken
+        val baseUrl = activeHttpBaseUrl
+        if (token == null || baseUrl == null) {
+            reportError("Image message delivery failed.")
+            return
+        }
+        scope.launch {
+            try {
+                val encoded = chatAttachmentEncoder.encode(attachment)
+                val result = backendClient.sendDirectImageMessage(
+                    baseUrl = baseUrl,
+                    token = token,
+                    request = SendDirectImageMessageRequestDto(
+                        recipientExternalId = conversation.contactId,
+                        clientMessageId = "client-image-${System.currentTimeMillis()}",
+                        body = body,
+                        contentType = encoded.mimeType,
+                        imageBase64 = encoded.base64Data,
+                    ),
+                )
+                upsertMessage(
+                    conversationId = result.conversationId,
+                    message = result.message.toChatMessage(
+                        activeUserExternalId = activeUserExternalId.orEmpty(),
+                        backendBaseUrl = baseUrl,
+                        authToken = token,
+                    ),
+                    unreadCount = null,
+                )
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                reportError(error.message ?: "Image message delivery failed.")
+            }
+        }
+    }
+
+    private fun resyncAfterReconnect() {
+        val token = activeToken ?: return
+        val baseUrl = activeHttpBaseUrl ?: return
+        scope.launch {
+            try {
+                val bootstrap = backendClient.loadBootstrap(baseUrl, token)
+                applyBootstrapState(
+                    bootstrapState = bootstrap.toBootstrapState(
+                        activeUserExternalId = bootstrap.user.externalId,
+                        backendBaseUrl = baseUrl,
+                        authToken = token,
+                    ),
+                    resolvedUserExternalId = bootstrap.user.externalId,
+                    preserveLoadedMessages = true,
+                )
+                loadedConversationIds.toList().forEach { conversationId ->
+                    loadConversationHistoryNow(
+                        conversationId = conversationId,
+                        baseUrl = baseUrl,
+                        token = token,
+                        forceReload = true,
+                    )
+                }
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                reportError(error.message ?: "Failed to resync messages after reconnect.")
+            }
+        }
     }
 
     private fun trySendRealtimeMessage(message: PendingRealtimeMessage): Boolean =
@@ -1179,7 +1297,7 @@ class LiveMessagingRepository(
                 val messages = conversation.messages.filterNot { it.id == message.id } + message
                 conversation.copy(
                     unreadCount = unreadCount ?: conversation.unreadCount,
-                    lastMessage = message.body,
+                    lastMessage = conversationPreviewText(message),
                     lastTimestamp = message.createdAt,
                     messages = messages.sortedBy { it.createdAt },
                 )
@@ -1194,6 +1312,7 @@ class LiveMessagingRepository(
         backendConversationIds.clear()
         pendingHistoryConversationIds.clear()
         pendingRealtimeMessages.clear()
+        hasObservedRealtimeSessionRegistration = false
         activeToken = null
         activeUserExternalId = null
         activeHttpBaseUrl = null
@@ -1202,6 +1321,13 @@ class LiveMessagingRepository(
         conversationState.value = emptyList()
         integrationStateValue.value = MessagingIntegrationState()
     }
+}
+
+private fun conversationPreviewText(message: ChatMessage): String = when {
+    message.body.isNotBlank() -> message.body
+    message.attachment?.type == AttachmentType.Image -> "Sent an image"
+    message.attachment?.type == AttachmentType.Video -> "Sent a video"
+    else -> ""
 }
 
 private fun requiredInputTypeFor(mode: AigcMode): AttachmentType? = when (mode) {
