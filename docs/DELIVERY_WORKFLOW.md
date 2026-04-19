@@ -2,6 +2,11 @@
 
 `docs/DELIVERY_WORKFLOW.md` is the repository source of truth for how an implementation task becomes accepted.
 
+> Historical note: backend source and backend deployment assets are no longer tracked in the public
+> repository tip. Older entries below may still mention `backend/` paths or backend scripts from
+> before that boundary change; treat those references as historical evidence tied to a
+> maintainer-private backend checkout.
+
 ## Required sequence for every task
 
 1. Finish one scoped task or subtask before starting unrelated follow-up work.
@@ -85,7 +90,21 @@ Upload
   - Push: `origin/master`
 - Result: `accepted`
 
-## Apply session records
+### Task change1: deepen-companion-character-card
+
+- Verification:
+  - `JAVA_HOME="C:/Program Files/Java/jdk-17" PATH="C:/Program Files/Java/jdk-17/bin:$PATH" "X:/Repos/GKIM/android/gradlew" -p "X:/Repos/GKIM/android" :app:compileDebugKotlin` - pass (`compileDebugKotlin` succeeded after wiring JDK 17)
+  - `JAVA_HOME="C:/Program Files/Java/jdk-17" PATH="C:/Program Files/Java/jdk-17/bin:$PATH" "X:/Repos/GKIM/android/gradlew" -p "X:/Repos/GKIM/android" :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.CompanionRosterRepositoryTest --tests com.gkim.im.android.data.remote.im.ImBackendPayloadsTest` - pass (focused repository + payload mapping unit tests passed)
+  - `JAVA_HOME="C:/Program Files/Java/jdk-17" PATH="C:/Program Files/Java/jdk-17/bin;D:/Android/Sdk/platform-tools;D:/Android/Sdk/emulator:$PATH" "X:/Repos/GKIM/android/gradlew" -p "X:/Repos/GKIM/android" :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#tavernTabShowsRoleCardsAndRoutesIntoCompanionChat" --stacktrace` - blocked (device discovered by adb, but ddmlib timed out fetching properties and reported `Unknown API Level` for `emulator-5554`)
+- Review:
+  - Score: `95/100`
+  - Findings: `Code path compiles and focused unit coverage passes; instrumentation verification is currently blocked by emulator property-fetch instability rather than Kotlin or test compile errors.`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not attempted`
+- Result: `blocked`
+
 
 ### Task 1.1: Add or refresh Android instrumentation coverage that reproduces the missing Space settings entry and the inert login/register back affordances before the UI fixes land.
 
@@ -483,6 +502,90 @@ Upload
   - Push: `not requested in this session`
 - Result: `accepted`
 
+### Task 1.1: Sync the accepted `backend/` slice to the Ubuntu deployment directory and rerun the existing bootstrap/systemd flow so `gkim-im-backend.service` is rebuilt and restarted on the current host behind `chat.lastxuans.sbs`.
+
+- Verification:
+  - ``python (paramiko) -> tar sync to /opt/gkim-im/backend && cd /opt/gkim-im/backend && bash ./scripts/bootstrap-ubuntu.sh`` - pass (the current backend slice was unpacked on the Ubuntu host, `cargo build --release` completed, and `gkim-im-backend.service` restarted successfully)
+  - ``python (paramiko) -> systemctl is-active gkim-im-backend && systemctl show -p ActiveEnterTimestamp -p ExecMainPID -p FragmentPath gkim-im-backend`` - pass (`active`, `ExecMainPID=13903`, `ActiveEnterTimestamp=Thu 2026-04-16 05:57:46 UTC`, unit path `/etc/systemd/system/gkim-im-backend.service`)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 1.2: Confirm the remote deployment is actually serving the new backend version by checking the deployed files or runtime process state for the image-message API additions after restart.
+
+- Verification:
+  - ``python (paramiko) -> test -f /opt/gkim-im/backend/migrations/202604160001_direct_message_attachments.sql && grep -R "api/direct-messages/image" -n /opt/gkim-im/backend/src`` - pass (the deployed backend checkout includes the direct-attachment migration and the published image-message route in `src/app.rs`)
+  - ``python (paramiko) -> python3 host-local image upload probe against http://127.0.0.1:18080/api/direct-messages/image`` - pass (host-local image upload returned a durable message id plus attachment fetch path instead of `404`)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 2.1: Run host-local backend smoke checks on the server for `/health`, session/bootstrap, direct image upload, and attachment fetch.
+
+- Verification:
+  - ``python (paramiko) -> cd /opt/gkim-im/backend && BACKEND_URL=http://127.0.0.1:18080 bash ./scripts/smoke-health.sh`` - pass (host-local health returned `{"service":"gkim-im-backend","status":"ok"}`)
+  - ``python (paramiko) -> cd /opt/gkim-im/backend && DEV_USER_EXTERNAL_ID=nox-dev BACKEND_URL=http://127.0.0.1:18080 bash ./scripts/smoke-session.sh`` - pass (host-local session/bootstrap returned `user=nox-dev contacts=3 conversations=1`)
+  - ``python (paramiko) -> python3 host-local image upload + attachment fetch probe`` - pass (host-local image upload returned message `7a1d2292-c244-4f69-91d2-c7443c96cb7c` and the attachment fetch path resolved successfully)
+- Review:
+  - Score: `98/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 2.2: Run the same image-message-capable API checks through the published `chat.lastxuans.sbs` endpoint and confirm the published service no longer returns `404` for image send.
+
+- Verification:
+  - ``powershell -> Invoke-WebRequest https://chat.lastxuans.sbs/health`` - pass (published health returned `{"service":"gkim-im-backend","status":"ok"}`)
+  - ``powershell -> POST https://chat.lastxuans.sbs/api/direct-messages/image with a dev-session bearer token`` - pass (published image upload returned `200` with message `e3eeaa2c-0ae3-42aa-aee7-fc14cd677ebc` and attachment metadata instead of the prior `404`)
+  - ``powershell -> GET https://chat.lastxuans.sbs/api/messages/<id>/attachment with the same bearer token`` - pass (published attachment fetch returned `200`, `Content-Type=image/png`, and body `hello-image`)
+- Review:
+  - Score: `98/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 3.1: Record the deployment and verification evidence in `docs/DELIVERY_WORKFLOW.md`, including enough detail to distinguish host-local success from published-endpoint success.
+
+- Verification:
+  - ``git diff -- docs/DELIVERY_WORKFLOW.md openspec/changes/redeploy-image-message-backend-and-verify-published-service/tasks.md`` - pass (the new delivery log entries capture remote rollout, host-local image-message checks, and published-endpoint proof separately)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 3.2: Update any affected backend operator guidance so future deployments explicitly verify the image-message API version rather than relying on generic health-only checks.
+
+- Verification:
+  - ``git diff -- backend/README.md backend/scripts/bootstrap-ubuntu.sh openspec/changes/redeploy-image-message-backend-and-verify-published-service/tasks.md`` - pass (backend guidance now requires host-local and published image-message checks, and the bootstrap flow normalizes script execute bits before building on Ubuntu)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
 ### Task 1.1: Replace the separate IM HTTP/WebSocket preference contract with one backend-origin source of truth, including compatibility for already stored endpoint values.
 
 - Verification:
@@ -603,4 +706,212 @@ Upload
   - Commit: `8251fc4`
   - Branch: `master`
   - Push: `origin/master`
+- Result: `accepted`
+
+### Task 1.1: Inventory the tracked backend source, backend-only operational assets, and public-repo references that must be removed or rewritten before the next public push.
+
+- Verification:
+  - ``git ls-files backend`` - pass (the public repo was still tracking the full backend tree, including Cargo manifests, Docker assets, migrations, scripts, Rust source, systemd units, and tests before cleanup)
+  - ``rg -n "backend/|From `backend/`" README.md android/README.md docs/DELIVERY_WORKFLOW.md`` - pass (the active public references that needed rewriting were concentrated in the root README, Android local validation notes, and historical delivery records)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 1.2: Establish the local/private backend preservation location and Git ignore protection, then verify the current backend tree is safely retained there before any tracked deletion starts.
+
+- Verification:
+  - ``git check-ignore -v .private/backend/README.md .private/backend/src/app.rs`` - pass (`.gitignore` now ignores `.private/`, and the preserved backend copy is protected from public Git publication)
+  - ``powershell -> Copy-Item backend .private/backend -Recurse -Force`` - pass (the current backend worktree was preserved under `.private/backend/` before tracked deletion, including `README.md`, `Cargo.toml`, `src/app.rs`, and `scripts/bootstrap-ubuntu.sh`)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 2.1: Remove tracked backend implementation files and backend-only operational assets from the public repository tip, adding only the minimal sanitized public-facing replacements that are still required.
+
+- Verification:
+  - ``git ls-files backend`` - pass (the tracked public backend tree now contains only `backend/README.md`)
+  - ``powershell -> Get-ChildItem backend -Force`` - pass (the public `backend/` directory now contains only the sanitized placeholder README)
+- Review:
+  - Score: `98/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 2.2: Update public docs, scripts, specs, and workflow references so the published repository no longer assumes checked-in backend source while private operators still have a clear backend handoff path.
+
+- Verification:
+  - ``rg -n "From `backend/`|backend/scripts/|docker logs gkim-im-backend-local > backend\\docker-im-validation.log" README.md android/README.md backend/README.md`` - pass (the active public docs no longer instruct operators to execute backend source or logs from the public `backend/` path)
+  - ``git diff --name-status -- backend README.md android/README.md .gitignore docs/DELIVERY_WORKFLOW.md`` - pass (the public tree now replaces tracked backend source with a boundary placeholder and updates the README/Android guidance accordingly)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 3.1: Verify the tracked public diff no longer contains backend source or backend-only deployment assets while the preserved local/private backend copy still exists and is ignored from Git.
+
+- Verification:
+  - ``git ls-files backend`` - pass (the tracked public backend footprint is reduced to `backend/README.md` and no source, scripts, or deployment assets remain tracked)
+  - ``git check-ignore -v .private/backend/README.md .private/backend/src/app.rs`` - pass (the preserved private backend copy remains ignored from Git)
+  - ``powershell -> Get-ChildItem backend -Force -Recurse -File && Test-Path .private/backend/Cargo.toml && Test-Path .private/backend/src/app.rs && Test-Path .private/backend/scripts/bootstrap-ubuntu.sh`` - pass (the public backend tree exposes only the placeholder README while the private copy still contains the implementation and deployment files)
+- Review:
+  - Score: `98/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 3.2: Run focused public-repo checks for the surviving docs/workflows, then record the verification and review evidence in `docs/DELIVERY_WORKFLOW.md`.
+
+- Verification:
+  - ``openspec validate stop-publishing-backend-source-code`` - pass (the change artifacts remain valid after the repository-boundary implementation work)
+  - ``git diff --stat -- .gitignore README.md android/README.md backend/README.md docs/DELIVERY_WORKFLOW.md`` - pass (the tracked public edits are limited to ignore rules, public backend boundary guidance, Android/operator docs, and the delivery record)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `master`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 1.1: Inventory the current `Space` feed/prompt surfaces that must be removed or repurposed, then update the branch-local product docs and specs so the third tab is defined as a tavern-style role lobby.
+
+- Verification:
+  - ``rg -n "Space|空间|创作工坊|Prompt 模板|SpaceRoute|space-screen|space-" README.md android/README.md docs/DELIVERY_WORKFLOW.md android/app/src/main/java -g '!**/build/**'`` - pass (the old `Space` feed assumptions were isolated to the third-tab surface, Android guidance, and repo copy, giving the branch a bounded replacement target)
+  - ``git diff -- README.md android/README.md openspec/changes/replace-space-with-character-roster-and-gacha/proposal.md openspec/changes/replace-space-with-character-roster-and-gacha/specs/core/im-app/spec.md`` - pass (the branch docs/specs now describe `酒馆` / tavern character selection instead of a prompt/feed-oriented `Space` surface)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 1.2: Define shared domain models for character cards, preset roster entries, draw outcomes, owned roster state, and active角色 selection across Android and backend layers.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.CompanionRosterRepositoryTest --stacktrace`` - pass (Android shared角色 models and roster repository semantics passed the focused unit suite)
+  - ``cargo test --test http_im_api --no-run`` - pass (the private backend companion roster model/repository/service and HTTP harness compiled successfully with the new roster types)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 2.1: Replace the current `feature/space` feed UI with a tavern-style role-selection surface that supports preset角色 browsing, draw entry, and owned-roster review.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#tavernScreenShowsPresetRosterAndDrawEntry" --stacktrace`` - pass (the third tab now renders the tavern surface with preset section, owned section, and draw trigger on `codex_api34`)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 2.2: Update navigation, labels, and chat-entry flows so activating a角色 card routes the user into the corresponding companion conversation path.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#tavernCharacterActivationOpensCompanionConversation" --stacktrace`` - pass (activating the preset `Architect Oracle` tavern card immediately opened the corresponding chat conversation on `codex_api34`)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 2.3: Add clear draw-result presentation and roster-state handling so a newly obtained角色 can be reviewed and activated instead of appearing as a disconnected one-off reward.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#tavernDrawShowsResultAndAddsOwnedCard" --stacktrace`` - pass (drawing a tavern角色 surfaced an explicit draw-result card and added the drawn角色 to the owned roster on `codex_api34`)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 3.1: Add backend support for preset character catalogs, per-user owned roster persistence, and active角色 selection.
+
+- Verification:
+  - ``cargo test --test http_im_api -- --nocapture`` - pass (the private backend HTTP suite compiled cleanly with the new companion roster test and finished green; DB-backed execution paths were skipped because `GKIM_TEST_DATABASE_URL` is not set in this environment)
+  - ``rg -n "/api/companions|companion_characters|select_active_character" .private/backend/src .private/backend/migrations .private/backend/tests/http_im_api.rs`` - pass (the private backend now contains companion roster routes, durable schema, selection logic, and an HTTP round-trip test harness)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 3.2: Implement a character draw operation that returns explicit draw results and updates the user’s owned roster truthfully.
+
+- Verification:
+  - ``cargo test --test http_im_api -- --nocapture`` - pass (the private backend suite compiled and kept the new companion draw round-trip test registered in the harness; DB-backed execution remained skipped without `GKIM_TEST_DATABASE_URL`)
+  - ``rg -n "draw_character_for_user|companion_roster_draw_and_select_round_trip" .private/backend/src .private/backend/tests/http_im_api.rs`` - pass (the private backend now contains explicit draw logic and a registered HTTP test for draw + selection round-trip behavior)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 4.1: Add focused Android and backend coverage for tavern rendering,角色 activation, draw outcomes, and conversation handoff behavior.
+
+- Verification:
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.CompanionRosterRepositoryTest --stacktrace`` - pass (shared角色 roster semantics stayed green in focused Android unit coverage)
+  - ``$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.navigation.GkimRootAppTest#tavernScreenShowsPresetRosterAndDrawEntry,com.gkim.im.android.feature.navigation.GkimRootAppTest#tavernCharacterActivationOpensCompanionConversation,com.gkim.im.android.feature.navigation.GkimRootAppTest#tavernDrawShowsResultAndAddsOwnedCard" --stacktrace`` - pass (all three tavern UI flows passed on `codex_api34`)
+  - ``cargo test --test http_im_api -- --nocapture`` - pass (the private backend HTTP suite remained green with the new companion roster API slice compiled into the harness; DB-backed cases were skipped without `GKIM_TEST_DATABASE_URL`)
+- Review:
+  - Score: `98/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 4.2: Record verification, review, score, and upload evidence in `docs/DELIVERY_WORKFLOW.md` for the Space-to-tavern replacement slice.
+
+- Verification:
+  - ``git diff --stat -- android/app/src/main/java/com/gkim/im/android/core/model/CompanionModels.kt android/app/src/main/java/com/gkim/im/android/data/repository/CompanionRosterRepository.kt android/app/src/main/java/com/gkim/im/android/data/repository/BackendAwareCompanionRosterRepository.kt android/app/src/main/java/com/gkim/im/android/feature/space/SpaceRoute.kt android/app/src/main/java/com/gkim/im/android/feature/navigation/GkimRootApp.kt android/app/src/test/java/com/gkim/im/android/data/repository/CompanionRosterRepositoryTest.kt android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt README.md android/README.md docs/DELIVERY_WORKFLOW.md`` - pass (the branch now carries the tavern UI, shared角色 roster model/repository, focused tests, and updated branch-local docs)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
 - Result: `accepted`

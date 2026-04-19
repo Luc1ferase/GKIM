@@ -26,29 +26,33 @@ The system SHALL provide both a production auth flow and a development-safe sess
 - **THEN** the backend returns a session or token response tied to that user identity so contacts, conversations, and WebSocket events can be scoped per user
 
 ### Requirement: Backend persists direct-message state in PostgreSQL
-The system SHALL persist 1:1 IM state in PostgreSQL, and it MUST store enough data to reconstruct contacts, conversations, paginated message history, unread counts, and delivery/read state after a client disconnects. The backend MUST require that direct-message participants are mutual contacts before a new message is accepted.
+The system SHALL persist 1:1 IM state in PostgreSQL, and it MUST store enough data to reconstruct contacts, conversations, paginated message history, unread counts, delivery/read state, and optional direct-message attachment descriptors after a client disconnects. The backend MUST require that direct-message participants are mutual contacts before a new message is accepted.
 
 #### Scenario: Client bootstraps direct-message history
 - **WHEN** an authenticated user requests their conversation bootstrap or paginated history
-- **THEN** the backend returns conversation metadata, unread counts, and durable message records from PostgreSQL instead of transient in-memory-only state
+- **THEN** the backend returns conversation metadata, unread counts, durable message records, and any associated attachment descriptors from PostgreSQL instead of transient in-memory-only state
 
 #### Scenario: Offline recipient reconnects after missed messages
-- **WHEN** a recipient reconnects after messages were sent while they were offline
-- **THEN** the backend can rebuild unread state and message history for that user from PostgreSQL without message loss
+- **WHEN** a recipient reconnects after text or image messages were sent while they were offline
+- **THEN** the backend can rebuild unread state, message history, and attachment descriptors for that user from PostgreSQL without message loss
 
 #### Scenario: Message between non-contacts is rejected
 - **WHEN** an authenticated user attempts to send a direct message to a user who is not a mutual contact
 - **THEN** the backend rejects the message instead of silently auto-creating the contact relationship
 
 ### Requirement: Backend delivers low-latency direct messages over WebSocket
-The system SHALL use authenticated WebSocket sessions for active IM delivery, and it MUST push message, presence, delivery, read, and friend-request events to online clients without relying on polling for active conversations in the first single-node deployment.
+The system SHALL use authenticated WebSocket sessions for active IM delivery, and it MUST push text-message events, image-message events with attachment descriptors, delivery/read updates, and friend-request events to online clients without relying on polling for active conversations in the first single-node deployment.
 
 #### Scenario: Online recipient receives a direct message
-- **WHEN** an authenticated sender transmits a message to an online direct-message recipient
+- **WHEN** an authenticated sender transmits a text direct message to an online direct-message recipient
 - **THEN** the backend durably accepts the message and pushes the resulting event to the recipient's live WebSocket session on the same server node
 
+#### Scenario: Online recipient receives an image direct message
+- **WHEN** an authenticated sender creates an image direct message while the recipient is online
+- **THEN** the backend durably accepts the image message and pushes `message.sent` / `message.received` events containing the attachment descriptor needed to render the same image on both clients
+
 #### Scenario: Delivery/read updates reach the active conversation
-- **WHEN** the recipient receives or reads a message while both participants remain connected
+- **WHEN** the recipient receives or reads a text or image message while both participants remain connected
 - **THEN** the backend emits delivery or read updates through the active WebSocket sessions so the conversation state stays current without polling refreshes
 
 #### Scenario: Friend-request events reach online users
@@ -86,13 +90,28 @@ The system SHALL let authenticated users search for other users and manage a fri
 - **THEN** the backend marks the request rejected and does not create reciprocal contacts
 
 ### Requirement: Backend supports remote deployment and debugging on the target Ubuntu host
-The system SHALL include a repeatable remote deployment/debug workflow for the Ubuntu host at `124.222.15.128`, and it MUST let each accepted implementation slice be started, inspected, and smoke-tested on that server through SSH-accessible operational commands without committing the SSH password. The deployed service MUST expose published HTTP and WebSocket endpoints that are suitable for Android end-to-end validation, and remote acceptance MUST include enough server-side checks to distinguish service-health problems from Android client configuration problems.
+The system SHALL include a repeatable remote deployment/debug workflow for the current Ubuntu host behind `chat.lastxuans.sbs`, and it MUST let each accepted implementation slice be started, inspected, and smoke-tested on that server through SSH-accessible operational commands without committing the SSH password. That workflow MUST be satisfiable with a maintainer-held local-only or otherwise private backend checkout, and it MUST NOT require the published remote Git repository to carry backend source files. The deployed service MUST expose published HTTP and WebSocket endpoints that are suitable for Android end-to-end validation, and remote acceptance MUST include enough server-side checks to distinguish service-health problems, outdated backend binaries, and published-endpoint drift from Android client configuration problems.
 
 #### Scenario: Accepted backend slice is smoke-tested on the server
 - **WHEN** a backend implementation slice is accepted for delivery
-- **THEN** the repository provides the scripts, service shape, or documented commands needed to deploy that slice to `124.222.15.128`, inspect logs or service status, confirm the backend health endpoint, and run a remote smoke test before the next slice begins
+- **THEN** the maintainers' local/private backend materials provide the scripts, service shape, or documented commands needed to deploy that slice to the Ubuntu host, inspect logs or service status, confirm the backend health endpoint, and run a remote smoke test before the next slice begins
+
+#### Scenario: Published backend is verified to run the image-message-capable version
+- **WHEN** a backend slice that includes direct image-message behavior is deployed to the Ubuntu host
+- **THEN** deployment acceptance proves host-local and published support for `POST /api/direct-messages/image` plus attachment fetch, instead of stopping at generic health or bootstrap checks
 
 #### Scenario: Deployed backend endpoints are suitable for Android validation
 - **WHEN** operators publish the backend HTTP and WebSocket endpoints for Android validation against the Ubuntu host
-- **THEN** those endpoints are reachable for remote auth/bootstrap and realtime traffic without relying on local Docker port publishing, adb reverse, or SSH-tunnel-only assumptions
+- **THEN** those endpoints are reachable for remote auth/bootstrap, realtime traffic, and the current accepted image-message API contract without relying on local Docker port publishing, adb reverse, or SSH-tunnel-only assumptions
+
+### Requirement: Backend accepts authenticated direct-image message uploads
+The system SHALL accept authenticated direct-image message creation through a backend API that can carry binary image payloads plus optional caption text, and it MUST persist the attachment before emitting the resulting direct-message events.
+
+#### Scenario: Sender uploads an image direct message
+- **WHEN** an authenticated user submits an image message with a recipient identity, optional `clientMessageId`, and optional caption text
+- **THEN** the backend stores the image attachment, creates or resolves the direct conversation, persists the message, and returns or broadcasts a message record containing the resolved conversation identifier plus attachment descriptor
+
+#### Scenario: Conversation member downloads a stored image attachment
+- **WHEN** an authenticated user who belongs to the conversation requests the stored attachment for a direct image message
+- **THEN** the backend authorizes the membership check and returns the persisted image payload in a format the Android client can render
 
