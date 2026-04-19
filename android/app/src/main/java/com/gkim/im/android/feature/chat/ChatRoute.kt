@@ -571,6 +571,7 @@ private fun ChatTopBar(
                     color = AetherColors.OnSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("chat-contact-title"),
                 )
             }
         }

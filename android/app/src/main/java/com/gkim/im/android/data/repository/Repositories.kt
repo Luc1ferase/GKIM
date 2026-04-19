@@ -104,7 +104,18 @@ class InMemoryMessagingRepository(
 
     override fun ensureConversation(contact: Contact): Conversation {
         val existing = conversationState.value.firstOrNull { it.contactId == contact.id }
-        if (existing != null) return existing
+        if (existing != null) {
+            val refreshed = existing.copy(
+                contactName = contact.nickname,
+                contactTitle = contact.title,
+                avatarText = contact.avatarText,
+                isOnline = contact.isOnline,
+            )
+            conversationState.value = conversationState.value.map { conversation ->
+                if (conversation.id == existing.id) refreshed else conversation
+            }
+            return refreshed
+        }
         val timestamp = Instant.now().toString()
         val created = Conversation(
             id = "room-${contact.id}",
@@ -682,7 +693,21 @@ class LiveMessagingRepository(
 
     override fun ensureConversation(contact: Contact): Conversation {
         val existing = conversationState.value.firstOrNull { it.contactId == contact.id }
-        if (existing != null) return existing
+        if (existing != null) {
+            val refreshed = existing.copy(
+                contactName = contact.nickname,
+                contactTitle = contact.title,
+                avatarText = contact.avatarText,
+                isOnline = contact.isOnline,
+            )
+            conversationState.value = conversationState.value.map { conversation ->
+                if (conversation.id == existing.id) refreshed else conversation
+            }
+            contactState.value = contactState.value.map { existingContact ->
+                if (existingContact.id == contact.id) contact else existingContact
+            }
+            return refreshed
+        }
 
         val timestamp = Instant.now().toString()
         val placeholderConversation = Conversation(

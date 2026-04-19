@@ -22,16 +22,20 @@ import com.gkim.im.android.data.remote.im.UserSearchResultDto
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.repository.CompanionRosterRepository
 import com.gkim.im.android.data.repository.ContactsRepository
 import com.gkim.im.android.data.repository.DefaultAigcRepository
+import com.gkim.im.android.data.repository.DefaultCompanionRosterRepository
 import com.gkim.im.android.data.repository.DefaultContactsRepository
 import com.gkim.im.android.data.repository.DefaultFeedRepository
 import com.gkim.im.android.data.repository.FeedRepository
 import com.gkim.im.android.data.repository.InMemoryMessagingRepository
 import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.data.repository.presetProviders
+import com.gkim.im.android.data.repository.seedDrawPoolCharacters
 import com.gkim.im.android.data.repository.seedContacts
 import com.gkim.im.android.data.repository.seedConversations
+import com.gkim.im.android.data.repository.seedPresetCharacters
 import com.gkim.im.android.data.repository.seedPosts
 import com.gkim.im.android.data.repository.seedPrompts
 import kotlinx.coroutines.Dispatchers
@@ -101,6 +105,10 @@ private class LoginEndpointTestAppContainer(
     override val messagingRepository: MessagingRepository = InMemoryMessagingRepository(seedConversations)
     override val contactsRepository: ContactsRepository = DefaultContactsRepository(seedContacts, preferencesStore, Dispatchers.Main)
     override val feedRepository: FeedRepository = DefaultFeedRepository(seedPosts, seedPrompts, Dispatchers.Main)
+    override val companionRosterRepository: CompanionRosterRepository = DefaultCompanionRosterRepository(
+        presetCharacters = seedPresetCharacters,
+        drawPool = seedDrawPoolCharacters,
+    )
     override val aigcRepository: AigcRepository = DefaultAigcRepository(
         presets = presetProviders,
         preferencesStore = preferencesStore,

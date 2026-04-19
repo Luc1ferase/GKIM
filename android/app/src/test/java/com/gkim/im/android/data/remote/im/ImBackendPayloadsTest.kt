@@ -261,4 +261,48 @@ class ImBackendPayloadsTest {
         assertEquals(AttachmentType.Image, message.attachment?.type)
         assertEquals("/api/messages/message-image-1/attachment", message.attachment?.preview)
     }
+
+    @Test
+    fun `companion roster payload maps bilingual companion fields into android card model`() {
+        val roster = json.decodeFromString<CompanionRosterDto>(
+            """
+            {
+              "presetCharacters": [
+                {
+                  "id": "architect-oracle",
+                  "displayName": {
+                    "english": "Architect Oracle",
+                    "chinese": "筑谕师"
+                  },
+                  "roleLabel": {
+                    "english": "Calm Strategist",
+                    "chinese": "冷静策士"
+                  },
+                  "summary": {
+                    "english": "A precise companion who turns messy feelings into structured plans and gentle next steps.",
+                    "chinese": "把纷乱感受整理成清晰计划，并陪你迈出下一步的精确同伴。"
+                  },
+                  "openingLine": {
+                    "english": "I have been waiting in the tavern. Tell me what kind of night this is.",
+                    "chinese": "我一直在酒馆等你。今晚是什么样的夜色，说给我听。"
+                  },
+                  "avatarText": "AO",
+                  "accent": "primary",
+                  "source": "preset"
+                }
+              ],
+              "ownedCharacters": [],
+              "activeCharacterId": "architect-oracle"
+            }
+            """.trimIndent(),
+        )
+
+        val card = roster.presetCharacters.single().toCompanionCharacterCard()
+
+        assertEquals("Architect Oracle", card.displayName.english)
+        assertEquals("筑谕师", card.displayName.chinese)
+        assertEquals("Calm Strategist", card.roleLabel.english)
+        assertEquals("冷静策士", card.roleLabel.chinese)
+        assertEquals("我一直在酒馆等你。今晚是什么样的夜色，说给我听。", card.firstMes.chinese)
+    }
 }

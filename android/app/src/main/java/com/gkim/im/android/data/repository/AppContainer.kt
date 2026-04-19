@@ -29,6 +29,7 @@ interface AppContainer {
     val messagingRepository: MessagingRepository
     val contactsRepository: ContactsRepository
     val feedRepository: FeedRepository
+    val companionRosterRepository: CompanionRosterRepository
     val aigcRepository: AigcRepository
     val preferencesStore: PreferencesStore
     val sessionStore: SessionStore
@@ -87,6 +88,12 @@ class DefaultAppContainer(context: Context) : AppContainer {
         preferencesStore = preferencesStore,
     )
     override val feedRepository: FeedRepository = DefaultFeedRepository(seedPosts, seedPrompts)
+    override val companionRosterRepository: CompanionRosterRepository = BackendAwareCompanionRosterRepository(
+        backendClient = imBackendClient,
+        sessionStore = sessionStore,
+        presetCharacters = seedPresetCharacters,
+        drawPool = seedDrawPoolCharacters,
+    )
     override val aigcRepository: AigcRepository = DefaultAigcRepository(
         presets = presetProviders,
         preferencesStore = preferencesStore,

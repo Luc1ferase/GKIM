@@ -56,6 +56,30 @@ private interface ImBackendService {
         @Query("limit") limit: Int? = null,
         @Query("before") before: String? = null,
     ): MessageHistoryPageDto
+
+    @GET("api/companions")
+    suspend fun loadCompanionRoster(@Header("Authorization") authorization: String): CompanionRosterDto
+
+    @POST("api/companions/draw")
+    suspend fun drawCompanionCharacter(@Header("Authorization") authorization: String): CompanionDrawResultDto
+
+    @POST("api/companions/select")
+    suspend fun selectCompanionCharacter(
+        @Header("Authorization") authorization: String,
+        @Body request: SelectCompanionCharacterRequestDto,
+    ): ActiveCompanionSelectionDto
+
+    @POST("api/companions")
+    suspend fun upsertCompanionCharacter(
+        @Header("Authorization") authorization: String,
+        @Body request: CompanionCharacterCardDto,
+    ): CompanionCharacterCardDto
+
+    @POST("api/companions/{characterId}/delete")
+    suspend fun deleteCompanionCharacter(
+        @Header("Authorization") authorization: String,
+        @Path("characterId") characterId: String,
+    )
 }
 
 class ImBackendHttpClient(
@@ -109,6 +133,41 @@ class ImBackendHttpClient(
         limit = limit,
         before = before,
     )
+
+    override suspend fun loadCompanionRoster(baseUrl: String, token: String): CompanionRosterDto =
+        serviceFor(baseUrl).loadCompanionRoster(bearerToken(token))
+
+    override suspend fun drawCompanionCharacter(baseUrl: String, token: String): CompanionDrawResultDto =
+        serviceFor(baseUrl).drawCompanionCharacter(bearerToken(token))
+
+    override suspend fun selectCompanionCharacter(
+        baseUrl: String,
+        token: String,
+        characterId: String,
+    ): ActiveCompanionSelectionDto = serviceFor(baseUrl).selectCompanionCharacter(
+        authorization = bearerToken(token),
+        request = SelectCompanionCharacterRequestDto(characterId = characterId),
+    )
+
+    override suspend fun upsertCompanionCharacter(
+        baseUrl: String,
+        token: String,
+        card: CompanionCharacterCardDto,
+    ): CompanionCharacterCardDto = serviceFor(baseUrl).upsertCompanionCharacter(
+        authorization = bearerToken(token),
+        request = card,
+    )
+
+    override suspend fun deleteCompanionCharacter(
+        baseUrl: String,
+        token: String,
+        characterId: String,
+    ) {
+        serviceFor(baseUrl).deleteCompanionCharacter(
+            authorization = bearerToken(token),
+            characterId = characterId,
+        )
+    }
 
     private fun serviceFor(baseUrl: String): ImBackendService =
         ServiceFactory.retrofit(normalizeBaseUrl(baseUrl), okHttpClient).create(ImBackendService::class.java)

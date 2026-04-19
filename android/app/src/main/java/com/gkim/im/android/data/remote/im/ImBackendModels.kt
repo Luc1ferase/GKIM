@@ -3,7 +3,12 @@ package com.gkim.im.android.data.remote.im
 import com.gkim.im.android.core.model.ChatMessage
 import com.gkim.im.android.core.model.Contact
 import com.gkim.im.android.core.model.Conversation
+import com.gkim.im.android.core.model.CompanionCharacterCard
+import com.gkim.im.android.core.model.CompanionCharacterSource
+import com.gkim.im.android.core.model.CompanionDrawResult
 import com.gkim.im.android.core.model.AttachmentType
+import com.gkim.im.android.core.model.AccentTone
+import com.gkim.im.android.core.model.LocalizedText
 import com.gkim.im.android.core.model.MessageAttachment
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
@@ -225,6 +230,143 @@ data class MessageHistoryPageDto(
         )
     }
 }
+
+@Serializable
+data class LocalizedTextDto(
+    val english: String,
+    val chinese: String,
+) {
+    fun toLocalizedText(): LocalizedText = LocalizedText(
+        english = english,
+        chinese = chinese,
+    )
+}
+
+@Serializable
+data class CompanionCharacterCardDto(
+    val id: String,
+    val displayName: LocalizedTextDto,
+    val roleLabel: LocalizedTextDto,
+    val summary: LocalizedTextDto,
+    val firstMes: LocalizedTextDto? = null,
+    val openingLine: LocalizedTextDto? = null,
+    val alternateGreetings: List<LocalizedTextDto> = emptyList(),
+    val systemPrompt: LocalizedTextDto? = null,
+    val personality: LocalizedTextDto? = null,
+    val scenario: LocalizedTextDto? = null,
+    val exampleDialogue: LocalizedTextDto? = null,
+    val tags: List<String> = emptyList(),
+    val creator: String = "",
+    val creatorNotes: String = "",
+    val characterVersion: String = "",
+    val avatarText: String,
+    val avatarUri: String? = null,
+    val accent: String,
+    val source: String,
+    val extensions: JsonObject = JsonObject(emptyMap()),
+) {
+    fun toCompanionCharacterCard(): CompanionCharacterCard {
+        val resolvedFirstMes = firstMes?.toLocalizedText()
+            ?: openingLine?.toLocalizedText()
+            ?: LocalizedText("", "")
+        return CompanionCharacterCard(
+            id = id,
+            displayName = displayName.toLocalizedText(),
+            roleLabel = roleLabel.toLocalizedText(),
+            summary = summary.toLocalizedText(),
+            firstMes = resolvedFirstMes,
+            alternateGreetings = alternateGreetings.map { it.toLocalizedText() },
+            systemPrompt = systemPrompt?.toLocalizedText() ?: LocalizedText("", ""),
+            personality = personality?.toLocalizedText() ?: LocalizedText("", ""),
+            scenario = scenario?.toLocalizedText() ?: LocalizedText("", ""),
+            exampleDialogue = exampleDialogue?.toLocalizedText() ?: LocalizedText("", ""),
+            tags = tags,
+            creator = creator,
+            creatorNotes = creatorNotes,
+            characterVersion = characterVersion,
+            avatarText = avatarText,
+            avatarUri = avatarUri,
+            accent = when (accent.lowercase()) {
+                "secondary" -> AccentTone.Secondary
+                "tertiary" -> AccentTone.Tertiary
+                else -> AccentTone.Primary
+            },
+            source = when (source.lowercase()) {
+                "drawn" -> CompanionCharacterSource.Drawn
+                "userauthored", "user_authored", "user-authored" -> CompanionCharacterSource.UserAuthored
+                else -> CompanionCharacterSource.Preset
+            },
+            extensions = extensions,
+        )
+    }
+
+    companion object {
+        fun fromCompanionCharacterCard(card: CompanionCharacterCard): CompanionCharacterCardDto =
+            CompanionCharacterCardDto(
+                id = card.id,
+                displayName = LocalizedTextDto(card.displayName.english, card.displayName.chinese),
+                roleLabel = LocalizedTextDto(card.roleLabel.english, card.roleLabel.chinese),
+                summary = LocalizedTextDto(card.summary.english, card.summary.chinese),
+                firstMes = LocalizedTextDto(card.firstMes.english, card.firstMes.chinese),
+                openingLine = LocalizedTextDto(card.firstMes.english, card.firstMes.chinese),
+                alternateGreetings = card.alternateGreetings.map {
+                    LocalizedTextDto(it.english, it.chinese)
+                },
+                systemPrompt = LocalizedTextDto(card.systemPrompt.english, card.systemPrompt.chinese),
+                personality = LocalizedTextDto(card.personality.english, card.personality.chinese),
+                scenario = LocalizedTextDto(card.scenario.english, card.scenario.chinese),
+                exampleDialogue = LocalizedTextDto(
+                    card.exampleDialogue.english,
+                    card.exampleDialogue.chinese,
+                ),
+                tags = card.tags,
+                creator = card.creator,
+                creatorNotes = card.creatorNotes,
+                characterVersion = card.characterVersion,
+                avatarText = card.avatarText,
+                avatarUri = card.avatarUri,
+                accent = when (card.accent) {
+                    AccentTone.Secondary -> "secondary"
+                    AccentTone.Tertiary -> "tertiary"
+                    AccentTone.Primary -> "primary"
+                },
+                source = when (card.source) {
+                    CompanionCharacterSource.Drawn -> "drawn"
+                    CompanionCharacterSource.UserAuthored -> "user_authored"
+                    CompanionCharacterSource.Preset -> "preset"
+                },
+                extensions = card.extensions,
+            )
+    }
+}
+
+@Serializable
+data class CompanionRosterDto(
+    val presetCharacters: List<CompanionCharacterCardDto>,
+    val ownedCharacters: List<CompanionCharacterCardDto>,
+    val activeCharacterId: String? = null,
+)
+
+@Serializable
+data class CompanionDrawResultDto(
+    val card: CompanionCharacterCardDto,
+    val wasNew: Boolean,
+) {
+    fun toCompanionDrawResult(): CompanionDrawResult = CompanionDrawResult(
+        card = card.toCompanionCharacterCard(),
+        wasNew = wasNew,
+    )
+}
+
+@Serializable
+data class SelectCompanionCharacterRequestDto(
+    val characterId: String,
+)
+
+@Serializable
+data class ActiveCompanionSelectionDto(
+    val characterId: String,
+)
 
 private fun MessageAttachmentDto.toMessageAttachment(
     backendBaseUrl: String?,

@@ -22,4 +22,37 @@ interface ImBackendClient {
         limit: Int = 50,
         before: String? = null,
     ): MessageHistoryPageDto
+
+    suspend fun loadCompanionRoster(baseUrl: String, token: String): CompanionRosterDto {
+        error("loadCompanionRoster is not implemented for this backend client")
+    }
+
+    suspend fun drawCompanionCharacter(baseUrl: String, token: String): CompanionDrawResultDto {
+        error("drawCompanionCharacter is not implemented for this backend client")
+    }
+
+    suspend fun selectCompanionCharacter(
+        baseUrl: String,
+        token: String,
+        characterId: String,
+    ): ActiveCompanionSelectionDto {
+        error("selectCompanionCharacter is not implemented for this backend client")
+    }
+
+    suspend fun upsertCompanionCharacter(
+        baseUrl: String,
+        token: String,
+        card: CompanionCharacterCardDto,
+    ): CompanionCharacterCardDto {
+        error("upsertCompanionCharacter is not implemented for this backend client")
+    }
+
+    suspend fun deleteCompanionCharacter(
+        baseUrl: String,
+        token: String,
+        characterId: String,
+    ) {
+        error("deleteCompanionCharacter is not implemented for this backend client")
+    }
 }
+
