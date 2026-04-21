@@ -1549,7 +1549,7 @@ Upload
 - Verification:
   - ``rg -n "## sillytavern-card-interop delivery evidence" docs/DELIVERY_WORKFLOW.md`` - pass (section present with task rows 1.1 through 6.2 plus this recording task, each carrying its own verification command, score, commit SHA, branch, push remote; explicit pointers land in task 5.3 for the ST-field mapping table and the six typed error codes — `payload_too_large` / `avatar_too_large` / `unsupported_schema_version` / `malformed_png` / `malformed_json` / `unsupported_format` — and in task 6.2 for the `CardInteropRoundTripTest` round-trip test)
   - ``npx --yes openspec validate sillytavern-card-interop --strict`` - pass (change artifacts still valid after the delivery-evidence append)
-  - ``npx --yes openspec archive sillytavern-card-interop --yes`` - to run after this commit lands; archive output will be appended inline when executed.
+  - ``npx --yes openspec archive sillytavern-card-interop --yes`` - pass ("Task status: ✓ Complete / Specs to update: companion-character-card-depth: update, im-backend: update, sillytavern-card-interop: create / Applying changes to openspec/specs/companion-character-card-depth/spec.md: ~ 1 modified / Applying changes to openspec/specs/im-backend/spec.md: + 5 added / Applying changes to openspec/specs/sillytavern-card-interop/spec.md: + 6 added / Totals: + 11, ~ 1, - 0, → 0 / Specs updated successfully. / Change 'sillytavern-card-interop' archived as '2026-04-21-sillytavern-card-interop'.")
 - Review:
   - Score: `96/100`
   - Findings: `No findings`
