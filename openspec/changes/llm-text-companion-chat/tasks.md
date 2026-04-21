@@ -6,7 +6,7 @@
 
 - [x] 1.3 Extend `android/app/src/main/java/com/gkim/im/android/data/remote/im/ImBackendClient.kt` with `submitCompanionTurn(baseUrl, token, request)`, `regenerateCompanionTurn(baseUrl, token, turnId, clientTurnId)`, `listPendingCompanionTurns(baseUrl, token)`, and `snapshotCompanionTurn(baseUrl, token, turnId)`. Add matching default stubs that `error("not implemented")` for backward-compat. Implement them in `ImBackendHttpClient`. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendHttpClientTest` covers success + error paths for each new endpoint.
 
-- [ ] 1.4 Finalize `openspec/changes/llm-text-companion-chat/specs/im-backend/spec.md` so HTTP endpoints, WS event shapes, variant-tree persistence, pending-turn recovery, server-side persona prompt assembly, `{{user}}` substitution, and language steering are all captured. Verification: `openspec validate llm-text-companion-chat --strict` passes.
+- [x] 1.4 Finalize `openspec/changes/llm-text-companion-chat/specs/im-backend/spec.md` so HTTP endpoints, WS event shapes, variant-tree persistence, pending-turn recovery, server-side persona prompt assembly, `{{user}}` substitution, and language steering are all captured. Verification: `openspec validate llm-text-companion-chat --strict` passes.
 
 ## 2. Companion turn repository (Android)
 
