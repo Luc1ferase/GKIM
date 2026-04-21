@@ -19,6 +19,11 @@ The system SHALL accept imported character cards in two formats: PNG files whose
 - **WHEN** a user uploads a file whose schema version is unsupported (legacy V1) or whose format is unsupported (WebP, GIF, unrecognized binary)
 - **THEN** the system rejects the upload with a typed error (`unsupported_schema_version` or `unsupported_format`) and does not persist or pre-commit any record
 
+#### Scenario: Malformed PNG or JSON payloads are rejected with typed codes
+
+- **WHEN** a user uploads a PNG whose tEXt chunks are missing, corrupt, or fail CRC validation, or a JSON file that fails to parse or fails V2/V3 schema validation
+- **THEN** the system rejects the upload with `malformed_png` for the PNG case and `malformed_json` for the JSON case, and does not persist or pre-commit any record
+
 ### Requirement: Import is a two-step flow: preview and commit
 
 The system SHALL expose an import preview operation that returns the decoded record without persisting, and a separate commit operation that persists the previewed record after user confirmation. The preview MUST surface warnings for every field truncated, trimmed, dropped, or parked in the `extensions` bag, and MUST let the user override the detected source language before committing.

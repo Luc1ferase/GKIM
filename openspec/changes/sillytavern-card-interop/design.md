@@ -200,20 +200,42 @@ Rationale:
 
 ## Migration Plan
 
-1. Add server-side PNG tEXt parser + V2/V3 JSON schema validator. Reserve the `st.*` extensions namespace documentation in `companion-character-card-depth`.
-2. Add `POST /api/cards/import` (two-step: preview + commit), `GET /api/cards/{cardId}/export?format=png|json&language=en|zh`.
+The canonical ST-field → `CompanionCharacterCard` mapping table is the one in § **Context** above — every implementation task in this slice (DTOs, server-side decoder, preview preview-mode mapping, export emitter) reads from it. When a field is added to ST V3 or our record, that table is the single source of truth that is updated first; the spec deltas and endpoint contracts follow.
+
+The slice uses a small, closed set of typed error codes across the backend HTTP surface and the Android preview/export dialogs. Every rejection path MUST use one of these codes:
+
+| Code | Meaning | Where enforced |
+|---|---|---|
+| `payload_too_large` | PNG > 8 MiB or JSON > 1 MiB | Client-side size guard (`SillyTavernCardCodec.fitsPngSizeLimit` / `fitsJsonSizeLimit`) + server-side `POST /api/cards/import` |
+| `avatar_too_large` | Avatar image > 4096×4096 pixels or > 8 MiB after decoding | Server-side import decoder |
+| `unsupported_schema_version` | Payload claims a schema version outside V2 / V3 (e.g. legacy V1) | Server-side JSON schema validator |
+| `malformed_png` | PNG signature detected but tEXt chunks are missing, corrupt, or fail CRC | Server-side PNG parser |
+| `malformed_json` | JSON body does not parse, or fails V2/V3 schema validation on required fields | Server-side JSON schema validator |
+| `unsupported_format` | File neither matches the PNG signature nor parses as JSON | Client-side sniffer + server-side fallback |
+
+Bounded safety limits in full — every limit is documented in § **Decisions** above under "Bounded safety limits" and summarized here for quick reference:
+
+- PNG payload: **8 MiB**, JSON payload: **1 MiB** → `payload_too_large` (hard reject).
+- Avatar image: **4096×4096** pixels → `avatar_too_large` (hard reject).
+- Prose field: **32 KiB** → truncated with warning entry (not a rejection).
+- Alt-greetings: **64** entries → trimmed with warning.
+- Tags: **256** entries → trimmed with warning.
+- Each `extensions.st.*` value: **64 KiB** → dropped with warning.
+
+1. Add server-side PNG tEXt parser + V2/V3 JSON schema validator; raise `malformed_png` / `malformed_json` / `unsupported_schema_version` on the respective failure modes. Reserve the `st.*` extensions namespace documentation in `companion-character-card-depth`.
+2. Add `POST /api/cards/import` (two-step: preview + commit), `GET /api/cards/{cardId}/export?format=png|json&language=en|zh&includeTranslationAlt=<bool>`. Error responses carry the typed `errorCode` field from the table above.
 3. Add DTOs + client-side format-sniffing helper `SillyTavernCardCodec`:
    - Sniff PNG vs JSON from file magic bytes.
-   - Enforce client-side size check before upload.
+   - Enforce client-side size check before upload (returns `payload_too_large`), reject non-PNG/JSON bytes (returns `unsupported_format`), reject empty selections (returns `empty_payload`).
 4. Android UI:
    - Tavern surface overflow: "Import character card" entry point → file picker → upload → preview route.
    - `ImportCardPreviewRoute`: bilingual editor pre-populated from server preview + language picker + commit action. Saving issues the commit request.
-   - Card detail surface: "Export as PNG" and "Export as JSON" actions with format + language picker.
+   - Card detail surface: "Export as PNG" and "Export as JSON" actions with format + language picker + translationAlt toggle + share-sheet / Downloads target toggle. Repository failures surface inline via `exportErrorCopy(code, englishLocale)` using the same code set as the table above.
 5. Update `extensions` conventions in `companion-character-card-depth` delta spec: reserved key list under `st.*`, round-trip guarantees.
 6. Verification:
    - Unit: PNG signature detection, JSON sniffing, size guards, helper edge cases.
    - Integration: round-trip a curated fixture set (V2 PNG, V3 PNG, V2 JSON, V3 JSON) through import → commit → export → re-import and confirm field fidelity.
-   - Instrumentation: import preview render, language picker, commit + roster refresh, export dialog.
+   - Instrumentation: import preview render, language picker, commit + roster refresh, export dialog, Share vs Downloads delivery path.
 7. Record delivery evidence in `docs/DELIVERY_WORKFLOW.md`.
 
 Rollback strategy:
