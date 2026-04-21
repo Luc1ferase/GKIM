@@ -34,6 +34,7 @@ interface AppContainer {
     val feedRepository: FeedRepository
     val companionRosterRepository: CompanionRosterRepository
     val companionTurnRepository: CompanionTurnRepository
+    val cardInteropRepository: CardInteropRepository
     val aigcRepository: AigcRepository
     val preferencesStore: PreferencesStore
     val sessionStore: SessionStore
@@ -105,6 +106,13 @@ class DefaultAppContainer(context: Context) : AppContainer {
         scope = companionTurnScope,
         baseUrlProvider = { sessionStore.baseUrl },
         tokenProvider = { sessionStore.token },
+    )
+    override val cardInteropRepository: CardInteropRepository = DefaultCardInteropRepository(
+        delegate = LiveCardInteropRepository(
+            backendClient = imBackendClient,
+            baseUrlProvider = { sessionStore.baseUrl },
+            tokenProvider = { sessionStore.token },
+        ),
     )
     override val aigcRepository: AigcRepository = DefaultAigcRepository(
         presets = presetProviders,

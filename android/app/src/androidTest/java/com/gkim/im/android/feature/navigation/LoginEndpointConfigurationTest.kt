@@ -24,6 +24,9 @@ import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.CompanionRosterRepository
 import com.gkim.im.android.data.repository.CompanionTurnRepository
+import com.gkim.im.android.data.repository.CardInteropRepository
+import com.gkim.im.android.data.repository.DefaultCardInteropRepository
+import com.gkim.im.android.data.repository.LiveCardInteropRepository
 import com.gkim.im.android.data.repository.ContactsRepository
 import com.gkim.im.android.data.repository.DefaultAigcRepository
 import com.gkim.im.android.data.repository.DefaultCompanionRosterRepository
@@ -112,6 +115,13 @@ private class LoginEndpointTestAppContainer(
         drawPool = seedDrawPoolCharacters,
     )
     override val companionTurnRepository: CompanionTurnRepository = DefaultCompanionTurnRepository()
+    override val cardInteropRepository: CardInteropRepository = DefaultCardInteropRepository(
+        delegate = LiveCardInteropRepository(
+            backendClient = imBackendClient,
+            baseUrlProvider = { sessionStore.baseUrl },
+            tokenProvider = { sessionStore.token },
+        ),
+    )
     override val aigcRepository: AigcRepository = DefaultAigcRepository(
         presets = presetProviders,
         preferencesStore = preferencesStore,
