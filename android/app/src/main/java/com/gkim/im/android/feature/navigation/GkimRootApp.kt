@@ -169,6 +169,12 @@ fun GkimRootApp(
                                         characterId = backStackEntry.arguments?.getString("id")?.takeIf { it.isNotBlank() },
                                     )
                                 }
+                                composable("tavern/import-preview") {
+                                    com.gkim.im.android.feature.tavern.ImportCardPreviewRoute(
+                                        navController = resolvedNavController,
+                                        container = resolvedContainer,
+                                    )
+                                }
                                 composable("chat/{conversationId}") { backStackEntry ->
                                     ChatRoute(
                                         navController = resolvedNavController,

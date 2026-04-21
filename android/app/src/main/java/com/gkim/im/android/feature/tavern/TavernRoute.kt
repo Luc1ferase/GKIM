@@ -110,6 +110,7 @@ fun TavernRoute(navController: NavHostController, container: AppContainer) {
             }
             is TavernImportSelectionResult.Accepted -> {
                 importEntryState = TavernImportEntryState()
+                PendingImportBytes.set(result.bytes, result.filename)
                 navController.navigate("tavern/import-preview")
             }
         }
