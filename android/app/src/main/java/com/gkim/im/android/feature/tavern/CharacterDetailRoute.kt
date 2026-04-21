@@ -14,6 +14,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -33,6 +36,8 @@ import com.gkim.im.android.core.model.ResolvedCompanionCharacterCard
 import com.gkim.im.android.core.model.isEditable
 import com.gkim.im.android.core.model.resolve
 import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.repository.CardInteropRepository
+import com.gkim.im.android.data.repository.ExportedCardFormat
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -69,6 +74,9 @@ fun CharacterDetailRoute(
     }
     val resolved = card.resolve(appLanguage)
 
+    var pendingExportFormat by remember { mutableStateOf<ExportedCardFormat?>(null) }
+    val exportDispatcher = rememberCardExportDispatcher()
+
     CharacterDetailScreen(
         character = resolved,
         editable = card.isEditable,
@@ -79,7 +87,19 @@ fun CharacterDetailRoute(
             val conversation = container.messagingRepository.ensureConversation(card.asCompanionContact(appLanguage))
             navController.navigate("chat/${conversation.id}")
         },
+        onExportPng = { pendingExportFormat = ExportedCardFormat.Png },
+        onExportJson = { pendingExportFormat = ExportedCardFormat.Json },
     )
+
+    pendingExportFormat?.let { format ->
+        CardExportDialog(
+            cardId = card.id,
+            initialFormat = format,
+            repository = container.cardInteropRepository,
+            dispatcher = exportDispatcher,
+            onDismiss = { pendingExportFormat = null },
+        )
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -90,6 +110,8 @@ private fun CharacterDetailScreen(
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onActivate: () -> Unit,
+    onExportPng: () -> Unit,
+    onExportJson: () -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
     LazyColumn(
@@ -109,7 +131,13 @@ private fun CharacterDetailScreen(
                 onAction = if (editable) onEdit else null,
             )
         }
-        item { ActionRow(onActivate = onActivate) }
+        item {
+            ActionRow(
+                onActivate = onActivate,
+                onExportPng = onExportPng,
+                onExportJson = onExportJson,
+            )
+        }
         item { SectionCard(appLanguage.pick("Summary", "摘要"), character.summary, "character-detail-summary") }
         item { SectionCard(appLanguage.pick("System prompt", "系统提示"), character.systemPrompt, "character-detail-system-prompt") }
         item { SectionCard(appLanguage.pick("Scenario", "场景"), character.scenario, "character-detail-scenario") }
@@ -164,10 +192,19 @@ private fun CharacterDetailScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ActionRow(onActivate: () -> Unit) {
+private fun ActionRow(
+    onActivate: () -> Unit,
+    onExportPng: () -> Unit,
+    onExportJson: () -> Unit,
+) {
     val appLanguage = LocalAppLanguage.current
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Text(
             text = appLanguage.pick("Activate", "激活"),
             style = MaterialTheme.typography.labelLarge,
@@ -177,6 +214,26 @@ private fun ActionRow(onActivate: () -> Unit) {
                 .clickable(onClick = onActivate)
                 .padding(horizontal = 16.dp, vertical = 10.dp)
                 .testTag("character-detail-activate"),
+        )
+        Text(
+            text = appLanguage.pick("Export PNG", "导出 PNG"),
+            style = MaterialTheme.typography.labelLarge,
+            color = AetherColors.OnSurface,
+            modifier = Modifier
+                .background(AetherColors.SurfaceContainerHigh, shape = androidx.compose.foundation.shape.CircleShape)
+                .clickable(onClick = onExportPng)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .testTag("character-detail-export-png"),
+        )
+        Text(
+            text = appLanguage.pick("Export JSON", "导出 JSON"),
+            style = MaterialTheme.typography.labelLarge,
+            color = AetherColors.OnSurface,
+            modifier = Modifier
+                .background(AetherColors.SurfaceContainerHigh, shape = androidx.compose.foundation.shape.CircleShape)
+                .clickable(onClick = onExportJson)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .testTag("character-detail-export-json"),
         )
     }
 }
