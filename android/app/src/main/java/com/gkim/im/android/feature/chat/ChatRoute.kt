@@ -55,6 +55,7 @@ import com.gkim.im.android.core.model.DraftAigcRequest
 import com.gkim.im.android.core.model.MediaInput
 import com.gkim.im.android.core.model.MessageAttachment
 import com.gkim.im.android.core.model.MessageDirection
+import com.gkim.im.android.core.model.MessageStatus
 import com.gkim.im.android.core.model.TaskStatus
 import com.gkim.im.android.core.util.formatChatTimestamp
 import com.gkim.im.android.data.repository.AigcRepository
@@ -288,10 +289,14 @@ private fun ChatScreen(
                     .testTag("chat-timeline"),
                 state = timelineState,
             ) {
+                val lastCompanionIndex = timelineMessages.indexOfLast { it.companionTurnMeta != null }
                 items(timelineMessages, key = { it.id }) { message ->
+                    val isMostRecentCompanion = message.companionTurnMeta != null &&
+                        timelineMessages.indexOf(message) == lastCompanionIndex
                     ChatMessageRow(
                         conversation = uiState.conversation,
                         message = message,
+                        isMostRecentCompanionVariant = isMostRecentCompanion,
                     )
                 }
                 uiState.latestTask?.let { task ->
@@ -582,11 +587,13 @@ private fun ChatTopBar(
 private fun ChatMessageRow(
     conversation: Conversation?,
     message: ChatMessage,
+    isMostRecentCompanionVariant: Boolean = false,
 ) {
     val context = LocalContext.current
     val isOutgoing = message.direction == MessageDirection.Outgoing
+    val companionPresentation = companionLifecyclePresentation(message, isMostRecentCompanionVariant)
     val hasAttachment = message.attachment != null
-    val hasBody = message.body.isNotBlank()
+    val hasBody = if (companionPresentation != null) companionPresentation.showBody else message.body.isNotBlank()
     val isOutgoingTextOnly = isOutgoing && !hasAttachment && hasBody
     val isIncomingOrSystem = !isOutgoing
     val authorName = when (message.direction) {
@@ -663,7 +670,38 @@ private fun ChatMessageRow(
                 verticalArrangement = Arrangement.spacedBy(bubbleSpacing),
                 horizontalAlignment = if (isOutgoing) Alignment.End else Alignment.Start,
             ) {
-                if (hasBody) {
+                if (companionPresentation != null) {
+                    Text(
+                        text = companionPresentation.statusLine,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = AetherColors.OnSurfaceVariant,
+                        modifier = Modifier.testTag("chat-companion-status-${message.id}"),
+                    )
+                    if (companionPresentation.showBody) {
+                        Text(
+                            text = companionPresentation.body,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = AetherColors.OnSurface,
+                            modifier = Modifier.testTag("chat-message-body-${message.id}"),
+                        )
+                    }
+                    if (companionPresentation.showRegenerate) {
+                        Text(
+                            text = "Regenerate",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.Primary,
+                            modifier = Modifier.testTag("chat-companion-regenerate-${message.id}"),
+                        )
+                    }
+                    if (companionPresentation.showRetry) {
+                        Text(
+                            text = "Retry",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.Primary,
+                            modifier = Modifier.testTag("chat-companion-retry-${message.id}"),
+                        )
+                    }
+                } else if (hasBody) {
                     Text(
                         text = message.body,
                         style = MaterialTheme.typography.bodyLarge,
@@ -779,5 +817,84 @@ internal fun generationFeedback(task: AigcTask): GenerationFeedback = when (task
         statusLine = "Ready from ${task.providerId} · ${task.model}",
         showPreview = !task.outputPreview.isNullOrBlank(),
     )
+}
+
+internal data class CompanionLifecyclePresentation(
+    val statusLine: String,
+    val body: String,
+    val showBody: Boolean,
+    val showRegenerate: Boolean,
+    val showRetry: Boolean,
+    val modelBadge: String?,
+    val tone: CompanionLifecycleTone,
+)
+
+internal enum class CompanionLifecycleTone {
+    Thinking, Streaming, Completed, Failed, Timeout, Blocked,
+}
+
+internal fun companionLifecyclePresentation(
+    message: ChatMessage,
+    isMostRecentCompanionVariant: Boolean,
+): CompanionLifecyclePresentation? {
+    val meta = message.companionTurnMeta ?: return null
+    val modelBadge = meta.model?.takeIf { it.isNotBlank() }
+    return when (message.status) {
+        MessageStatus.Thinking -> CompanionLifecyclePresentation(
+            statusLine = "Thinking…",
+            body = "",
+            showBody = false,
+            showRegenerate = false,
+            showRetry = false,
+            modelBadge = modelBadge,
+            tone = CompanionLifecycleTone.Thinking,
+        )
+        MessageStatus.Streaming -> CompanionLifecyclePresentation(
+            statusLine = "Streaming…",
+            body = message.body,
+            showBody = message.body.isNotEmpty(),
+            showRegenerate = false,
+            showRetry = false,
+            modelBadge = modelBadge,
+            tone = CompanionLifecycleTone.Streaming,
+        )
+        MessageStatus.Completed -> CompanionLifecyclePresentation(
+            statusLine = modelBadge?.let { "Model · $it" } ?: "Ready",
+            body = message.body,
+            showBody = message.body.isNotBlank(),
+            showRegenerate = meta.canRegenerate && isMostRecentCompanionVariant,
+            showRetry = false,
+            modelBadge = modelBadge,
+            tone = CompanionLifecycleTone.Completed,
+        )
+        MessageStatus.Failed -> CompanionLifecyclePresentation(
+            statusLine = message.body.takeIf { it.isNotBlank() }?.let { "Failed · $it" } ?: "Failed",
+            body = "",
+            showBody = false,
+            showRegenerate = false,
+            showRetry = true,
+            modelBadge = modelBadge,
+            tone = CompanionLifecycleTone.Failed,
+        )
+        MessageStatus.Timeout -> CompanionLifecyclePresentation(
+            statusLine = message.body.takeIf { it.isNotBlank() }?.let { "Timed out · $it" } ?: "Timed out",
+            body = "",
+            showBody = false,
+            showRegenerate = false,
+            showRetry = true,
+            modelBadge = modelBadge,
+            tone = CompanionLifecycleTone.Timeout,
+        )
+        MessageStatus.Blocked -> CompanionLifecyclePresentation(
+            statusLine = message.body.takeIf { it.isNotBlank() }?.let { "Blocked · $it" } ?: "Blocked",
+            body = "",
+            showBody = false,
+            showRegenerate = false,
+            showRetry = false,
+            modelBadge = modelBadge,
+            tone = CompanionLifecycleTone.Blocked,
+        )
+        MessageStatus.Pending -> null
+    }
 }
 
