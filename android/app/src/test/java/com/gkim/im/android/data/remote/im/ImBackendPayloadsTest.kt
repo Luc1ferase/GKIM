@@ -263,6 +263,162 @@ class ImBackendPayloadsTest {
     }
 
     @Test
+    fun `companion turn submit request round-trips through kotlinx serialization`() {
+        val request = CompanionTurnSubmitRequestDto(
+            conversationId = "conversation-1",
+            activeCompanionId = "architect-oracle",
+            userTurnBody = "Tell me a story about the tavern",
+            activeLanguage = "en",
+            clientTurnId = "client-turn-001",
+            parentMessageId = "message-root",
+        )
+
+        val encoded = json.encodeToString(CompanionTurnSubmitRequestDto.serializer(), request)
+        val decoded = json.decodeFromString<CompanionTurnSubmitRequestDto>(encoded)
+
+        assertEquals(request, decoded)
+    }
+
+    @Test
+    fun `companion turn pending list payload decodes record shape`() {
+        val pending = json.decodeFromString<CompanionTurnPendingListDto>(
+            """
+            {
+              "turns": [
+                {
+                  "turnId": "turn-42",
+                  "conversationId": "conversation-1",
+                  "messageId": "message-9",
+                  "variantGroupId": "vg-3",
+                  "variantIndex": 0,
+                  "parentMessageId": "message-8",
+                  "status": "streaming",
+                  "accumulatedBody": "The tavern door creaks",
+                  "lastDeltaSeq": 7,
+                  "providerId": "openai",
+                  "model": "gpt-4o-mini",
+                  "startedAt": "2026-04-21T08:00:00Z"
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, pending.turns.size)
+        val turn = pending.turns.single()
+        assertEquals("turn-42", turn.turnId)
+        assertEquals("streaming", turn.status)
+        assertEquals(7, turn.lastDeltaSeq)
+        assertEquals("The tavern door creaks", turn.accumulatedBody)
+        assertNull(turn.completedAt)
+        assertNull(turn.blockReason)
+    }
+
+    @Test
+    fun `gateway parser emits companion_turn started event`() {
+        val started = ImGatewayEventParser.parse(
+            """
+            {
+              "type": "companion_turn.started",
+              "turnId": "turn-100",
+              "conversationId": "conversation-1",
+              "messageId": "message-100",
+              "variantGroupId": "vg-5",
+              "variantIndex": 0,
+              "parentMessageId": "message-99",
+              "providerId": "openai",
+              "model": "gpt-4o-mini"
+            }
+            """.trimIndent(),
+        )
+        assertTrue(started is ImGatewayEvent.CompanionTurnStarted)
+        started as ImGatewayEvent.CompanionTurnStarted
+        assertEquals("turn-100", started.turnId)
+        assertEquals("vg-5", started.variantGroupId)
+        assertEquals(0, started.variantIndex)
+        assertEquals("openai", started.providerId)
+    }
+
+    @Test
+    fun `gateway parser emits companion_turn delta event with monotonic deltaSeq`() {
+        val delta = ImGatewayEventParser.parse(
+            """
+            {
+              "type": "companion_turn.delta",
+              "turnId": "turn-100",
+              "conversationId": "conversation-1",
+              "messageId": "message-100",
+              "deltaSeq": 3,
+              "textDelta": "The tavern fire crackles"
+            }
+            """.trimIndent(),
+        )
+        assertTrue(delta is ImGatewayEvent.CompanionTurnDelta)
+        delta as ImGatewayEvent.CompanionTurnDelta
+        assertEquals(3, delta.deltaSeq)
+        assertEquals("The tavern fire crackles", delta.textDelta)
+    }
+
+    @Test
+    fun `gateway parser emits companion_turn completed event with final body`() {
+        val completed = ImGatewayEventParser.parse(
+            """
+            {
+              "type": "companion_turn.completed",
+              "turnId": "turn-100",
+              "conversationId": "conversation-1",
+              "messageId": "message-100",
+              "finalBody": "The tavern fire crackles warmly.",
+              "completedAt": "2026-04-21T08:01:00Z"
+            }
+            """.trimIndent(),
+        )
+        assertTrue(completed is ImGatewayEvent.CompanionTurnCompleted)
+        completed as ImGatewayEvent.CompanionTurnCompleted
+        assertEquals("turn-100", completed.turnId)
+        assertEquals("The tavern fire crackles warmly.", completed.finalBody)
+        assertEquals("2026-04-21T08:01:00Z", completed.completedAt)
+    }
+
+    @Test
+    fun `gateway parser emits companion_turn failed event with subtype`() {
+        val failed = ImGatewayEventParser.parse(
+            """
+            {
+              "type": "companion_turn.failed",
+              "turnId": "turn-101",
+              "conversationId": "conversation-1",
+              "messageId": "message-101",
+              "subtype": "timeout",
+              "errorMessage": "idle for 15s"
+            }
+            """.trimIndent(),
+        )
+        assertTrue(failed is ImGatewayEvent.CompanionTurnFailed)
+        failed as ImGatewayEvent.CompanionTurnFailed
+        assertEquals("timeout", failed.subtype)
+        assertEquals("idle for 15s", failed.errorMessage)
+    }
+
+    @Test
+    fun `gateway parser emits companion_turn blocked event with typed reason`() {
+        val blocked = ImGatewayEventParser.parse(
+            """
+            {
+              "type": "companion_turn.blocked",
+              "turnId": "turn-102",
+              "conversationId": "conversation-1",
+              "messageId": "message-102",
+              "reason": "nsfw_denied"
+            }
+            """.trimIndent(),
+        )
+        assertTrue(blocked is ImGatewayEvent.CompanionTurnBlocked)
+        blocked as ImGatewayEvent.CompanionTurnBlocked
+        assertEquals("nsfw_denied", blocked.reason)
+    }
+
+    @Test
     fun `companion roster payload maps bilingual companion fields into android card model`() {
         val roster = json.decodeFromString<CompanionRosterDto>(
             """

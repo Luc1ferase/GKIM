@@ -368,6 +368,41 @@ data class ActiveCompanionSelectionDto(
     val characterId: String,
 )
 
+@Serializable
+data class CompanionTurnSubmitRequestDto(
+    val conversationId: String,
+    val activeCompanionId: String,
+    val userTurnBody: String,
+    val activeLanguage: String,
+    val clientTurnId: String,
+    val parentMessageId: String? = null,
+)
+
+@Serializable
+data class CompanionTurnRecordDto(
+    val turnId: String,
+    val conversationId: String,
+    val messageId: String,
+    val variantGroupId: String,
+    val variantIndex: Int,
+    val parentMessageId: String? = null,
+    val status: String,
+    val accumulatedBody: String,
+    val lastDeltaSeq: Int,
+    val providerId: String? = null,
+    val model: String? = null,
+    val startedAt: String,
+    val completedAt: String? = null,
+    val failureSubtype: String? = null,
+    val errorMessage: String? = null,
+    val blockReason: String? = null,
+)
+
+@Serializable
+data class CompanionTurnPendingListDto(
+    val turns: List<CompanionTurnRecordDto>,
+)
+
 private fun MessageAttachmentDto.toMessageAttachment(
     backendBaseUrl: String?,
     authToken: String?,
@@ -459,6 +494,53 @@ sealed interface ImGatewayEvent {
         val requestId: String,
         val byUserId: String,
     ) : ImGatewayEvent
+
+    @Serializable
+    data class CompanionTurnStarted(
+        val turnId: String,
+        val conversationId: String,
+        val messageId: String,
+        val variantGroupId: String,
+        val variantIndex: Int,
+        val parentMessageId: String? = null,
+        val providerId: String? = null,
+        val model: String? = null,
+    ) : ImGatewayEvent
+
+    @Serializable
+    data class CompanionTurnDelta(
+        val turnId: String,
+        val conversationId: String,
+        val messageId: String,
+        val deltaSeq: Int,
+        val textDelta: String,
+    ) : ImGatewayEvent
+
+    @Serializable
+    data class CompanionTurnCompleted(
+        val turnId: String,
+        val conversationId: String,
+        val messageId: String,
+        val finalBody: String,
+        val completedAt: String,
+    ) : ImGatewayEvent
+
+    @Serializable
+    data class CompanionTurnFailed(
+        val turnId: String,
+        val conversationId: String,
+        val messageId: String,
+        val subtype: String,
+        val errorMessage: String? = null,
+    ) : ImGatewayEvent
+
+    @Serializable
+    data class CompanionTurnBlocked(
+        val turnId: String,
+        val conversationId: String,
+        val messageId: String,
+        val reason: String,
+    ) : ImGatewayEvent
 }
 
 object ImGatewayEventParser {
@@ -477,6 +559,11 @@ object ImGatewayEventParser {
             "friend_request.received" -> json.decodeFromJsonElement<ImGatewayEvent.FriendRequestReceived>(element)
             "friend_request.accepted" -> json.decodeFromJsonElement<ImGatewayEvent.FriendRequestAccepted>(element)
             "friend_request.rejected" -> json.decodeFromJsonElement<ImGatewayEvent.FriendRequestRejected>(element)
+            "companion_turn.started" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnStarted>(element)
+            "companion_turn.delta" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnDelta>(element)
+            "companion_turn.completed" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnCompleted>(element)
+            "companion_turn.failed" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnFailed>(element)
+            "companion_turn.blocked" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnBlocked>(element)
             else -> throw IllegalArgumentException("Unsupported gateway event type")
         }
     }
