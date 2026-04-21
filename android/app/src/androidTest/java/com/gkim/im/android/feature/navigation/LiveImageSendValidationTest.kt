@@ -27,9 +27,11 @@ import com.gkim.im.android.data.remote.im.deriveWebSocketUrl
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.CompanionRosterRepository
+import com.gkim.im.android.data.repository.CompanionTurnRepository
 import com.gkim.im.android.data.repository.ContactsRepository
 import com.gkim.im.android.data.repository.DefaultAigcRepository
 import com.gkim.im.android.data.repository.DefaultCompanionRosterRepository
+import com.gkim.im.android.data.repository.DefaultCompanionTurnRepository
 import com.gkim.im.android.data.repository.DefaultFeedRepository
 import com.gkim.im.android.data.repository.FeedRepository
 import com.gkim.im.android.data.repository.InMemoryMessagingRepository
@@ -225,6 +227,7 @@ private class LiveImageValidationContainer(
         presetCharacters = seedPresetCharacters,
         drawPool = seedDrawPoolCharacters,
     )
+    override val companionTurnRepository: CompanionTurnRepository = DefaultCompanionTurnRepository()
     private val secureStore = UiInMemorySecureStore().apply {
         putString("preset_provider_hunyuan_api_key", "ui-test-hunyuan-key")
         putString("preset_provider_tongyi_api_key", "ui-test-tongyi-key")
