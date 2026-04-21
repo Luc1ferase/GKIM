@@ -588,6 +588,10 @@ private fun ChatMessageRow(
     conversation: Conversation?,
     message: ChatMessage,
     isMostRecentCompanionVariant: Boolean = false,
+    variantNavigation: VariantNavigationState? = null,
+    onSelectPreviousVariant: () -> Unit = {},
+    onSelectNextVariant: () -> Unit = {},
+    onRegenerate: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val isOutgoing = message.direction == MessageDirection.Outgoing
@@ -685,12 +689,44 @@ private fun ChatMessageRow(
                             modifier = Modifier.testTag("chat-message-body-${message.id}"),
                         )
                     }
+                    if (variantNavigation != null) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.testTag("chat-companion-variant-nav-${message.id}"),
+                        ) {
+                            Text(
+                                text = "<",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = if (variantNavigation.hasPrevious) AetherColors.Primary else AetherColors.OnSurfaceVariant,
+                                modifier = Modifier
+                                    .clickable(enabled = variantNavigation.hasPrevious, onClick = onSelectPreviousVariant)
+                                    .testTag("chat-companion-variant-prev-${message.id}"),
+                            )
+                            Text(
+                                text = variantNavigation.indicator,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = AetherColors.OnSurfaceVariant,
+                                modifier = Modifier.testTag("chat-companion-variant-indicator-${message.id}"),
+                            )
+                            Text(
+                                text = ">",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = if (variantNavigation.hasNext) AetherColors.Primary else AetherColors.OnSurfaceVariant,
+                                modifier = Modifier
+                                    .clickable(enabled = variantNavigation.hasNext, onClick = onSelectNextVariant)
+                                    .testTag("chat-companion-variant-next-${message.id}"),
+                            )
+                        }
+                    }
                     if (companionPresentation.showRegenerate) {
                         Text(
                             text = "Regenerate",
                             style = MaterialTheme.typography.labelLarge,
                             color = AetherColors.Primary,
-                            modifier = Modifier.testTag("chat-companion-regenerate-${message.id}"),
+                            modifier = Modifier
+                                .clickable(onClick = onRegenerate)
+                                .testTag("chat-companion-regenerate-${message.id}"),
                         )
                     }
                     if (companionPresentation.showRetry) {
@@ -816,6 +852,29 @@ internal fun generationFeedback(task: AigcTask): GenerationFeedback = when (task
     TaskStatus.Succeeded -> GenerationFeedback(
         statusLine = "Ready from ${task.providerId} · ${task.model}",
         showPreview = !task.outputPreview.isNullOrBlank(),
+    )
+}
+
+internal data class VariantNavigationState(
+    val indicator: String,
+    val hasPrevious: Boolean,
+    val hasNext: Boolean,
+    val activeIndex: Int,
+    val total: Int,
+)
+
+internal fun variantNavigationState(
+    variantGroupSiblingCount: Int,
+    activeIndex: Int,
+): VariantNavigationState? {
+    if (variantGroupSiblingCount <= 1) return null
+    val clampedIndex = activeIndex.coerceIn(0, variantGroupSiblingCount - 1)
+    return VariantNavigationState(
+        indicator = "${clampedIndex + 1}/$variantGroupSiblingCount",
+        hasPrevious = clampedIndex > 0,
+        hasNext = clampedIndex < variantGroupSiblingCount - 1,
+        activeIndex = clampedIndex,
+        total = variantGroupSiblingCount,
     )
 }
 
