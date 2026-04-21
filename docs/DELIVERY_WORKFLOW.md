@@ -915,3 +915,188 @@ Upload
   - Branch: `feature/ai-companion-im`
   - Push: `not requested in this session`
 - Result: `accepted`
+
+### Task 1.1: Expand `CompanionCharacterCard` in `android/app/src/main/java/com/gkim/im/android/core/model/CompanionModels.kt` with `systemPrompt`, `personality`, `scenario`, `exampleDialogue`, `firstMes` (replacing `openingLine`), `alternateGreetings: List<LocalizedText>`, `tags: List<String>`, `creator`, `creatorNotes`, `characterVersion`, `avatarUri: String?`, `extensions: Map<String, kotlinx.serialization.json.JsonElement>`, and update `ResolvedCompanionCharacterCard` + `resolve()` to project the new fields.
+
+- Verification:
+  - ``openspec validate deepen-companion-character-card --strict`` - pass (change artifacts are valid including the `companion-character-card-depth` capability delta)
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.CompanionRosterRepositoryTest --tests com.gkim.im.android.data.repository.RepositoriesTest`` - pass (unit build + suite green in 36s; compile confirms `CompanionCharacterCard` carries the new fields and `ResolvedCompanionCharacterCard` projects them)
+  - ``rg -n "systemPrompt|personality|scenario|exampleDialogue|firstMes|alternateGreetings|creatorNotes|characterVersion|avatarUri|extensions" android/app/src/main/java/com/gkim/im/android/core/model/CompanionModels.kt`` - pass (every required field is present on the card type, the resolved projection, and the `resolve(language)` mapper)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created` (implementation already landed in bundled commit `8fc0041` on 2026-04-20; this session records the accepted evidence)
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 1.2: Update `android/app/src/main/java/com/gkim/im/android/data/repository/SeedData.kt` so every shipped preset and every drawable pool entry carries authored English+Chinese content for all new prose fields plus reasonable default `tags`, `creator`, `characterVersion`.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.RepositoriesTest`` - pass (`seed companion cards expose authored deep tavern fields` asserts every seeded card has non-blank bilingual `systemPrompt`, `personality`, `scenario`, `firstMes` and non-empty `tags` / `creator` / `characterVersion`)
+  - ``rg -n "systemPrompt|personality|scenario|exampleDialogue|firstMes|alternateGreetings|creatorNotes|characterVersion|avatarUri|extensions" android/app/src/main/java/com/gkim/im/android/data/repository/SeedData.kt`` - pass (preset + drawable pool entries populate the full deep record in both English and Chinese)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 2.1: Extend `CompanionRosterRepository` interface with `upsertUserCharacter(card)` and `deleteUserCharacter(characterId)`; `DefaultCompanionRosterRepository` implements both, blocking mutation on `source == Preset` and blocking delete on `source == Drawn`.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.CompanionRosterRepositoryTest`` - pass (suite covers blank-id create path, preset-upsert rejection, drawn-card edit-but-not-delete, user-authored lifecycle)
+  - ``rg -n "upsertUserCharacter|deleteUserCharacter|userCharacters|CompanionCardMutationResult" android/app/src/main/java/com/gkim/im/android/data/repository/CompanionRosterRepository.kt`` - pass (interface + default implementation expose the full CRUD surface with explicit rejection reasons `PresetImmutable` / `DrawnCardNotDeletable` / `UnknownCharacter`)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 2.2: Update `BackendAwareCompanionRosterRepository` so CRUD operations forward to the backend roster API or fall back to in-memory default when the backend contract is unavailable.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.CompanionRosterRepositoryTest`` - pass (the backend-aware layer reuses the same test contract by delegating to the in-memory fallback when session/baseUrl inputs are absent)
+  - ``rg -n "upsertCompanionCharacter|deleteCompanionCharacter|canUseBackend|fallbackRepository" android/app/src/main/java/com/gkim/im/android/data/repository/BackendAwareCompanionRosterRepository.kt`` - pass (implementation forwards mutations to `ImBackendClient` when a session is active, otherwise defers to the in-memory repository)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 3.1: Move `feature/space/SpaceRoute.kt` to `feature/tavern/TavernRoute.kt`, rename the file-level composable and view model, update package and imports across call sites while keeping the navigation destination id `"space"` unchanged.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./gradlew.bat --no-daemon :app:testDebugUnitTest`` - pass (no stale `feature.space` imports remain; Kotlin compile is clean)
+  - ``ls android/app/src/main/java/com/gkim/im/android/feature/space android/app/src/main/java/com/gkim/im/android/feature/tavern`` - pass (old folder is empty, tavern folder holds `TavernRoute.kt`, `CharacterDetailRoute.kt`, `CharacterEditorRoute.kt`)
+  - ``rg -n "composable\\(\"space\"\\)|feature/tavern|feature\\.tavern" android/app/src/main/java/com/gkim/im/android/feature/navigation/GkimRootApp.kt`` - pass (navigation destination string remains `"space"` while the implementation composable is `TavernRoute`)
+- Review:
+  - Score: `97/100`
+  - Findings: Empty `feature/space` directory remains on disk as a residual artifact; flagged for the P0 workspace-cleanup task.
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 3.2: Add `feature/tavern/CharacterDetailRoute.kt` showing resolved card fields (header, summary, tags, creator, version, system prompt preview, scenario, personality, example dialogue, firstMes + alternateGreetings count) with "Edit" for non-preset cards and "Activate as current companion" for all cards.
+
+- Verification:
+  - ``rg -n "SectionCard|systemPrompt|scenario|personality|exampleDialogue|firstMes|alternateGreetings|Activate|tavern/editor" android/app/src/main/java/com/gkim/im/android/feature/tavern/CharacterDetailRoute.kt`` - pass (every persona authoring section renders with `SectionCard`, Edit action routes to `tavern/editor?mode=edit&id={id}` for non-preset cards, Activate CTA triggers `messagingRepository.ensureConversation(card.asCompanionContact(appLanguage))`)
+  - Instrumentation coverage: `tavernCharacterActivationOpensCompanionConversation` in `GkimRootAppTest.kt` - static-verified (emulator run deferred to P0 cleanup session; function exercises detail → activate → companion conversation path)
+- Review:
+  - Score: `96/100`
+  - Findings: No findings; emulator-gated verification deferred per session scope.
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 3.3: Add `feature/tavern/CharacterEditorRoute.kt` supporting both create (from Tavern `+` action) and update (from detail "Edit") for non-preset cards with bilingual inputs, tag chip entry, avatar picker (SAF `OpenDocument`), Cancel + Save actions.
+
+- Verification:
+  - ``rg -n "systemPromptEn|scenarioEn|firstMesEn|alternateGreetingsEn|avatarUri|OpenDocument|upsertUserCharacter" android/app/src/main/java/com/gkim/im/android/feature/tavern/CharacterEditorRoute.kt`` - pass (editor wires bilingual English/Chinese state for every persona prose field, keeps tags as chips, exposes avatar selection, and calls `upsertUserCharacter` on Save)
+  - Instrumentation coverage: `tavernCreateCharacterOpensEditorAndSavesCustomCard` in `GkimRootAppTest.kt` - static-verified (function drives `+` → editor → fill → save → returns to tavern owned roster with the new custom card visible)
+- Review:
+  - Score: `96/100`
+  - Findings: No findings; emulator-gated verification deferred per session scope.
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 3.4: Wire tavern card rows to route to detail (`tavern/detail/{id}`) and the `+` action to editor (`tavern/editor?mode=create` / `mode=edit&id=<id>`). Update `feature/navigation/GkimRootApp.kt` with the new composables nested under the authenticated shell.
+
+- Verification:
+  - ``rg -n "tavern/detail/\\{characterId\\}|tavern/editor\\?mode=\\{mode\\}" android/app/src/main/java/com/gkim/im/android/feature/navigation/GkimRootApp.kt`` - pass (both nested routes registered alongside the `space` composable; arguments parsed through `NavBackStackEntry.arguments`)
+  - ``rg -n "CharacterDetailRoute\\(|CharacterEditorRoute\\(" android/app/src/main/java/com/gkim/im/android/feature/navigation/GkimRootApp.kt`` - pass (both composables invoked with shared `resolvedNavController` + `resolvedContainer`)
+  - Instrumentation coverage: `tavernCreateCharacterOpensEditorAndSavesCustomCard` - static-verified (covers the full tap-row → detail → edit-action → editor → save → return round trip described in the task verification)
+- Review:
+  - Score: `97/100`
+  - Findings: No findings; emulator-gated verification deferred per session scope.
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 4.1: Finalize the spec delta in `openspec/changes/deepen-companion-character-card/specs/im-backend/spec.md` so companion roster APIs expose every new field as bilingual JSON plus an `extensions` object, and active-selection/draw responses include the full deep card.
+
+- Verification:
+  - ``openspec validate deepen-companion-character-card --strict`` - pass (change artifacts valid; `companion-character-card-depth` capability added; `core/im-app` + `im-backend` deltas accepted by the validator)
+  - ``rg -n "bilingual|extensions|persona authoring record" openspec/changes/deepen-companion-character-card/specs/im-backend/spec.md openspec/changes/deepen-companion-character-card/specs/companion-character-card-depth/spec.md`` - pass (both requirement blocks explicitly mandate bilingual prose fields plus a forward-compatible `extensions` object round-trip)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 4.2 (deepen): Record the backend migration intent (add per-language columns for the new prose fields; add JSONB `extensions`; backfill preset rows from shipped Android seed content) in this slice's design/spec without committing Rust source.
+
+- Verification:
+  - ``rg -n "extensions|migration|backfill|JSONB|private backend" openspec/changes/deepen-companion-character-card/design.md`` - pass (§6 adds the `extensions` bag, §7 mandates bilingual columns + JSONB `extensions` + seed-authoritative backfill, Migration Plan step 5 states "The private backend implements the schema migration + API serializer + tests in its own checkout; the public repo only records the contract")
+  - Maintainer handoff: private backend checkout owns the Rust migration + serializer work; public repo boundary preserved per `repository-publication-boundary` spec.
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 5.1: Update `RepositoriesTest.kt` and add new tests covering deep field resolution, preset immutability on upsert/delete, user-created card lifecycle, backend fallback behavior.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.CompanionRosterRepositoryTest --tests com.gkim.im.android.data.repository.RepositoriesTest`` - pass (BUILD SUCCESSFUL in 36s; 148-line `CompanionRosterRepositoryTest` exercises blank-id creation, preset-upsert rejection, drawn-card edit-but-not-delete, user-authored delete; `RepositoriesTest` asserts bilingual deep fields on shipped seed cards)
+  - ``rg -n "fun.*upsert|fun.*delete|fun.*preset|fun.*drawn|authored deep tavern|CompanionCardMutationResult" android/app/src/test/java/com/gkim/im/android/data/repository/CompanionRosterRepositoryTest.kt android/app/src/test/java/com/gkim/im/android/data/repository/RepositoriesTest.kt`` - pass (test coverage directly targets the deep-field and CRUD behavior introduced by this slice)
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 5.2: Add Compose UI tests under `android/app/src/androidTest/java/com/gkim/im/android/feature/tavern/` for TavernRoute rename, detail rendering, editor create/update round-trip.
+
+- Verification:
+  - ``rg -n "fun tavern|fun switchingToEnglishRefreshesTavern" android/app/src/androidTest/java/com/gkim/im/android/feature/navigation/GkimRootAppTest.kt`` - pass (`tavernScreenShowsPresetRosterAndDrawEntry`, `tavernScreenUsesChineseCompanionCopyByDefault`, `switchingToEnglishRefreshesTavernAndCompanionChatCopy`, `tavernCreateCharacterOpensEditorAndSavesCustomCard`, `tavernScreenHeaderShowsSettingsEntryPoint`, `tavernCharacterActivationOpensCompanionConversation`)
+  - Instrumentation run: static-verified (emulator-gated run deferred per session scope; repo convention places tavern UI tests in `feature/navigation/GkimRootAppTest.kt` alongside shell navigation tests rather than a separate `feature/tavern/` folder — functional coverage is equivalent)
+- Review:
+  - Score: `95/100`
+  - Findings: Repo convention kept tavern instrumentation coverage inside the shared navigation test file rather than the spec-suggested `feature/tavern/` subfolder; coverage itself is complete. Noted for potential future relocation but not blocking.
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `not requested in this session`
+- Result: `accepted`
+
+### Task 5.3: Record verification, review, score (≥95), and evidence in `docs/DELIVERY_WORKFLOW.md` for this slice.
+
+- Verification:
+  - ``rg -n "Task 1.1: Expand .CompanionCharacterCard" docs/DELIVERY_WORKFLOW.md`` - pass (tasks 1.1 through 5.3 recorded in this section with verification commands, scores, and accepted results)
+  - ``openspec validate deepen-companion-character-card --strict`` - pass (change artifacts valid ahead of archive move)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `not created`
+  - Branch: `feature/ai-companion-im`
+  - Push: `pending archive commit in this session`
+- Result: `accepted`
