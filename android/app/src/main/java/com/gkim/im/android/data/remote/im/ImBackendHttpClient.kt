@@ -127,6 +127,37 @@ private interface ImBackendService {
         @Query("language") language: String,
         @Query("includeTranslationAlt") includeTranslationAlt: Boolean? = null,
     ): CardExportResponseDto
+
+    @GET("api/personas")
+    suspend fun listPersonas(@Header("Authorization") authorization: String): UserPersonaListDto
+
+    @POST("api/personas")
+    suspend fun createPersona(
+        @Header("Authorization") authorization: String,
+        @Body persona: UserPersonaDto,
+    ): UserPersonaDto
+
+    @POST("api/personas/{personaId}")
+    suspend fun updatePersona(
+        @Header("Authorization") authorization: String,
+        @Path("personaId") personaId: String,
+        @Body persona: UserPersonaDto,
+    ): UserPersonaDto
+
+    @POST("api/personas/{personaId}/delete")
+    suspend fun deletePersona(
+        @Header("Authorization") authorization: String,
+        @Path("personaId") personaId: String,
+    )
+
+    @POST("api/personas/{personaId}/activate")
+    suspend fun activatePersona(
+        @Header("Authorization") authorization: String,
+        @Path("personaId") personaId: String,
+    ): UserPersonaDto
+
+    @GET("api/personas/active")
+    suspend fun getActivePersona(@Header("Authorization") authorization: String): UserPersonaDto
 }
 
 class ImBackendHttpClient(
@@ -302,6 +333,47 @@ class ImBackendHttpClient(
         language = language,
         includeTranslationAlt = includeTranslationAlt,
     )
+
+    override suspend fun listPersonas(baseUrl: String, token: String): UserPersonaListDto =
+        serviceFor(baseUrl).listPersonas(bearerToken(token))
+
+    override suspend fun createPersona(
+        baseUrl: String,
+        token: String,
+        persona: UserPersonaDto,
+    ): UserPersonaDto = serviceFor(baseUrl).createPersona(
+        authorization = bearerToken(token),
+        persona = persona,
+    )
+
+    override suspend fun updatePersona(
+        baseUrl: String,
+        token: String,
+        persona: UserPersonaDto,
+    ): UserPersonaDto = serviceFor(baseUrl).updatePersona(
+        authorization = bearerToken(token),
+        personaId = persona.id,
+        persona = persona,
+    )
+
+    override suspend fun deletePersona(baseUrl: String, token: String, personaId: String) {
+        serviceFor(baseUrl).deletePersona(
+            authorization = bearerToken(token),
+            personaId = personaId,
+        )
+    }
+
+    override suspend fun activatePersona(
+        baseUrl: String,
+        token: String,
+        personaId: String,
+    ): UserPersonaDto = serviceFor(baseUrl).activatePersona(
+        authorization = bearerToken(token),
+        personaId = personaId,
+    )
+
+    override suspend fun getActivePersona(baseUrl: String, token: String): UserPersonaDto =
+        serviceFor(baseUrl).getActivePersona(bearerToken(token))
 
     private fun serviceFor(baseUrl: String): ImBackendService =
         ServiceFactory.retrofit(normalizeBaseUrl(baseUrl), okHttpClient).create(ImBackendService::class.java)

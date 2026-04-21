@@ -116,5 +116,41 @@ interface ImBackendClient {
     ): CardExportResponseDto {
         error("exportCard is not implemented for this backend client")
     }
+
+    suspend fun listPersonas(baseUrl: String, token: String): UserPersonaListDto {
+        error("listPersonas is not implemented for this backend client")
+    }
+
+    suspend fun createPersona(
+        baseUrl: String,
+        token: String,
+        persona: UserPersonaDto,
+    ): UserPersonaDto {
+        error("createPersona is not implemented for this backend client")
+    }
+
+    suspend fun updatePersona(
+        baseUrl: String,
+        token: String,
+        persona: UserPersonaDto,
+    ): UserPersonaDto {
+        error("updatePersona is not implemented for this backend client")
+    }
+
+    suspend fun deletePersona(baseUrl: String, token: String, personaId: String) {
+        error("deletePersona is not implemented for this backend client")
+    }
+
+    suspend fun activatePersona(
+        baseUrl: String,
+        token: String,
+        personaId: String,
+    ): UserPersonaDto {
+        error("activatePersona is not implemented for this backend client")
+    }
+
+    suspend fun getActivePersona(baseUrl: String, token: String): UserPersonaDto {
+        error("getActivePersona is not implemented for this backend client")
+    }
 }
 

@@ -601,4 +601,305 @@ class ImBackendHttpClientTest {
         }
         assertTrue(thrown != null)
     }
+
+    @Test
+    fun `listPersonas attaches bearer token and decodes persona library`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """
+                {
+                  "personas": [
+                    {
+                      "id": "persona-default",
+                      "displayName": {"english":"You","chinese":"你"},
+                      "description": {"english":"Default persona","chinese":"默认人格"},
+                      "isBuiltIn": true,
+                      "isActive": true,
+                      "createdAt": 0,
+                      "updatedAt": 0
+                    }
+                  ],
+                  "activePersonaId": "persona-default"
+                }
+                """.trimIndent()
+            ).addHeader("Content-Type", "application/json"),
+        )
+
+        val list = client.listPersonas(server.url("").toString(), "session-token-2")
+        val request = server.takeRequest()
+
+        assertEquals("GET", request.method)
+        assertEquals("/api/personas", request.path)
+        assertEquals("Bearer session-token-2", request.getHeader("Authorization"))
+        assertEquals("persona-default", list.activePersonaId)
+        assertEquals(1, list.personas.size)
+        assertEquals(true, list.personas.single().isBuiltIn)
+    }
+
+    @Test
+    fun `listPersonas raises on 404 response`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(404).setBody("not found"))
+
+        var thrown: Throwable? = null
+        try {
+            client.listPersonas(server.url("").toString(), "session-token-2")
+            fail("expected exception on 404 response")
+        } catch (t: Throwable) {
+            thrown = t
+        }
+        assertTrue(thrown != null)
+    }
+
+    @Test
+    fun `createPersona posts persona body and returns stored record`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """
+                {
+                  "id": "persona-new-1",
+                  "displayName": {"english":"Aria","chinese":"Aria"},
+                  "description": {"english":"Adventurer","chinese":"冒险者"},
+                  "isBuiltIn": false,
+                  "isActive": false,
+                  "createdAt": 1,
+                  "updatedAt": 1
+                }
+                """.trimIndent()
+            ).addHeader("Content-Type", "application/json"),
+        )
+
+        val persona = UserPersonaDto(
+            id = "persona-new-1",
+            displayName = LocalizedTextDto("Aria", "Aria"),
+            description = LocalizedTextDto("Adventurer", "冒险者"),
+        )
+        val created = client.createPersona(
+            baseUrl = server.url("").toString(),
+            token = "session-token-2",
+            persona = persona,
+        )
+        val request = server.takeRequest()
+
+        assertEquals("POST", request.method)
+        assertEquals("/api/personas", request.path)
+        assertEquals("Bearer session-token-2", request.getHeader("Authorization"))
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"id\":\"persona-new-1\""))
+        assertTrue(body.contains("\"english\":\"Aria\""))
+        assertEquals("persona-new-1", created.id)
+    }
+
+    @Test
+    fun `createPersona raises on 409 conflict response`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(409).setBody("conflict"))
+
+        var thrown: Throwable? = null
+        try {
+            client.createPersona(
+                baseUrl = server.url("").toString(),
+                token = "session-token-2",
+                persona = UserPersonaDto(
+                    id = "persona-new-1",
+                    displayName = LocalizedTextDto("Aria", "Aria"),
+                    description = LocalizedTextDto("Adventurer", "冒险者"),
+                ),
+            )
+            fail("expected exception on 409 response")
+        } catch (t: Throwable) {
+            thrown = t
+        }
+        assertTrue(thrown != null)
+    }
+
+    @Test
+    fun `updatePersona posts to persona id path with body`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """
+                {
+                  "id": "persona-1",
+                  "displayName": {"english":"Aria","chinese":"Aria"},
+                  "description": {"english":"Updated","chinese":"更新"},
+                  "isBuiltIn": false,
+                  "isActive": false,
+                  "createdAt": 1,
+                  "updatedAt": 5
+                }
+                """.trimIndent()
+            ).addHeader("Content-Type", "application/json"),
+        )
+
+        val updated = client.updatePersona(
+            baseUrl = server.url("").toString(),
+            token = "session-token-2",
+            persona = UserPersonaDto(
+                id = "persona-1",
+                displayName = LocalizedTextDto("Aria", "Aria"),
+                description = LocalizedTextDto("Updated", "更新"),
+                updatedAt = 5,
+            ),
+        )
+        val request = server.takeRequest()
+
+        assertEquals("POST", request.method)
+        assertEquals("/api/personas/persona-1", request.path)
+        assertEquals("Bearer session-token-2", request.getHeader("Authorization"))
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"english\":\"Updated\""))
+        assertEquals("persona-1", updated.id)
+        assertEquals(5, updated.updatedAt)
+    }
+
+    @Test
+    fun `updatePersona raises on 404 missing persona`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(404).setBody("not found"))
+
+        var thrown: Throwable? = null
+        try {
+            client.updatePersona(
+                baseUrl = server.url("").toString(),
+                token = "session-token-2",
+                persona = UserPersonaDto(
+                    id = "missing-persona",
+                    displayName = LocalizedTextDto("X", "X"),
+                    description = LocalizedTextDto("X", "X"),
+                ),
+            )
+            fail("expected exception on 404 response")
+        } catch (t: Throwable) {
+            thrown = t
+        }
+        assertTrue(thrown != null)
+    }
+
+    @Test
+    fun `deletePersona posts to delete sub-route with bearer token`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(204))
+
+        client.deletePersona(
+            baseUrl = server.url("").toString(),
+            token = "session-token-2",
+            personaId = "persona-1",
+        )
+        val request = server.takeRequest()
+
+        assertEquals("POST", request.method)
+        assertEquals("/api/personas/persona-1/delete", request.path)
+        assertEquals("Bearer session-token-2", request.getHeader("Authorization"))
+    }
+
+    @Test
+    fun `deletePersona raises on 409 when active persona deletion blocked`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(409).setBody(
+                """{"error":"persona_active","detail":"cannot delete active persona"}""",
+            ).addHeader("Content-Type", "application/json"),
+        )
+
+        var thrown: Throwable? = null
+        try {
+            client.deletePersona(
+                baseUrl = server.url("").toString(),
+                token = "session-token-2",
+                personaId = "persona-active",
+            )
+            fail("expected exception on 409 response")
+        } catch (t: Throwable) {
+            thrown = t
+        }
+        assertTrue(thrown != null)
+    }
+
+    @Test
+    fun `activatePersona posts to activate sub-route and returns new active`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """
+                {
+                  "id": "persona-2",
+                  "displayName": {"english":"Aria","chinese":"Aria"},
+                  "description": {"english":"Now active","chinese":"现已激活"},
+                  "isBuiltIn": false,
+                  "isActive": true,
+                  "createdAt": 1,
+                  "updatedAt": 9
+                }
+                """.trimIndent()
+            ).addHeader("Content-Type", "application/json"),
+        )
+
+        val active = client.activatePersona(
+            baseUrl = server.url("").toString(),
+            token = "session-token-2",
+            personaId = "persona-2",
+        )
+        val request = server.takeRequest()
+
+        assertEquals("POST", request.method)
+        assertEquals("/api/personas/persona-2/activate", request.path)
+        assertEquals("Bearer session-token-2", request.getHeader("Authorization"))
+        assertEquals("persona-2", active.id)
+        assertEquals(true, active.isActive)
+    }
+
+    @Test
+    fun `activatePersona raises on 404 unknown persona`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(404).setBody("not found"))
+
+        var thrown: Throwable? = null
+        try {
+            client.activatePersona(
+                baseUrl = server.url("").toString(),
+                token = "session-token-2",
+                personaId = "persona-missing",
+            )
+            fail("expected exception on 404 response")
+        } catch (t: Throwable) {
+            thrown = t
+        }
+        assertTrue(thrown != null)
+    }
+
+    @Test
+    fun `getActivePersona returns current active persona`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """
+                {
+                  "id": "persona-default",
+                  "displayName": {"english":"You","chinese":"你"},
+                  "description": {"english":"Default","chinese":"默认"},
+                  "isBuiltIn": true,
+                  "isActive": true,
+                  "createdAt": 0,
+                  "updatedAt": 0
+                }
+                """.trimIndent()
+            ).addHeader("Content-Type", "application/json"),
+        )
+
+        val active = client.getActivePersona(server.url("").toString(), "session-token-2")
+        val request = server.takeRequest()
+
+        assertEquals("GET", request.method)
+        assertEquals("/api/personas/active", request.path)
+        assertEquals("Bearer session-token-2", request.getHeader("Authorization"))
+        assertEquals("persona-default", active.id)
+        assertEquals(true, active.isActive)
+        assertEquals(true, active.isBuiltIn)
+    }
+
+    @Test
+    fun `getActivePersona raises on 404 when no active persona`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(404).setBody("no active"))
+
+        var thrown: Throwable? = null
+        try {
+            client.getActivePersona(server.url("").toString(), "session-token-2")
+            fail("expected exception on 404 response")
+        } catch (t: Throwable) {
+            thrown = t
+        }
+        assertTrue(thrown != null)
+    }
 }
