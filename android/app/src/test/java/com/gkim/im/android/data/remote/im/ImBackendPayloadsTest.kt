@@ -461,4 +461,135 @@ class ImBackendPayloadsTest {
         assertEquals("冷静策士", card.roleLabel.chinese)
         assertEquals("我一直在酒馆等你。今晚是什么样的夜色，说给我听。", card.firstMes.chinese)
     }
+
+    @Test
+    fun `card import upload request round-trips through kotlinx serialization`() {
+        val request = CardImportUploadRequestDto(
+            filename = "aria.png",
+            contentBase64 = "iVBORw0KGgoAAA==",
+            claimedFormat = "png",
+        )
+        val encoded = json.encodeToString(CardImportUploadRequestDto.serializer(), request)
+        val decoded = json.decodeFromString<CardImportUploadRequestDto>(encoded)
+        assertEquals(request, decoded)
+    }
+
+    @Test
+    fun `card import preview payload decodes deep record plus warnings plus st extensions passthrough`() {
+        val preview = json.decodeFromString<CardImportPreviewDto>(
+            """
+            {
+              "previewToken": "preview-xyz-1",
+              "card": {
+                "id": "card-import-1",
+                "displayName": {"english":"Aria","chinese":"Aria"},
+                "roleLabel": {"english":"Guide","chinese":"向导"},
+                "summary": {"english":"Calm guide","chinese":"Calm guide"},
+                "firstMes": {"english":"Hello traveller.","chinese":"Hello traveller."},
+                "alternateGreetings": [],
+                "avatarText": "AR",
+                "accent": "primary",
+                "source": "userauthored",
+                "extensions": {
+                  "st": {
+                    "stPostHistoryInstructions": "Stay in character.",
+                    "stDepthPrompt": "You live deep in the woods.",
+                    "stTranslationPending": ["firstMes"]
+                  }
+                }
+              },
+              "detectedLanguage": "en",
+              "warnings": [
+                {"code":"field_truncated","field":"personality","detail":"exceeded 32 KiB"},
+                {"code":"avatar_discarded","field":"avatar","detail":"> 4096x4096"},
+                {"code":"alt_greetings_trimmed","detail":"kept first 64"},
+                {"code":"tags_trimmed"},
+                {"code":"extension_dropped","field":"st.unknown_large"},
+                {"code":"st_translation_pending","field":"firstMes"},
+                {"code":"post_history_instruction_parked","field":"stPostHistoryInstructions"}
+              ],
+              "stExtensionKeys": ["stPostHistoryInstructions","stDepthPrompt","stTranslationPending"]
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals("preview-xyz-1", preview.previewToken)
+        assertEquals("en", preview.detectedLanguage)
+        assertEquals("card-import-1", preview.card.id)
+        assertEquals("Hello traveller.", preview.card.firstMes?.english)
+        assertEquals(7, preview.warnings.size)
+        val codes = preview.warnings.map { it.code }
+        assertTrue(codes.contains("field_truncated"))
+        assertTrue(codes.contains("avatar_discarded"))
+        assertTrue(codes.contains("alt_greetings_trimmed"))
+        assertTrue(codes.contains("tags_trimmed"))
+        assertTrue(codes.contains("extension_dropped"))
+        assertTrue(codes.contains("st_translation_pending"))
+        assertTrue(codes.contains("post_history_instruction_parked"))
+        assertEquals("personality", preview.warnings.first { it.code == "field_truncated" }.field)
+        assertNull(preview.warnings.first { it.code == "tags_trimmed" }.field)
+        assertEquals(listOf("stPostHistoryInstructions", "stDepthPrompt", "stTranslationPending"), preview.stExtensionKeys)
+
+        val reEncoded = json.encodeToString(CardImportPreviewDto.serializer(), preview)
+        val reDecoded = json.decodeFromString<CardImportPreviewDto>(reEncoded)
+        assertEquals(preview, reDecoded)
+        assertTrue(reDecoded.card.extensions.containsKey("st"))
+    }
+
+    @Test
+    fun `card import commit request round-trips through kotlinx serialization`() {
+        val commit = CardImportCommitRequestDto(
+            previewToken = "preview-xyz-1",
+            card = CompanionCharacterCardDto(
+                id = "card-import-1",
+                displayName = LocalizedTextDto("Aria", "Aria"),
+                roleLabel = LocalizedTextDto("Guide", "向导"),
+                summary = LocalizedTextDto("Calm guide", "Calm guide"),
+                firstMes = LocalizedTextDto("Hello traveller.", "你好，旅人。"),
+                avatarText = "AR",
+                accent = "primary",
+                source = "userauthored",
+            ),
+            languageOverride = "zh",
+        )
+        val encoded = json.encodeToString(CardImportCommitRequestDto.serializer(), commit)
+        val decoded = json.decodeFromString<CardImportCommitRequestDto>(encoded)
+        assertEquals(commit, decoded)
+    }
+
+    @Test
+    fun `card export request and response round-trip through kotlinx serialization`() {
+        val request = CardExportRequestDto(
+            format = "png",
+            language = "zh",
+            includeTranslationAlt = true,
+        )
+        val encodedRequest = json.encodeToString(CardExportRequestDto.serializer(), request)
+        val decodedRequest = json.decodeFromString<CardExportRequestDto>(encodedRequest)
+        assertEquals(request, decodedRequest)
+
+        val pngResponse = CardExportResponseDto(
+            format = "png",
+            filename = "aria.png",
+            contentType = "image/png",
+            encoding = "base64",
+            payload = "iVBORw0KGgoAAA==",
+        )
+        val decodedPng = json.decodeFromString<CardExportResponseDto>(
+            json.encodeToString(CardExportResponseDto.serializer(), pngResponse),
+        )
+        assertEquals(pngResponse, decodedPng)
+
+        val jsonResponse = CardExportResponseDto(
+            format = "json",
+            filename = "aria.json",
+            contentType = "application/json",
+            encoding = "utf8",
+            payload = "{\"name\":\"Aria\"}",
+        )
+        val decodedJson = json.decodeFromString<CardExportResponseDto>(
+            json.encodeToString(CardExportResponseDto.serializer(), jsonResponse),
+        )
+        assertEquals(jsonResponse, decodedJson)
+    }
 }

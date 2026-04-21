@@ -408,6 +408,52 @@ data class CompanionTurnRegenerateRequestDto(
     val clientTurnId: String,
 )
 
+@Serializable
+data class CardImportUploadRequestDto(
+    val filename: String,
+    val contentBase64: String,
+    val claimedFormat: String,
+)
+
+@Serializable
+data class CardImportWarningDto(
+    val code: String,
+    val field: String? = null,
+    val detail: String? = null,
+)
+
+@Serializable
+data class CardImportPreviewDto(
+    val previewToken: String,
+    val card: CompanionCharacterCardDto,
+    val detectedLanguage: String,
+    val warnings: List<CardImportWarningDto> = emptyList(),
+    val stExtensionKeys: List<String> = emptyList(),
+)
+
+@Serializable
+data class CardImportCommitRequestDto(
+    val previewToken: String,
+    val card: CompanionCharacterCardDto,
+    val languageOverride: String? = null,
+)
+
+@Serializable
+data class CardExportRequestDto(
+    val format: String,
+    val language: String,
+    val includeTranslationAlt: Boolean = false,
+)
+
+@Serializable
+data class CardExportResponseDto(
+    val format: String,
+    val filename: String,
+    val contentType: String,
+    val encoding: String,
+    val payload: String,
+)
+
 private fun MessageAttachmentDto.toMessageAttachment(
     backendBaseUrl: String?,
     authToken: String?,
