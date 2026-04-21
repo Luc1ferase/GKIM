@@ -23,6 +23,9 @@ import com.gkim.im.android.data.remote.im.ImBackendClient
 import com.gkim.im.android.data.remote.im.ImBackendHttpClient
 import com.gkim.im.android.data.remote.im.ImHttpEndpointResolver
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
 
 interface AppContainer {
@@ -30,6 +33,7 @@ interface AppContainer {
     val contactsRepository: ContactsRepository
     val feedRepository: FeedRepository
     val companionRosterRepository: CompanionRosterRepository
+    val companionTurnRepository: CompanionTurnRepository
     val aigcRepository: AigcRepository
     val preferencesStore: PreferencesStore
     val sessionStore: SessionStore
@@ -93,6 +97,14 @@ class DefaultAppContainer(context: Context) : AppContainer {
         sessionStore = sessionStore,
         presetCharacters = seedPresetCharacters,
         drawPool = seedDrawPoolCharacters,
+    )
+    private val companionTurnScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    override val companionTurnRepository: CompanionTurnRepository = LiveCompanionTurnRepository(
+        backendClient = imBackendClient,
+        gateway = realtimeChatClient,
+        scope = companionTurnScope,
+        baseUrlProvider = { sessionStore.baseUrl },
+        tokenProvider = { sessionStore.token },
     )
     override val aigcRepository: AigcRepository = DefaultAigcRepository(
         presets = presetProviders,

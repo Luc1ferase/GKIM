@@ -14,7 +14,7 @@
 
 - [x] 2.2 Add `android/app/src/main/java/com/gkim/im/android/data/repository/LiveCompanionTurnRepository.kt` that wires the default repository to `ImBackendClient` (HTTP submit / regenerate / snapshot / pending) and `RealtimeGateway.events` (subscribing to companion_turn.* events). On startup/reconnect call `listPendingCompanionTurns` and rehydrate per-turn state. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.LiveCompanionTurnRepositoryTest` uses fakes to assert pending rehydration, event-driven state reducer, and fallback to snapshot on delta gap (monotonic `deltaSeq` violation).
 
-- [ ] 2.3 Register `companionTurnRepository` in `AppContainer` + `DefaultAppContainer` and expose it to the shared chat view model path. Do not alter the peer-IM code path. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.*Test` stays green; `rg -n "companionTurnRepository" android/app/src/main/java` confirms wiring.
+- [x] 2.3 Register `companionTurnRepository` in `AppContainer` + `DefaultAppContainer` and expose it to the shared chat view model path. Do not alter the peer-IM code path. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.*Test` stays green; `rg -n "companionTurnRepository" android/app/src/main/java` confirms wiring.
 
 ## 3. Android chat UI
 
