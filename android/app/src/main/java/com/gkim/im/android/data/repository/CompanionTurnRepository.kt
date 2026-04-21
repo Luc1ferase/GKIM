@@ -31,6 +31,7 @@ interface CompanionTurnRepository {
     val activePathByConversation: StateFlow<Map<String, List<ChatMessage>>>
 
     fun recordUserTurn(userMessage: ChatMessage, conversationId: String)
+    fun updateUserMessageStatus(conversationId: String, messageId: String, status: MessageStatus)
 
     fun handleTurnStarted(event: ImGatewayEvent.CompanionTurnStarted)
     fun handleTurnDelta(event: ImGatewayEvent.CompanionTurnDelta)
@@ -64,6 +65,21 @@ class DefaultCompanionTurnRepository : CompanionTurnRepository {
                     messagesById = tree.messagesById + (userMessage.id to userMessage),
                 )
             }
+        }
+    }
+
+    override fun updateUserMessageStatus(
+        conversationId: String,
+        messageId: String,
+        status: MessageStatus,
+    ) {
+        mutateTree(conversationId) { tree ->
+            val existing = tree.messagesById[messageId] ?: return@mutateTree tree
+            if (existing.direction != MessageDirection.Outgoing) return@mutateTree tree
+            if (existing.status == status) return@mutateTree tree
+            tree.copy(
+                messagesById = tree.messagesById + (messageId to existing.copy(status = status)),
+            )
         }
     }
 

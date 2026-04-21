@@ -440,4 +440,36 @@ class CompanionTurnRepositoryTest {
         assertNull(path.first().companionTurnMeta)
         assertNotNull(path.last().companionTurnMeta)
     }
+
+    @Test
+    fun `updateUserMessageStatus flips status for outgoing user message`() {
+        val repo = DefaultCompanionTurnRepository()
+        repo.recordUserTurn(
+            userMessage = userMessage("user-1").copy(status = MessageStatus.Pending),
+            conversationId = conversationId,
+        )
+
+        repo.updateUserMessageStatus(conversationId, "user-1", MessageStatus.Failed)
+        assertEquals(
+            MessageStatus.Failed,
+            repo.activePathByConversation.value[conversationId]!!.single().status,
+        )
+
+        repo.updateUserMessageStatus(conversationId, "user-1", MessageStatus.Completed)
+        assertEquals(
+            MessageStatus.Completed,
+            repo.activePathByConversation.value[conversationId]!!.single().status,
+        )
+    }
+
+    @Test
+    fun `updateUserMessageStatus is a no-op for unknown message ids`() {
+        val repo = DefaultCompanionTurnRepository()
+        repo.recordUserTurn(userMessage("user-1"), conversationId)
+        repo.updateUserMessageStatus(conversationId, "ghost", MessageStatus.Failed)
+        assertEquals(
+            MessageStatus.Completed,
+            repo.activePathByConversation.value[conversationId]!!.single().status,
+        )
+    }
 }

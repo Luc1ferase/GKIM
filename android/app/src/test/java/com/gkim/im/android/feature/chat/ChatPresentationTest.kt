@@ -248,6 +248,46 @@ class ChatPresentationTest {
         )
     }
 
+    @Test
+    fun `outgoingSubmissionFailureLine returns null for incoming messages`() {
+        val incoming = ChatMessage(
+            id = "companion-1",
+            direction = MessageDirection.Incoming,
+            kind = MessageKind.Text,
+            body = "Hi",
+            createdAt = "2026-04-21T08:00:00Z",
+            status = MessageStatus.Failed,
+        )
+        assertNull(outgoingSubmissionFailureLine(incoming))
+    }
+
+    @Test
+    fun `outgoingSubmissionFailureLine returns null for completed outgoing messages`() {
+        val completed = userMessage(status = MessageStatus.Completed)
+        assertNull(outgoingSubmissionFailureLine(completed))
+    }
+
+    @Test
+    fun `outgoingSubmissionFailureLine returns failed copy for failed outgoing messages`() {
+        val failed = userMessage(status = MessageStatus.Failed)
+        assertEquals("Failed to send", outgoingSubmissionFailureLine(failed))
+    }
+
+    @Test
+    fun `outgoingSubmissionFailureLine returns timeout copy for timeout outgoing messages`() {
+        val timeout = userMessage(status = MessageStatus.Timeout)
+        assertEquals("Timed out — tap retry", outgoingSubmissionFailureLine(timeout))
+    }
+
+    private fun userMessage(status: MessageStatus): ChatMessage = ChatMessage(
+        id = "user-1",
+        direction = MessageDirection.Outgoing,
+        kind = MessageKind.Text,
+        body = "Hi",
+        createdAt = "2026-04-21T08:00:00Z",
+        status = status,
+    )
+
     private fun companionMessage(
         status: MessageStatus,
         body: String,

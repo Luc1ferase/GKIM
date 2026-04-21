@@ -317,9 +317,11 @@ class LiveCompanionTurnRepositoryTest {
 
         val path = repo.activePathByConversation.value[conversationId].orEmpty()
         assertEquals(2, path.size)
-        assertEquals("user-1", path.first().id)
+        assertEquals("user-client-turn-stub", path.first().id)
         assertEquals("Hi there", path.first().body)
+        assertEquals(MessageStatus.Completed, path.first().status)
         assertEquals(MessageStatus.Thinking, path.last().status)
+        assertTrue(repo.failedSubmissions.value.isEmpty())
     }
 
     @Test
@@ -369,7 +371,7 @@ class LiveCompanionTurnRepositoryTest {
     }
 
     @Test
-    fun `submitUserTurn surfaces backend failure as Result_failure`() = runTest(UnconfinedTestDispatcher()) {
+    fun `submitUserTurn surfaces backend failure on the user bubble and records retry context`() = runTest(UnconfinedTestDispatcher()) {
         val (repo, _, _) = buildRepo(
             scope = backgroundScope,
             submit = { throw RuntimeException("offline") },
@@ -385,7 +387,104 @@ class LiveCompanionTurnRepositoryTest {
 
         assertTrue(result.isFailure)
         val path = repo.activePathByConversation.value[conversationId].orEmpty()
-        assertEquals(0, path.size)
+        assertEquals(1, path.size)
+        val userMessage = path.single()
+        assertEquals("user-client-turn-stub", userMessage.id)
+        assertEquals("Hi", userMessage.body)
+        assertEquals(MessageStatus.Failed, userMessage.status)
+
+        val failure = repo.failedSubmissions.value["user-client-turn-stub"]!!
+        assertEquals("Hi", failure.userTurnBody)
+        assertEquals("architect-oracle", failure.activeCompanionId)
+        assertEquals("en", failure.activeLanguage)
+    }
+
+    @Test
+    fun `retrySubmitUserTurn resubmits failed context and flips user message to completed`() = runTest(UnconfinedTestDispatcher()) {
+        val record = CompanionTurnRecordDto(
+            turnId = "turn-1",
+            conversationId = conversationId,
+            messageId = "companion-1",
+            variantGroupId = "vg-1",
+            variantIndex = 0,
+            parentMessageId = "user-client-turn-stub",
+            status = "thinking",
+            accumulatedBody = "",
+            lastDeltaSeq = 0,
+            startedAt = "2026-04-21T08:00:00Z",
+        )
+        var attempt = 0
+        val (repo, backend, _) = buildRepo(
+            scope = backgroundScope,
+            submit = {
+                attempt += 1
+                if (attempt == 1) throw RuntimeException("offline") else record
+            },
+        )
+
+        val firstResult = repo.submitUserTurn(
+            conversationId = conversationId,
+            activeCompanionId = "architect-oracle",
+            userTurnBody = "Hi",
+            activeLanguage = "en",
+        )
+        advanceUntilIdle()
+        assertTrue(firstResult.isFailure)
+        assertEquals(
+            MessageStatus.Failed,
+            repo.activePathByConversation.value[conversationId].orEmpty().single().status,
+        )
+
+        val retryResult = repo.retrySubmitUserTurn("user-client-turn-stub")
+        advanceUntilIdle()
+
+        assertTrue(retryResult.isSuccess)
+        assertEquals(2, backend.submitCalls.size)
+        val path = repo.activePathByConversation.value[conversationId].orEmpty()
+        assertEquals(2, path.size)
+        assertEquals("user-client-turn-stub", path.first().id)
+        assertEquals(MessageStatus.Completed, path.first().status)
+        assertEquals(MessageStatus.Thinking, path.last().status)
+        assertTrue(repo.failedSubmissions.value.isEmpty())
+    }
+
+    @Test
+    fun `retrySubmitUserTurn returns failure when no failed submission exists`() = runTest(UnconfinedTestDispatcher()) {
+        val (repo, _, _) = buildRepo(scope = backgroundScope)
+
+        val result = repo.retrySubmitUserTurn("nope")
+        advanceUntilIdle()
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun `submitUserTurn without base url surfaces failure on the user bubble`() = runTest(UnconfinedTestDispatcher()) {
+        val backend = FakeBackendClient()
+        val repo = LiveCompanionTurnRepository(
+            default = DefaultCompanionTurnRepository(),
+            backendClient = backend,
+            gateway = FakeGateway(),
+            scope = backgroundScope,
+            baseUrlProvider = { null },
+            tokenProvider = { "token" },
+            clientTurnIdGenerator = { "client-turn-stub" },
+            clock = { "2026-04-21T08:00:00Z" },
+        )
+
+        val result = repo.submitUserTurn(
+            conversationId = conversationId,
+            activeCompanionId = "architect-oracle",
+            userTurnBody = "Hi",
+            activeLanguage = "en",
+        )
+        advanceUntilIdle()
+
+        assertTrue(result.isFailure)
+        assertEquals(0, backend.submitCalls.size)
+        val path = repo.activePathByConversation.value[conversationId].orEmpty()
+        assertEquals(MessageStatus.Failed, path.single().status)
+        assertEquals("Hi", repo.failedSubmissions.value["user-client-turn-stub"]!!.userTurnBody)
     }
 
     @Test

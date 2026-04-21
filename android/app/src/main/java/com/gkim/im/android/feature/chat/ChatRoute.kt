@@ -592,6 +592,7 @@ private fun ChatMessageRow(
     onSelectPreviousVariant: () -> Unit = {},
     onSelectNextVariant: () -> Unit = {},
     onRegenerate: () -> Unit = {},
+    onRetrySubmission: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val isOutgoing = message.direction == MessageDirection.Outgoing
@@ -745,6 +746,23 @@ private fun ChatMessageRow(
                         modifier = Modifier.testTag("chat-message-body-${message.id}"),
                     )
                 }
+                val userFailure = outgoingSubmissionFailureLine(message)
+                if (userFailure != null) {
+                    Text(
+                        text = userFailure,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = AetherColors.Danger,
+                        modifier = Modifier.testTag("chat-user-submission-status-${message.id}"),
+                    )
+                    Text(
+                        text = "Retry",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = AetherColors.Primary,
+                        modifier = Modifier
+                            .clickable(onClick = onRetrySubmission)
+                            .testTag("chat-user-submission-retry-${message.id}"),
+                    )
+                }
                 message.attachment?.let { attachment ->
                     AsyncImage(
                         model = messageAttachmentModel(context, attachment),
@@ -853,6 +871,15 @@ internal fun generationFeedback(task: AigcTask): GenerationFeedback = when (task
         statusLine = "Ready from ${task.providerId} · ${task.model}",
         showPreview = !task.outputPreview.isNullOrBlank(),
     )
+}
+
+internal fun outgoingSubmissionFailureLine(message: ChatMessage): String? {
+    if (message.direction != MessageDirection.Outgoing) return null
+    return when (message.status) {
+        MessageStatus.Failed -> "Failed to send"
+        MessageStatus.Timeout -> "Timed out — tap retry"
+        else -> null
+    }
 }
 
 internal data class VariantNavigationState(

@@ -3,13 +3,16 @@ package com.gkim.im.android.data.repository
 import com.gkim.im.android.core.model.ChatMessage
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
+import com.gkim.im.android.core.model.MessageStatus
 import com.gkim.im.android.data.remote.im.CompanionTurnRecordDto
 import com.gkim.im.android.data.remote.im.CompanionTurnSubmitRequestDto
 import com.gkim.im.android.data.remote.im.ImBackendClient
 import com.gkim.im.android.data.remote.im.ImGatewayEvent
 import com.gkim.im.android.data.remote.realtime.RealtimeGateway
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -28,6 +31,20 @@ class LiveCompanionTurnRepository(
         default.treeByConversation
     override val activePathByConversation: StateFlow<Map<String, List<ChatMessage>>> =
         default.activePathByConversation
+
+    data class FailedSubmission(
+        val userMessageId: String,
+        val conversationId: String,
+        val activeCompanionId: String,
+        val userTurnBody: String,
+        val activeLanguage: String,
+        val parentMessageId: String?,
+    )
+
+    private val failedSubmissionsState =
+        MutableStateFlow<Map<String, FailedSubmission>>(emptyMap())
+    val failedSubmissions: StateFlow<Map<String, FailedSubmission>> =
+        failedSubmissionsState.asStateFlow()
 
     init {
         scope.launch {
@@ -49,10 +66,38 @@ class LiveCompanionTurnRepository(
         activeLanguage: String,
         parentMessageId: String? = null,
     ): Result<CompanionTurnRecordDto> {
-        val baseUrl = baseUrlProvider() ?: return Result.failure(IllegalStateException("no base url"))
-        val token = tokenProvider() ?: return Result.failure(IllegalStateException("no token"))
+        val clientTurnId = clientTurnIdGenerator()
+        val userMessageId = "user-$clientTurnId"
+        val userMessage = ChatMessage(
+            id = userMessageId,
+            direction = MessageDirection.Outgoing,
+            kind = MessageKind.Text,
+            body = userTurnBody,
+            createdAt = clock(),
+            status = MessageStatus.Pending,
+        )
+        default.recordUserTurn(userMessage, conversationId)
+
+        val baseUrl = baseUrlProvider()
+        val token = tokenProvider()
+        if (baseUrl == null || token == null) {
+            return handleSubmissionFailure(
+                userMessageId = userMessageId,
+                submission = FailedSubmission(
+                    userMessageId = userMessageId,
+                    conversationId = conversationId,
+                    activeCompanionId = activeCompanionId,
+                    userTurnBody = userTurnBody,
+                    activeLanguage = activeLanguage,
+                    parentMessageId = parentMessageId,
+                ),
+                error = IllegalStateException(
+                    if (baseUrl == null) "no base url" else "no token",
+                ),
+            )
+        }
+
         return try {
-            val clientTurnId = clientTurnIdGenerator()
             val record = backendClient.submitCompanionTurn(
                 baseUrl = baseUrl,
                 token = token,
@@ -65,18 +110,101 @@ class LiveCompanionTurnRepository(
                     parentMessageId = parentMessageId,
                 ),
             )
-            val userMessage = ChatMessage(
-                id = record.parentMessageId ?: "user-$clientTurnId",
-                direction = MessageDirection.Outgoing,
-                kind = MessageKind.Text,
-                body = userTurnBody,
-                createdAt = clock(),
+            default.updateUserMessageStatus(
+                conversationId = conversationId,
+                messageId = userMessageId,
+                status = MessageStatus.Completed,
             )
-            default.recordUserTurn(userMessage, conversationId)
+            clearFailedSubmission(userMessageId)
             default.applyRecord(record)
             Result.success(record)
         } catch (t: Throwable) {
-            Result.failure(t)
+            handleSubmissionFailure(
+                userMessageId = userMessageId,
+                submission = FailedSubmission(
+                    userMessageId = userMessageId,
+                    conversationId = conversationId,
+                    activeCompanionId = activeCompanionId,
+                    userTurnBody = userTurnBody,
+                    activeLanguage = activeLanguage,
+                    parentMessageId = parentMessageId,
+                ),
+                error = t,
+            )
+        }
+    }
+
+    suspend fun retrySubmitUserTurn(userMessageId: String): Result<CompanionTurnRecordDto> {
+        val submission = failedSubmissionsState.value[userMessageId]
+            ?: return Result.failure(IllegalStateException("no failed submission for $userMessageId"))
+
+        default.updateUserMessageStatus(
+            conversationId = submission.conversationId,
+            messageId = userMessageId,
+            status = MessageStatus.Pending,
+        )
+
+        val baseUrl = baseUrlProvider()
+        val token = tokenProvider()
+        if (baseUrl == null || token == null) {
+            return handleSubmissionFailure(
+                userMessageId = userMessageId,
+                submission = submission,
+                error = IllegalStateException(
+                    if (baseUrl == null) "no base url" else "no token",
+                ),
+            )
+        }
+
+        val clientTurnId = clientTurnIdGenerator()
+        return try {
+            val record = backendClient.submitCompanionTurn(
+                baseUrl = baseUrl,
+                token = token,
+                request = CompanionTurnSubmitRequestDto(
+                    conversationId = submission.conversationId,
+                    activeCompanionId = submission.activeCompanionId,
+                    userTurnBody = submission.userTurnBody,
+                    activeLanguage = submission.activeLanguage,
+                    clientTurnId = clientTurnId,
+                    parentMessageId = submission.parentMessageId,
+                ),
+            )
+            default.updateUserMessageStatus(
+                conversationId = submission.conversationId,
+                messageId = userMessageId,
+                status = MessageStatus.Completed,
+            )
+            clearFailedSubmission(userMessageId)
+            default.applyRecord(record)
+            Result.success(record)
+        } catch (t: Throwable) {
+            handleSubmissionFailure(
+                userMessageId = userMessageId,
+                submission = submission,
+                error = t,
+            )
+        }
+    }
+
+    private fun handleSubmissionFailure(
+        userMessageId: String,
+        submission: FailedSubmission,
+        error: Throwable,
+    ): Result<CompanionTurnRecordDto> {
+        default.updateUserMessageStatus(
+            conversationId = submission.conversationId,
+            messageId = userMessageId,
+            status = MessageStatus.Failed,
+        )
+        failedSubmissionsState.value = failedSubmissionsState.value + (userMessageId to submission)
+        return Result.failure(error)
+    }
+
+    private fun clearFailedSubmission(userMessageId: String) {
+        val current = failedSubmissionsState.value
+        if (current.containsKey(userMessageId)) {
+            failedSubmissionsState.value = current - userMessageId
         }
     }
 
@@ -100,6 +228,12 @@ class LiveCompanionTurnRepository(
 
     override fun recordUserTurn(userMessage: ChatMessage, conversationId: String) =
         default.recordUserTurn(userMessage, conversationId)
+
+    override fun updateUserMessageStatus(
+        conversationId: String,
+        messageId: String,
+        status: MessageStatus,
+    ) = default.updateUserMessageStatus(conversationId, messageId, status)
 
     override fun handleTurnStarted(event: ImGatewayEvent.CompanionTurnStarted) =
         default.handleTurnStarted(event)
