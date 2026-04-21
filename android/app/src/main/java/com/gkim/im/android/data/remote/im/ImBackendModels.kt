@@ -403,6 +403,11 @@ data class CompanionTurnPendingListDto(
     val turns: List<CompanionTurnRecordDto>,
 )
 
+@Serializable
+data class CompanionTurnRegenerateRequestDto(
+    val clientTurnId: String,
+)
+
 private fun MessageAttachmentDto.toMessageAttachment(
     backendBaseUrl: String?,
     authToken: String?,

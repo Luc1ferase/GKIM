@@ -54,5 +54,37 @@ interface ImBackendClient {
     ) {
         error("deleteCompanionCharacter is not implemented for this backend client")
     }
+
+    suspend fun submitCompanionTurn(
+        baseUrl: String,
+        token: String,
+        request: CompanionTurnSubmitRequestDto,
+    ): CompanionTurnRecordDto {
+        error("submitCompanionTurn is not implemented for this backend client")
+    }
+
+    suspend fun regenerateCompanionTurn(
+        baseUrl: String,
+        token: String,
+        turnId: String,
+        clientTurnId: String,
+    ): CompanionTurnRecordDto {
+        error("regenerateCompanionTurn is not implemented for this backend client")
+    }
+
+    suspend fun listPendingCompanionTurns(
+        baseUrl: String,
+        token: String,
+    ): CompanionTurnPendingListDto {
+        error("listPendingCompanionTurns is not implemented for this backend client")
+    }
+
+    suspend fun snapshotCompanionTurn(
+        baseUrl: String,
+        token: String,
+        turnId: String,
+    ): CompanionTurnRecordDto {
+        error("snapshotCompanionTurn is not implemented for this backend client")
+    }
 }
 

@@ -80,6 +80,30 @@ private interface ImBackendService {
         @Header("Authorization") authorization: String,
         @Path("characterId") characterId: String,
     )
+
+    @POST("api/companion-turns")
+    suspend fun submitCompanionTurn(
+        @Header("Authorization") authorization: String,
+        @Body request: CompanionTurnSubmitRequestDto,
+    ): CompanionTurnRecordDto
+
+    @POST("api/companion-turns/{turnId}/regenerate")
+    suspend fun regenerateCompanionTurn(
+        @Header("Authorization") authorization: String,
+        @Path("turnId") turnId: String,
+        @Body request: CompanionTurnRegenerateRequestDto,
+    ): CompanionTurnRecordDto
+
+    @GET("api/companion-turns/pending")
+    suspend fun listPendingCompanionTurns(
+        @Header("Authorization") authorization: String,
+    ): CompanionTurnPendingListDto
+
+    @GET("api/companion-turns/{turnId}")
+    suspend fun snapshotCompanionTurn(
+        @Header("Authorization") authorization: String,
+        @Path("turnId") turnId: String,
+    ): CompanionTurnRecordDto
 }
 
 class ImBackendHttpClient(
@@ -168,6 +192,42 @@ class ImBackendHttpClient(
             characterId = characterId,
         )
     }
+
+    override suspend fun submitCompanionTurn(
+        baseUrl: String,
+        token: String,
+        request: CompanionTurnSubmitRequestDto,
+    ): CompanionTurnRecordDto = serviceFor(baseUrl).submitCompanionTurn(
+        authorization = bearerToken(token),
+        request = request,
+    )
+
+    override suspend fun regenerateCompanionTurn(
+        baseUrl: String,
+        token: String,
+        turnId: String,
+        clientTurnId: String,
+    ): CompanionTurnRecordDto = serviceFor(baseUrl).regenerateCompanionTurn(
+        authorization = bearerToken(token),
+        turnId = turnId,
+        request = CompanionTurnRegenerateRequestDto(clientTurnId = clientTurnId),
+    )
+
+    override suspend fun listPendingCompanionTurns(
+        baseUrl: String,
+        token: String,
+    ): CompanionTurnPendingListDto = serviceFor(baseUrl).listPendingCompanionTurns(
+        authorization = bearerToken(token),
+    )
+
+    override suspend fun snapshotCompanionTurn(
+        baseUrl: String,
+        token: String,
+        turnId: String,
+    ): CompanionTurnRecordDto = serviceFor(baseUrl).snapshotCompanionTurn(
+        authorization = bearerToken(token),
+        turnId = turnId,
+    )
 
     private fun serviceFor(baseUrl: String): ImBackendService =
         ServiceFactory.retrofit(normalizeBaseUrl(baseUrl), okHttpClient).create(ImBackendService::class.java)
