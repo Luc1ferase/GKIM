@@ -14,6 +14,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -89,11 +92,35 @@ fun TavernRoute(navController: NavHostController, container: AppContainer) {
     })
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val appLanguage = LocalAppLanguage.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var importEntryState by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(TavernImportEntryState())
+    }
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val bytes = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        }.getOrNull() ?: ByteArray(0)
+        val filename = uri.lastPathSegment?.substringAfterLast('/') ?: "card"
+        when (val result = evaluateImportSelection(bytes, filename)) {
+            is TavernImportSelectionResult.Rejected -> {
+                importEntryState = TavernImportEntryState(errorCode = result.code)
+            }
+            is TavernImportSelectionResult.Accepted -> {
+                importEntryState = TavernImportEntryState()
+                navController.navigate("tavern/import-preview")
+            }
+        }
+    }
 
     TavernScreen(
         uiState = uiState,
+        importEntryState = importEntryState,
         onOpenSettings = { navController.navigate("settings") },
         onCreateCharacter = { navController.navigate("tavern/editor?mode=create") },
+        onImportCard = { importLauncher.launch(arrayOf("image/png", "application/json")) },
         onDraw = viewModel::drawCharacter,
         onOpenCharacter = { characterId -> navController.navigate("tavern/detail/$characterId") },
         onActivateCharacter = { characterId ->
@@ -109,8 +136,10 @@ fun TavernRoute(navController: NavHostController, container: AppContainer) {
 @Composable
 private fun TavernScreen(
     uiState: TavernUiState,
+    importEntryState: TavernImportEntryState,
     onOpenSettings: () -> Unit,
     onCreateCharacter: () -> Unit,
+    onImportCard: () -> Unit,
     onDraw: () -> Unit,
     onOpenCharacter: (String) -> Unit,
     onActivateCharacter: (String) -> Unit,
@@ -144,6 +173,26 @@ private fun TavernScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 HeaderPill(label = appLanguage.pick("Settings", "设置"), onClick = onOpenSettings)
                 HeaderPill(label = appLanguage.pick("Draw", "抽卡"), onClick = onDraw)
+                Text(
+                    text = appLanguage.pick("Import card", "导入卡"),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = AetherColors.OnSurface,
+                    modifier = Modifier
+                        .background(AetherColors.SurfaceContainerHigh, shape = androidx.compose.foundation.shape.CircleShape)
+                        .clickable(onClick = onImportCard)
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                        .testTag("tavern-import-entry"),
+                )
+            }
+        }
+        if (importEntryState.errorCode != null) {
+            item {
+                Text(
+                    text = importErrorCopy(importEntryState.errorCode, appLanguage == AppLanguage.English),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.Danger,
+                    modifier = Modifier.testTag("tavern-import-error"),
+                )
             }
         }
         item {
@@ -178,14 +227,29 @@ private fun TavernScreen(
         if (uiState.ownedCharacters.isEmpty()) {
             item {
                 GlassCard(modifier = Modifier.testTag("tavern-owned-empty")) {
-                    Text(
-                        text = appLanguage.pick(
-                            "Your draw-acquired cards will appear here.",
-                            "抽到的新角色卡会出现在这里。",
-                        ),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = AetherColors.OnSurfaceVariant,
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = appLanguage.pick(
+                                "Your draw-acquired cards will appear here.",
+                                "抽到的新角色卡会出现在这里。",
+                            ),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = AetherColors.OnSurfaceVariant,
+                        )
+                        Text(
+                            text = appLanguage.pick("Or import a SillyTavern card", "或从 SillyTavern 导入一张卡"),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.OnSurface,
+                            modifier = Modifier
+                                .background(
+                                    AetherColors.SurfaceContainerHigh,
+                                    shape = androidx.compose.foundation.shape.CircleShape,
+                                )
+                                .clickable(onClick = onImportCard)
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                                .testTag("tavern-import-empty-cta"),
+                        )
+                    }
                 }
             }
         } else {
