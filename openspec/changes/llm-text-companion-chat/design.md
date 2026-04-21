@@ -170,6 +170,59 @@ Extending the existing `ChatMessage` + introducing `MessageStatus` + `CompanionT
 - **ChatMessage growth pressure** → Mitigation: optional fields only; legacy call sites behave unchanged.
 - **Variant tree visualization on mobile** → Mitigation: linear active-path view is default; `parentMessageId` is an implementation detail until a later slice adds a tree explorer.
 
+## Backend migration intent (private checkout)
+
+The public repo defines the contract; the private backend checkout owns
+the implementation. For this slice the private PR will land roughly:
+
+1. **Schema** — two tables (names indicative; MySQL first, generalized later):
+   - `companion_turns (turn_id PK, conversation_id FK, active_companion_id,
+     active_language, client_turn_id UNIQUE, parent_message_id, status,
+     started_at, completed_at, failure_subtype, error_message, block_reason)`
+     — captures one turn group; `UNIQUE(conversation_id, client_turn_id)`
+     absorbs idempotent retries.
+   - `companion_turn_variants (message_id PK, turn_id FK, variant_group_id,
+     variant_index, provider_id, model, status, accumulated_body,
+     last_delta_seq, started_at, completed_at)` — one row per sibling.
+     `UNIQUE(variant_group_id, variant_index)` keeps swipe order stable.
+2. **Monotonic `deltaSeq`** — column on `companion_turn_variants`, advanced
+   by a serialized write per variant (row lock or per-variant mutex).
+   Every gateway delta carries `(turn_id, delta_seq, text_delta)`; `deltaSeq`
+   is never decreased, never reused, and never overlaps between variants of
+   different turns.
+3. **Pending turn index** — a covering index on
+   `(owner_user_id, status)` restricted to `status IN ('thinking','streaming')`
+   powers the `GET /api/companion-turns/pending` endpoint without scanning
+   history. The query returns the variant row plus its `turn_id`.
+4. **Authorization boundary** — every companion-turn HTTP + snapshot +
+   pending endpoint filters by the authenticated user's conversations;
+   gateway events only fan out on the owner's session bus.
+5. **Provider abstraction** — see `Provider abstraction` below.
+
+The private backend PR lands the migrations + orchestration + provider
+adapter; this public slice lands only the contract and the Android-side
+wiring. The delivery record for this change points to the private PR hash.
+
+## Provider abstraction
+
+The first-slice backend MUST accept at least one OpenAI-compatible text
+provider (chat-completions JSON streaming). Additional text providers
+(Tongyi Qwen text, Hunyuan text) are optional in this slice but the
+provider layer MUST be pluggable:
+
+- A `TextProvider` trait/interface owns
+  `submit(prompt, language_hint, stream_callback) → TurnResult`.
+- The dispatcher selects a provider by `provider_id`; the active card's
+  configuration (or a server default) chooses which provider to call.
+- No endpoint, DTO, or database column on the public contract is keyed to
+  a single vendor — `provider_id` is a free-form string, `model` is a
+  free-form string, and block/timeout reasons come from a shared vocabulary
+  that doesn't leak vendor-specific error strings to the client.
+- Adding a new provider is a backend-only change: no Android redeploy, no
+  spec churn. The `tavern-experience-polish` slice will later expose
+  per-character provider overrides; this slice just keeps the contract
+  open.
+
 ## Migration Plan
 
 1. Extend `ChatMessage` with `parentMessageId`, `status`, `companionTurnMeta` (nullable). Update mappers. Existing tests still compile because new fields are optional with defaults.
