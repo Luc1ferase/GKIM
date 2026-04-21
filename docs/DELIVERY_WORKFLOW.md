@@ -1316,3 +1316,245 @@ Upload
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
+
+## sillytavern-card-interop delivery evidence
+
+### Task 1.1 (sillytavern-card-interop): Add `SillyTavernCardCodec.kt` pre-upload format sniffer + size constants.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:compileDebugKotlin :app:testDebugUnitTest --tests com.gkim.im.android.core.interop.SillyTavernCardCodecTest`` - pass (13 cases: PNG signature detection, JSON sniff w/ + w/o BOM + array top-level, unknown rejection on binary / prose / empty, `tEXt` chunk detection via proper chunk walker with overflow-safe Long arithmetic, non-tEXt chunk false, missing-signature false, malformed-length robustness, `estimateSize == bytes.size`, `MaxPngBytes` / `MaxJsonBytes` constants + `fitsPngSizeLimit` / `fitsJsonSizeLimit` guards)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `08a97ad`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 1.2 (sillytavern-card-interop): Extend `ImBackendModels.kt` with card import/export DTOs (`CardImportUploadRequestDto`, `CardImportPreviewDto`, `CardImportCommitRequestDto`, `CardExportRequestDto`, `CardExportResponseDto`, `CardImportWarningDto`).
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendPayloadsTest`` - pass (16 cases covering upload request round-trip, preview decoding with deep persona record + `extensions.st.*` JsonObject passthrough + detectedLanguage + stExtensionKeys + seven typed warning codes `field_truncated` / `avatar_discarded` / `alt_greetings_trimmed` / `tags_trimmed` / `extension_dropped` / `st_translation_pending` / `post_history_instruction_parked`, commit request round-trip with `previewToken` + card + `languageOverride`, and export request/response round-trip for both PNG base64 and JSON utf8 variants)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `879b71e`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 1.3 (sillytavern-card-interop): Extend `ImBackendClient` with `importCardPreview`, `importCardCommit`, `exportCard` + `ImBackendHttpClient` implementations.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendHttpClientTest`` - pass (18 cases: `importCardPreview` POST `/api/cards/import` with base64 + claimedFormat + filename happy path + 413/422 rejection, `importCardCommit` POST `/api/cards/import/commit` forwarding `previewToken` + `languageOverride`, `exportCard` GET `/api/cards/{cardId}/export` with `format` / `language` / `includeTranslationAlt` query params for PNG base64 + JSON utf8 + 404 rejection; interface methods expose `error("not implemented")` defaults so non-HTTP fakes remain source-compatible)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `6a83c65`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 1.4 (sillytavern-card-interop): Finalize `openspec/changes/sillytavern-card-interop/specs/im-backend/spec.md` for import/export endpoints, validation, typed errors, bounded limits, `st.*` preservation, dual-chunk PNG export.
+
+- Verification:
+  - ``npx --yes openspec validate sillytavern-card-interop --strict`` - pass (im-backend delta adds five ADDED requirements: two-step import endpoints, bounded safety limits with all six typed error codes — `payload_too_large` / `avatar_too_large` / `unsupported_schema_version` / `malformed_png` / `malformed_json` / `unsupported_format` — `extensions.st.*` preservation, dual-chunk PNG + V3-default JSON export with `language` / `includeTranslationAlt` query params, and imported-PNG re-encoding that strips unknown chunks)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `dcb454f`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 2.1 (sillytavern-card-interop): Add `CardInteropRepository` interface + `LiveCardInteropRepository` (bound to `ImBackendClient`) + `DefaultCardInteropRepository` size-guard decorator.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.CardInteropRepositoryTest`` - pass (11 cases: (a) size-guard rejections with `empty_payload` / `unsupported_format` / `payload_too_large` for PNG and JSON ceilings — all short-circuit before any backend call, (b) preview success returning domain `CardImportPreview` with warnings `post_history_instruction_parked` / `field_truncated` and `stExtensionKeys`, (c) missing base-url / missing token failures from the `LiveCardInteropRepository` layer, (d) commit forwarding `languageOverride` and returning the persisted card, (e) export returning binary for PNG (base64 → bytes) and UTF-8 for JSON, plus backend failure propagation on 404)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `65add45`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 2.2 (sillytavern-card-interop): Register `cardInteropRepository` in `AppContainer` + `DefaultAppContainer` and patch instrumentation containers.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:compileDebugKotlin :app:compileDebugAndroidTestKotlin :app:testDebugUnitTest`` - pass (`AppContainer` adds `val cardInteropRepository: CardInteropRepository`, `DefaultAppContainer` wires `DefaultCardInteropRepository(LiveCardInteropRepository(imBackendClient, baseUrlProvider = { sessionStore.baseUrl }, tokenProvider = { sessionStore.token }))`, and the three instrumentation containers — `UiTestAppContainer`, `LiveImageValidationContainer`, `LoginEndpointTestAppContainer` — add the same override so the androidTest classpath keeps compiling)
+  - ``rg -n "cardInteropRepository" android/app/src/main/java`` - pass (wiring present in `AppContainer.kt`)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `64b7548`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 3.1 (sillytavern-card-interop): Add tavern Import entry point (header pill + empty-state CTA) with file picker + client-side size guards.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.TavernImportEntryPointTest`` - pass (9 cases covering header-pill `tavern-import-entry` + empty-state CTA `tavern-import-empty-cta` wired in `TavernRoute.kt` via `rememberLauncherForActivityResult(OpenDocument)` filtered to `image/png` + `application/json`; picked bytes flow through `evaluateImportSelection` returning `Accepted(format, filename, bytes)` for valid PNG/JSON or `Rejected(code)` for `empty_payload` / `unsupported_format` / `payload_too_large` with the PNG 8 MiB / JSON 1 MiB limits; rejects surface as inline `tavern-import-error` text localized through `importErrorCopy(code, englishLocale)`; accepts navigate to the preview route without rendering the error)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `5774bd7`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 3.2 (sillytavern-card-interop): Add `ImportCardPreviewRoute` + `ImportCardPreviewViewModel` for preview → commit flow with language override.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.ImportCardPreviewPresentationTest`` - pass (7 cases: `submit → Loading → Loaded` with detected language seeded, `submit → Failed` on backend error, `selectLanguage` overriding the detected side and ignored outside `Loaded`, `commit` forwarding `languageOverride` and landing on `Committed(persistedCard)`, `commit` failure → `Failed` reachable back to `Idle` via `reset()`, and `commit` idempotency against double-taps. Route renders the preview card, EN/ZH language picker, warnings list, st-extensions summary, Commit pill; `PendingImportBytes` brokers bytes from the tavern launcher; `GkimRootApp.kt` registers `tavern/import-preview`; pop-back to `space` on `Committed`)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `8783c40`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 3.3 (sillytavern-card-interop): Instrumentation `CardImportInstrumentationTest` on `codex_api34`.
+
+- Verification:
+  - ``cd /x/Repos/GKIM/android && ANDROID_SDK_ROOT=/d/android/Sdk JAVA_HOME='/c/Program Files/Java/jdk-17' ./gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.tavern.CardImportInstrumentationTest`` - pass ("Starting 5 tests on codex_api34(AVD) - 14 / Finished 5 tests / BUILD SUCCESSFUL in 45s"; covers `evaluateImportSelection` accept / reject semantics on-device plus Compose rendering of the preview loaded state — card / warnings / language pills / commit / st-extensions summary — the failed-state inline error, and live language-toggle click behavior; file-picker + roster mutation paths remain covered by MockWebServer + unit suites from tasks 1.3, 2.1, 3.1–3.2)
+- Review:
+  - Score: `95/100`
+  - Findings: Scenario coverage is narrower than the spec's wish-list (picker + rendering land on-device; full malformed-PNG + roster-mutation scenarios are covered via unit suites). Noted for a future broader instrumentation pass but not blocking.
+- Upload:
+  - Commit: `314eee6`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 4.1 (sillytavern-card-interop): Add `CardExportDialog` state machine + format/language/translationAlt/target toggles.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.CardDetailExportDialogTest`` - pass (8 cases: `initialExportDialogState` language defaulting to active `AppLanguage` — EN → `"en"`, ZH → `"zh"` — default `includeTranslationAlt=false` / `target=Share` / `inFlight=false` / `completed=false` / `errorCode=null`, and `withLanguage` / `withIncludeTranslationAlt` / `withTarget` / `markInFlight` / `markCompleted` / `markFailed` reducer helpers preserving unrelated fields)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `d35a75e`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 4.2 (sillytavern-card-interop): Wire `CardExportDialog` into `CharacterDetailRoute` with share-sheet + Downloads dispatchers.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.CardExportInvocationTest`` - pass (4 cases: PNG share success, JSON downloads success with translationAlt, repository failure propagated as `Failed(code)`, dispatcher failure propagated as `Failed(code)`)
+  - Production wiring: `CharacterDetailRoute` adds `character-detail-export-png` + `character-detail-export-json` pills alongside Activate; both route through the shared `CardExportDialog`. Dispatcher writes share payloads to `cacheDir/card-exports/` then hands them to `Intent.ACTION_SEND` via the `com.gkim.im.android.cardexport.fileprovider` `FileProvider` declared in `AndroidManifest.xml` (paths in `res/xml/card_export_paths.xml`); writes downloads to `Downloads/SillyTavernCards/` via `MediaStore.Downloads` on Android Q+ with a `getExternalFilesDir(DIRECTORY_DOWNLOADS)/SillyTavernCards/` fallback on pre-Q. Errors surface inline through `exportErrorCopy(code, englishLocale)` in a dedicated `card-export-dialog-error` slot reusing the bilingual error-frame from the import flow.
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `85cf21b`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 4.3 (sillytavern-card-interop): Instrumentation `CardExportInstrumentationTest` on `codex_api34`.
+
+- Verification:
+  - ``ANDROID_SERIAL=emulator-5554 JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.tavern.CardExportInstrumentationTest`` - pass (4 cases on `codex_api34(AVD) - 14`: (1) `cardExportDialogRendersAllSurfaceElementsForPng` asserts all nine dialog tags render — `card-export-dialog`, `card-export-dialog-title`, `card-export-dialog-language-en` / `-zh`, `card-export-dialog-translation-alt`, `card-export-dialog-target-share` / `-downloads`, `card-export-dialog-cancel`, `card-export-dialog-submit`; (2) `pngShareSubmitRoutesPayloadAndDismissesDialog` verifies `repository.exportCard(cardId="card-1", format=Png, language="en", includeTranslationAlt=false)` invoked once, payload dispatched to `CardExportTarget.Share`, `onDismiss` fires; (3) `jsonDownloadsPathWithTranslationAltTogglePropagatesToRepository` with `AppLanguage.Chinese` verifies the call carries `language="zh", includeTranslationAlt=true, format=Json` and dispatcher receives `CardExportTarget.Downloads`; (4) `repositoryFailureRendersErrorSlotAndKeepsDialogOpen` configures `404_unknown_card` failure, asserts `card-export-dialog-error` renders, dialog stays on screen, `onDismiss` NOT invoked)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `366daf7`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 5.1 (sillytavern-card-interop): Finalize `openspec/changes/sillytavern-card-interop/specs/im-backend/spec.md` end-to-end.
+
+- Verification:
+  - ``npx --yes openspec validate sillytavern-card-interop --strict`` - pass (full im-backend delta covers `POST /api/cards/import` preview + `POST /api/cards/import/commit`, `GET /api/cards/{cardId}/export?format=...&language=...`, PNG tEXt chunk parsing, JSON V2/V3 schema validation, bounded size + dimension limits with typed error codes, `extensions.st.*` namespace preservation, dual-chunk PNG export, JSON defaulting to V3 with explicit V2-only opt-in, avatar re-encoding, heuristic language detection with user override)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `dcb454f` (content landed in `edd8f2b` at proposal time; task-ticking / final review captured in `dcb454f`)
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 5.2 (sillytavern-card-interop): Finalize `specs/companion-character-card-depth/spec.md` delta for reserved `st.*` namespace + avatar-source semantics.
+
+- Verification:
+  - ``npx --yes openspec validate sillytavern-card-interop --strict`` - pass (delta uses MODIFIED on the existing `Companion character cards carry a full persona authoring record` requirement and adds two new scenarios — `Reserved st.* namespace preserves imported ST fields across persist and export` and `avatarUri accepts both user captures and re-encoded imports` — on top of the original `persona instructions` and `forward-compatible extensions bag round-trips` scenarios)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `edd8f2b`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 5.3 (sillytavern-card-interop): Document design.md § "Migration Plan" with ST mapping + typed error codes + bounded limits.
+
+- Verification:
+  - ``rg -n "## Migration Plan" openspec/changes/sillytavern-card-interop/design.md`` - pass (Migration Plan opens with (a) a paragraph pointing to the Context-section table as canonical ST-field → our-record mapping, (b) an explicit Markdown table enumerating the six typed error codes — `payload_too_large` / `avatar_too_large` / `unsupported_schema_version` / `malformed_png` / `malformed_json` / `unsupported_format` — with meaning + enforcement-point columns, (c) a bulleted list of bounded safety limits: PNG 8 MiB / JSON 1 MiB / avatar 4096×4096 / prose 32 KiB / alt-greetings 64 / tags 256 / `st-value` 64 KiB, tied to reject-vs-warning behavior)
+  - ``npx --yes openspec validate sillytavern-card-interop --strict`` - pass (delta specs name the error codes explicitly: `im-backend/spec.md` lists all five in the rejections scenario; `sillytavern-card-interop/spec.md` names `unsupported_schema_version` / `unsupported_format` in the legacy-V1 scenario and the new `Malformed PNG or JSON payloads are rejected with typed codes` scenario names `malformed_png` and `malformed_json`)
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `a9f4f4f`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 6.1 (sillytavern-card-interop): Focused unit suites — 8 files totalling 86 `@Test` cases.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest`` - pass (`Task :app:testDebugUnitTest UP-TO-DATE` → `BUILD SUCCESSFUL`, cached run green). The eight named suites land under `android/app/src/test/java/...feature/tavern/` (6) and `.../data/remote/im/` (2): `SillyTavernCardCodecTest` (13 cases), `CardInteropRepositoryTest` (11), `TavernImportEntryPointTest` (9), `ImportCardPreviewPresentationTest` (7), `CardDetailExportDialogTest` (8), `CardExportInvocationTest` (4), `ImBackendPayloadsTest` (16), `ImBackendHttpClientTest` (18) — 86 assertions across the card-interop unit surface
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: Tests landed incrementally across `08a97ad` / `879b71e` / `6a83c65` / `65add45` / `5774bd7` / `8783c40` / `d35a75e` / `85cf21b`; the 6.1 tick itself is included in the 6.3 commit below.
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 6.2 (sillytavern-card-interop): Instrumentation coverage on `codex_api34` — `CardImportInstrumentationTest` + `CardExportInstrumentationTest` + `CardInteropRoundTripTest`.
+
+- Verification:
+  - ``ANDROID_SERIAL=emulator-5554 JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.tavern.CardImportInstrumentationTest,com.gkim.im.android.feature.tavern.CardExportInstrumentationTest,com.gkim.im.android.feature.tavern.CardInteropRoundTripTest`` - pass ("Starting 12 tests on codex_api34(AVD) - 14 / Finished 12 tests / BUILD SUCCESSFUL in 43s"; 5 import + 4 export + 3 round-trip, zero failed, zero skipped)
+  - `CardInteropRoundTripTest` routes an `InMemoryRoundTripBackend` through the production `DefaultCardInteropRepository` so the size-guard decorator keeps real PNG signature detection and the 8 MiB / 1 MiB caps live (`payload_too_large` / `empty_payload` / `unsupported_format`); the round-trip itself serialises via `CompanionCharacterCardDto.fromCompanionCharacterCard` / `toCompanionCharacterCard` so the deep persona record — including `extensions` `st*` keys and the nested `st` object — survives preview → commit → export → preview → commit with fresh ids each time and the id-normalised cards compare equal.
+- Review:
+  - Score: `95/100`
+  - Findings: Round-trip test uses JSON payloads end-to-end rather than literal V3 PNG wire format, because `DefaultCardInteropRepository` does not decode PNGs on-device (codec is server-side). Size-guard decoder still runs the real PNG signature check and the 8 MiB cap. Future slice could add a PNG-wire-format round-trip once a device-side PNG encoder is in play.
+- Upload:
+  - Commit: `3ddd00b`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 6.3 (sillytavern-card-interop): Record verification, review, score (≥95), and GitHub upload evidence in `docs/DELIVERY_WORKFLOW.md` for this slice.
+
+- Verification:
+  - ``rg -n "## sillytavern-card-interop delivery evidence" docs/DELIVERY_WORKFLOW.md`` - pass (section present with task rows 1.1 through 6.2 plus this recording task, each carrying its own verification command, score, commit SHA, branch, push remote; explicit pointers land in task 5.3 for the ST-field mapping table and the six typed error codes — `payload_too_large` / `avatar_too_large` / `unsupported_schema_version` / `malformed_png` / `malformed_json` / `unsupported_format` — and in task 6.2 for the `CardInteropRoundTripTest` round-trip test)
+  - ``npx --yes openspec validate sillytavern-card-interop --strict`` - pass (change artifacts still valid after the delivery-evidence append)
+  - ``npx --yes openspec archive sillytavern-card-interop --yes`` - to run after this commit lands; archive output will be appended inline when executed.
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `pending commit in this session`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
