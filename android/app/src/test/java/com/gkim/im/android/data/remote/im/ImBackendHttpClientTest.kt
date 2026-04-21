@@ -360,4 +360,245 @@ class ImBackendHttpClientTest {
         assertEquals("conversation-1", history.conversationId)
         assertEquals(false, history.hasMore)
     }
+
+    @Test
+    fun `importCardPreview uploads base64 payload and returns decoded preview`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """
+                {
+                  "previewToken": "preview-xyz-1",
+                  "card": {
+                    "id": "card-import-1",
+                    "displayName": {"english":"Aria","chinese":"Aria"},
+                    "roleLabel": {"english":"Guide","chinese":"向导"},
+                    "summary": {"english":"Calm guide","chinese":"Calm guide"},
+                    "firstMes": {"english":"Hello traveller.","chinese":"Hello traveller."},
+                    "alternateGreetings": [],
+                    "avatarText": "AR",
+                    "accent": "primary",
+                    "source": "userauthored",
+                    "extensions": {"st":{"stPostHistoryInstructions":"stay in character"}}
+                  },
+                  "detectedLanguage": "en",
+                  "warnings": [{"code":"post_history_instruction_parked","field":"stPostHistoryInstructions"}],
+                  "stExtensionKeys": ["stPostHistoryInstructions"]
+                }
+                """.trimIndent()
+            ).addHeader("Content-Type", "application/json"),
+        )
+
+        val pngSignature = byteArrayOf(
+            0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x01, 0x02,
+        )
+
+        val preview = client.importCardPreview(
+            baseUrl = server.url("").toString(),
+            token = "session-token-2",
+            bytes = pngSignature,
+            filename = "aria.png",
+        )
+        val request = server.takeRequest()
+
+        assertEquals("POST", request.method)
+        assertEquals("/api/cards/import", request.path)
+        assertEquals("Bearer session-token-2", request.getHeader("Authorization"))
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"filename\":\"aria.png\""))
+        assertTrue(body.contains("\"claimedFormat\":\"png\""))
+        assertTrue(body.contains("\"contentBase64\""))
+        assertEquals("preview-xyz-1", preview.previewToken)
+        assertEquals("en", preview.detectedLanguage)
+        assertEquals(listOf("stPostHistoryInstructions"), preview.stExtensionKeys)
+        assertEquals("post_history_instruction_parked", preview.warnings.single().code)
+    }
+
+    @Test
+    fun `importCardPreview raises on 413 payload_too_large response`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(413).setBody(
+                """{"error":"payload_too_large","detail":"png > 8 MiB"}""",
+            ).addHeader("Content-Type", "application/json"),
+        )
+
+        var thrown: Throwable? = null
+        try {
+            client.importCardPreview(
+                baseUrl = server.url("").toString(),
+                token = "session-token-2",
+                bytes = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A),
+                filename = "huge.png",
+            )
+            fail("expected exception on 413 response")
+        } catch (t: Throwable) {
+            thrown = t
+        }
+        assertTrue(thrown != null)
+    }
+
+    @Test
+    fun `importCardPreview raises on 422 malformed payload response`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(422).setBody(
+                """{"error":"malformed_png","detail":"tEXt chunk not found"}""",
+            ).addHeader("Content-Type", "application/json"),
+        )
+
+        var thrown: Throwable? = null
+        try {
+            client.importCardPreview(
+                baseUrl = server.url("").toString(),
+                token = "session-token-2",
+                bytes = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A),
+                filename = "broken.png",
+            )
+            fail("expected exception on 422 response")
+        } catch (t: Throwable) {
+            thrown = t
+        }
+        assertTrue(thrown != null)
+    }
+
+    @Test
+    fun `importCardCommit persists the preview card and returns the committed record`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """
+                {
+                  "id": "card-persisted-1",
+                  "displayName": {"english":"Aria","chinese":"Aria"},
+                  "roleLabel": {"english":"Guide","chinese":"向导"},
+                  "summary": {"english":"Calm guide","chinese":"Calm guide"},
+                  "firstMes": {"english":"Hello traveller.","chinese":"Hello traveller."},
+                  "alternateGreetings": [],
+                  "avatarText": "AR",
+                  "accent": "primary",
+                  "source": "userauthored",
+                  "extensions": {"st":{"stPostHistoryInstructions":"stay in character"}}
+                }
+                """.trimIndent()
+            ).addHeader("Content-Type", "application/json"),
+        )
+
+        val preview = CardImportPreviewDto(
+            previewToken = "preview-xyz-1",
+            card = CompanionCharacterCardDto(
+                id = "card-import-1",
+                displayName = LocalizedTextDto("Aria", "Aria"),
+                roleLabel = LocalizedTextDto("Guide", "向导"),
+                summary = LocalizedTextDto("Calm guide", "Calm guide"),
+                firstMes = LocalizedTextDto("Hello traveller.", "Hello traveller."),
+                avatarText = "AR",
+                accent = "primary",
+                source = "userauthored",
+            ),
+            detectedLanguage = "en",
+        )
+
+        val committed = client.importCardCommit(
+            baseUrl = server.url("").toString(),
+            token = "session-token-2",
+            preview = preview,
+            overrides = null,
+            languageOverride = "zh",
+        )
+        val request = server.takeRequest()
+
+        assertEquals("POST", request.method)
+        assertEquals("/api/cards/import/commit", request.path)
+        assertEquals("Bearer session-token-2", request.getHeader("Authorization"))
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"previewToken\":\"preview-xyz-1\""))
+        assertTrue(body.contains("\"languageOverride\":\"zh\""))
+        assertEquals("card-persisted-1", committed.id)
+    }
+
+    @Test
+    fun `exportCard sends PNG request with language query and returns base64 payload`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """
+                {
+                  "format":"png",
+                  "filename":"aria.png",
+                  "contentType":"image/png",
+                  "encoding":"base64",
+                  "payload":"iVBORw0KGgoAAA=="
+                }
+                """.trimIndent()
+            ).addHeader("Content-Type", "application/json"),
+        )
+
+        val response = client.exportCard(
+            baseUrl = server.url("").toString(),
+            token = "session-token-2",
+            cardId = "card-import-1",
+            format = "png",
+            language = "zh",
+            includeTranslationAlt = true,
+        )
+        val request = server.takeRequest()
+
+        assertEquals("GET", request.method)
+        assertTrue(request.path?.startsWith("/api/cards/card-import-1/export?") == true)
+        assertTrue(request.path?.contains("format=png") == true)
+        assertTrue(request.path?.contains("language=zh") == true)
+        assertTrue(request.path?.contains("includeTranslationAlt=true") == true)
+        assertEquals("Bearer session-token-2", request.getHeader("Authorization"))
+        assertEquals("png", response.format)
+        assertEquals("base64", response.encoding)
+        assertEquals("iVBORw0KGgoAAA==", response.payload)
+    }
+
+    @Test
+    fun `exportCard sends JSON request and returns utf8 payload`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """
+                {
+                  "format":"json",
+                  "filename":"aria.json",
+                  "contentType":"application/json",
+                  "encoding":"utf8",
+                  "payload":"{\"name\":\"Aria\"}"
+                }
+                """.trimIndent()
+            ).addHeader("Content-Type", "application/json"),
+        )
+
+        val response = client.exportCard(
+            baseUrl = server.url("").toString(),
+            token = "session-token-2",
+            cardId = "card-import-1",
+            format = "json",
+            language = "en",
+        )
+        val request = server.takeRequest()
+
+        assertTrue(request.path?.contains("format=json") == true)
+        assertTrue(request.path?.contains("language=en") == true)
+        assertEquals("json", response.format)
+        assertEquals("utf8", response.encoding)
+    }
+
+    @Test
+    fun `exportCard raises on unknown card 404`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(404).setBody("not found"))
+
+        var thrown: Throwable? = null
+        try {
+            client.exportCard(
+                baseUrl = server.url("").toString(),
+                token = "session-token-2",
+                cardId = "missing-card",
+                format = "png",
+                language = "en",
+            )
+            fail("expected exception on 404 response")
+        } catch (t: Throwable) {
+            thrown = t
+        }
+        assertTrue(thrown != null)
+    }
 }

@@ -1,5 +1,7 @@
 package com.gkim.im.android.data.remote.im
 
+import com.gkim.im.android.core.interop.SillyTavernCardCodec
+import com.gkim.im.android.core.interop.SillyTavernCardFormat
 import com.gkim.im.android.data.remote.api.ServiceFactory
 import kotlinx.serialization.Serializable
 import okhttp3.OkHttpClient
@@ -104,6 +106,27 @@ private interface ImBackendService {
         @Header("Authorization") authorization: String,
         @Path("turnId") turnId: String,
     ): CompanionTurnRecordDto
+
+    @POST("api/cards/import")
+    suspend fun importCardPreview(
+        @Header("Authorization") authorization: String,
+        @Body request: CardImportUploadRequestDto,
+    ): CardImportPreviewDto
+
+    @POST("api/cards/import/commit")
+    suspend fun importCardCommit(
+        @Header("Authorization") authorization: String,
+        @Body request: CardImportCommitRequestDto,
+    ): CompanionCharacterCardDto
+
+    @GET("api/cards/{cardId}/export")
+    suspend fun exportCard(
+        @Header("Authorization") authorization: String,
+        @Path("cardId") cardId: String,
+        @Query("format") format: String,
+        @Query("language") language: String,
+        @Query("includeTranslationAlt") includeTranslationAlt: Boolean? = null,
+    ): CardExportResponseDto
 }
 
 class ImBackendHttpClient(
@@ -227,6 +250,57 @@ class ImBackendHttpClient(
     ): CompanionTurnRecordDto = serviceFor(baseUrl).snapshotCompanionTurn(
         authorization = bearerToken(token),
         turnId = turnId,
+    )
+
+    override suspend fun importCardPreview(
+        baseUrl: String,
+        token: String,
+        bytes: ByteArray,
+        filename: String,
+    ): CardImportPreviewDto {
+        val claimedFormat = when (SillyTavernCardCodec.detectFormat(bytes)) {
+            SillyTavernCardFormat.Png -> "png"
+            SillyTavernCardFormat.Json -> "json"
+            SillyTavernCardFormat.Unknown -> "unknown"
+        }
+        return serviceFor(baseUrl).importCardPreview(
+            authorization = bearerToken(token),
+            request = CardImportUploadRequestDto(
+                filename = filename,
+                contentBase64 = java.util.Base64.getEncoder().encodeToString(bytes),
+                claimedFormat = claimedFormat,
+            ),
+        )
+    }
+
+    override suspend fun importCardCommit(
+        baseUrl: String,
+        token: String,
+        preview: CardImportPreviewDto,
+        overrides: CompanionCharacterCardDto?,
+        languageOverride: String?,
+    ): CompanionCharacterCardDto = serviceFor(baseUrl).importCardCommit(
+        authorization = bearerToken(token),
+        request = CardImportCommitRequestDto(
+            previewToken = preview.previewToken,
+            card = overrides ?: preview.card,
+            languageOverride = languageOverride,
+        ),
+    )
+
+    override suspend fun exportCard(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+        format: String,
+        language: String,
+        includeTranslationAlt: Boolean,
+    ): CardExportResponseDto = serviceFor(baseUrl).exportCard(
+        authorization = bearerToken(token),
+        cardId = cardId,
+        format = format,
+        language = language,
+        includeTranslationAlt = includeTranslationAlt,
     )
 
     private fun serviceFor(baseUrl: String): ImBackendService =

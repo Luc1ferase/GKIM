@@ -86,5 +86,35 @@ interface ImBackendClient {
     ): CompanionTurnRecordDto {
         error("snapshotCompanionTurn is not implemented for this backend client")
     }
+
+    suspend fun importCardPreview(
+        baseUrl: String,
+        token: String,
+        bytes: ByteArray,
+        filename: String,
+    ): CardImportPreviewDto {
+        error("importCardPreview is not implemented for this backend client")
+    }
+
+    suspend fun importCardCommit(
+        baseUrl: String,
+        token: String,
+        preview: CardImportPreviewDto,
+        overrides: CompanionCharacterCardDto? = null,
+        languageOverride: String? = null,
+    ): CompanionCharacterCardDto {
+        error("importCardCommit is not implemented for this backend client")
+    }
+
+    suspend fun exportCard(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+        format: String,
+        language: String,
+        includeTranslationAlt: Boolean = false,
+    ): CardExportResponseDto {
+        error("exportCard is not implemented for this backend client")
+    }
 }
 
