@@ -11,6 +11,7 @@ import java.util.UUID
 sealed interface UserPersonaMutationResult {
     data class Success(val persona: UserPersona) : UserPersonaMutationResult
     data class Rejected(val reason: RejectionReason) : UserPersonaMutationResult
+    data class Failed(val cause: Throwable) : UserPersonaMutationResult
 
     enum class RejectionReason {
         UnknownPersona,
