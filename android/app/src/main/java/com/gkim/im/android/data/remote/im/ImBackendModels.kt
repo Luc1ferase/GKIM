@@ -12,6 +12,7 @@ import com.gkim.im.android.core.model.LocalizedText
 import com.gkim.im.android.core.model.MessageAttachment
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
+import com.gkim.im.android.core.model.UserPersona
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -452,6 +453,59 @@ data class CardExportResponseDto(
     val contentType: String,
     val encoding: String,
     val payload: String,
+)
+
+@Serializable
+data class UserPersonaDto(
+    val id: String,
+    val displayName: LocalizedTextDto,
+    val description: LocalizedTextDto,
+    val isBuiltIn: Boolean = false,
+    val isActive: Boolean = false,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
+    val extensions: JsonObject = JsonObject(emptyMap()),
+) {
+    fun toUserPersona(): UserPersona = UserPersona(
+        id = id,
+        displayName = displayName.toLocalizedText(),
+        description = description.toLocalizedText(),
+        isBuiltIn = isBuiltIn,
+        isActive = isActive,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        extensions = extensions,
+    )
+
+    companion object {
+        fun fromUserPersona(persona: UserPersona): UserPersonaDto = UserPersonaDto(
+            id = persona.id,
+            displayName = LocalizedTextDto(
+                persona.displayName.english,
+                persona.displayName.chinese,
+            ),
+            description = LocalizedTextDto(
+                persona.description.english,
+                persona.description.chinese,
+            ),
+            isBuiltIn = persona.isBuiltIn,
+            isActive = persona.isActive,
+            createdAt = persona.createdAt,
+            updatedAt = persona.updatedAt,
+            extensions = persona.extensions,
+        )
+    }
+}
+
+@Serializable
+data class UserPersonaListDto(
+    val personas: List<UserPersonaDto>,
+    val activePersonaId: String? = null,
+)
+
+@Serializable
+data class UserPersonaActivateRequestDto(
+    val personaId: String,
 )
 
 private fun MessageAttachmentDto.toMessageAttachment(

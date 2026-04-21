@@ -592,4 +592,105 @@ class ImBackendPayloadsTest {
         )
         assertEquals(jsonResponse, decodedJson)
     }
+
+    @Test
+    fun `user persona dto carries bilingual names and extensions passthrough`() {
+        val raw = """
+            {
+              "id": "persona-1",
+              "displayName": { "english": "Traveller", "chinese": "旅人" },
+              "description": { "english": "A curious wanderer.", "chinese": "好奇的漫游者。" },
+              "isBuiltIn": false,
+              "isActive": true,
+              "createdAt": 1700000000,
+              "updatedAt": 1700001234,
+              "extensions": { "nickname": "T" }
+            }
+        """.trimIndent()
+        val dto = json.decodeFromString<UserPersonaDto>(raw)
+
+        assertEquals("persona-1", dto.id)
+        assertEquals("Traveller", dto.displayName.english)
+        assertEquals("旅人", dto.displayName.chinese)
+        assertEquals("好奇的漫游者。", dto.description.chinese)
+        assertFalse(dto.isBuiltIn)
+        assertTrue(dto.isActive)
+        assertEquals(1_700_000_000L, dto.createdAt)
+        assertEquals(1_700_001_234L, dto.updatedAt)
+        assertEquals(
+            "T",
+            dto.extensions["nickname"]?.let { (it as kotlinx.serialization.json.JsonPrimitive).content },
+        )
+
+        val persona = dto.toUserPersona()
+        assertEquals("Traveller", persona.displayName.english)
+        assertEquals("旅人", persona.displayName.chinese)
+        assertTrue(persona.isActive)
+
+        val encoded = json.encodeToString(UserPersonaDto.serializer(), dto)
+        val decoded = json.decodeFromString<UserPersonaDto>(encoded)
+        assertEquals(dto, decoded)
+    }
+
+    @Test
+    fun `user persona list dto carries active id and persona list`() {
+        val dto = UserPersonaListDto(
+            personas = listOf(
+                UserPersonaDto(
+                    id = "persona-built-in",
+                    displayName = LocalizedTextDto("User", "用户"),
+                    description = LocalizedTextDto(
+                        "A user interacting with the companion.",
+                        "与同伴互动的用户。",
+                    ),
+                    isBuiltIn = true,
+                    isActive = true,
+                ),
+                UserPersonaDto(
+                    id = "persona-alpha",
+                    displayName = LocalizedTextDto("Aria", "艾莉亚"),
+                    description = LocalizedTextDto("Calm guide.", "沉稳向导。"),
+                ),
+            ),
+            activePersonaId = "persona-built-in",
+        )
+        val encoded = json.encodeToString(UserPersonaListDto.serializer(), dto)
+        val decoded = json.decodeFromString<UserPersonaListDto>(encoded)
+        assertEquals(dto, decoded)
+        assertEquals("persona-built-in", decoded.activePersonaId)
+        assertEquals(2, decoded.personas.size)
+    }
+
+    @Test
+    fun `user persona activate request forwards persona id`() {
+        val dto = UserPersonaActivateRequestDto(personaId = "persona-alpha")
+        val encoded = json.encodeToString(UserPersonaActivateRequestDto.serializer(), dto)
+        val decoded = json.decodeFromString<UserPersonaActivateRequestDto>(encoded)
+        assertEquals(dto, decoded)
+        assertEquals("persona-alpha", decoded.personaId)
+    }
+
+    @Test
+    fun `user persona dto round trip through fromUserPersona and back preserves every field`() {
+        val domain = com.gkim.im.android.core.model.UserPersona(
+            id = "persona-round",
+            displayName = com.gkim.im.android.core.model.LocalizedText("Pilgrim", "朝圣者"),
+            description = com.gkim.im.android.core.model.LocalizedText(
+                "Walks many roads.",
+                "走过许多道路。",
+            ),
+            isBuiltIn = false,
+            isActive = true,
+            createdAt = 1_700_000_000L,
+            updatedAt = 1_700_001_234L,
+            extensions = kotlinx.serialization.json.buildJsonObject {
+                put("nickname", kotlinx.serialization.json.JsonPrimitive("P"))
+            },
+        )
+        val dto = UserPersonaDto.fromUserPersona(domain)
+        val encoded = json.encodeToString(UserPersonaDto.serializer(), dto)
+        val decoded = json.decodeFromString<UserPersonaDto>(encoded)
+        val roundTripped = decoded.toUserPersona()
+        assertEquals(domain, roundTripped)
+    }
 }
