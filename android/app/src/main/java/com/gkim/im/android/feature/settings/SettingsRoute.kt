@@ -71,14 +71,88 @@ internal data class SettingsUiState(
     val themeMode: AppThemeMode = AppThemeMode.Light,
 )
 
-private enum class SettingsDestination {
+internal enum class SettingsDestination {
     Menu,
     Appearance,
     AiProvider,
     ImValidation,
     Personas,
     PersonaEditor,
+    WorldInfo,
     Account,
+}
+
+internal data class SettingsMenuItem(
+    val destination: SettingsDestination,
+    val testTag: String,
+    val englishLabel: String,
+    val chineseLabel: String,
+    val englishSummary: String,
+    val chineseSummary: String,
+)
+
+internal fun buildSettingsMenuItems(
+    uiState: SettingsUiState,
+): List<SettingsMenuItem> {
+    val activeProvider = uiState.providers.firstOrNull { it.id == uiState.activeProviderId }
+    val providerEnglishSummary = activeProvider?.let { "${it.label} · ${it.model}" } ?: "Choose a provider"
+    val providerChineseSummary = activeProvider?.let { "${it.label} · ${it.model}" } ?: "选择提供商"
+    val appearanceEnglishSummary = "${uiState.appLanguage.menuEnglishLabel()} · ${uiState.themeMode.menuEnglishLabel()}"
+    val appearanceChineseSummary = "${uiState.appLanguage.menuChineseLabel()} · ${uiState.themeMode.menuChineseLabel()}"
+    val validationResolved = uiState.imResolvedBackendOrigin.removeSuffix("/")
+    val validationEnglishSummary = uiState.imValidationError ?: "Backend $validationResolved"
+    val validationChineseSummary = uiState.imValidationError ?: "后端 $validationResolved"
+
+    return listOf(
+        SettingsMenuItem(
+            destination = SettingsDestination.Appearance,
+            testTag = "settings-menu-appearance",
+            englishLabel = "Appearance & Language",
+            chineseLabel = "外观与语言",
+            englishSummary = appearanceEnglishSummary,
+            chineseSummary = appearanceChineseSummary,
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.AiProvider,
+            testTag = "settings-menu-ai-provider",
+            englishLabel = "AI Provider",
+            chineseLabel = "AI 提供商",
+            englishSummary = providerEnglishSummary,
+            chineseSummary = providerChineseSummary,
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.ImValidation,
+            testTag = "settings-menu-im-validation",
+            englishLabel = "Connection",
+            chineseLabel = "连接信息",
+            englishSummary = validationEnglishSummary,
+            chineseSummary = validationChineseSummary,
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.Personas,
+            testTag = "settings-menu-personas",
+            englishLabel = "Personas",
+            chineseLabel = "用户角色",
+            englishSummary = "Manage the {{user}} personas used across companion chats.",
+            chineseSummary = "管理陪伴对话中的 {{user}} 角色资料。",
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.WorldInfo,
+            testTag = "settings-menu-worldinfo",
+            englishLabel = "World Info",
+            chineseLabel = "世界信息",
+            englishSummary = "Manage lorebooks bound to companion characters.",
+            chineseSummary = "管理绑定到伙伴角色的世界书。",
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.Account,
+            testTag = "settings-menu-account",
+            englishLabel = "Account",
+            chineseLabel = "账号",
+            englishSummary = "Manage sign-in and session details.",
+            chineseSummary = "管理登录与会话信息。",
+        ),
+    )
 }
 
 internal class SettingsViewModel(
@@ -404,6 +478,11 @@ private fun SettingsScreen(
                 }
             }
 
+            SettingsDestination.WorldInfo -> com.gkim.im.android.feature.settings.worldinfo.WorldInfoLibraryRoute(
+                container = container,
+                onBack = { onNavigateToDestination(SettingsDestination.Menu) },
+            )
+
             SettingsDestination.Account -> SettingsAccountScreen(
                 onBack = { onNavigateToDestination(SettingsDestination.Menu) },
             )
@@ -418,18 +497,6 @@ private fun SettingsMenuScreen(
     onBack: () -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
-    val activeProvider = uiState.providers.firstOrNull { it.id == uiState.activeProviderId }
-    val providerSummary = activeProvider?.let { provider ->
-        appLanguage.pick("${provider.label} · ${provider.model}", "${provider.label} · ${provider.model}")
-    } ?: appLanguage.pick("Choose a provider", "选择提供商")
-    val appearanceSummary = appLanguage.pick(
-        "${uiState.appLanguage.menuEnglishLabel()} · ${uiState.themeMode.menuEnglishLabel()}",
-        "${uiState.appLanguage.menuChineseLabel()} · ${uiState.themeMode.menuChineseLabel()}",
-    )
-    val validationSummary = uiState.imValidationError ?: appLanguage.pick(
-        "Backend ${uiState.imResolvedBackendOrigin.removeSuffix("/")}",
-        "后端 ${uiState.imResolvedBackendOrigin.removeSuffix("/")}",
-    )
 
     PageHeader(
         eyebrow = appLanguage.pick("Settings", "设置"),
@@ -446,34 +513,13 @@ private fun SettingsMenuScreen(
         modifier = Modifier.testTag("settings-menu-screen"),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SettingsMenuEntry(
-            testTag = "settings-menu-appearance",
-            label = appLanguage.pick("Appearance & Language", "外观与语言"),
-            summary = appearanceSummary,
-        ) { onNavigateToDestination(SettingsDestination.Appearance) }
-        SettingsMenuEntry(
-            testTag = "settings-menu-ai-provider",
-            label = appLanguage.pick("AI Provider", "AI 提供商"),
-            summary = providerSummary,
-        ) { onNavigateToDestination(SettingsDestination.AiProvider) }
-        SettingsMenuEntry(
-            testTag = "settings-menu-im-validation",
-            label = appLanguage.pick("Connection", "连接信息"),
-            summary = validationSummary,
-        ) { onNavigateToDestination(SettingsDestination.ImValidation) }
-        SettingsMenuEntry(
-            testTag = "settings-menu-personas",
-            label = appLanguage.pick("Personas", "用户角色"),
-            summary = appLanguage.pick(
-                "Manage the {{user}} personas used across companion chats.",
-                "管理陪伴对话中的 {{user}} 角色资料。",
-            ),
-        ) { onNavigateToDestination(SettingsDestination.Personas) }
-        SettingsMenuEntry(
-            testTag = "settings-menu-account",
-            label = appLanguage.pick("Account", "账号"),
-            summary = appLanguage.pick("Manage sign-in and session details.", "管理登录与会话信息。"),
-        ) { onNavigateToDestination(SettingsDestination.Account) }
+        buildSettingsMenuItems(uiState).forEach { item ->
+            SettingsMenuEntry(
+                testTag = item.testTag,
+                label = appLanguage.pick(item.englishLabel, item.chineseLabel),
+                summary = appLanguage.pick(item.englishSummary, item.chineseSummary),
+            ) { onNavigateToDestination(item.destination) }
+        }
     }
 }
 
