@@ -44,6 +44,8 @@ import com.gkim.im.android.data.repository.LiveMessagingRepository
 import com.gkim.im.android.data.repository.MessagingIntegrationPhase
 import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.data.repository.UserPersonaRepository
+import com.gkim.im.android.data.repository.DefaultWorldInfoRepository
+import com.gkim.im.android.data.repository.WorldInfoRepository
 import com.gkim.im.android.data.repository.presetProviders
 import com.gkim.im.android.data.repository.seedBuiltInPersonas
 import com.gkim.im.android.data.repository.seedDrawPoolCharacters
@@ -244,6 +246,7 @@ private class LiveImageValidationContainer(
     override val userPersonaRepository: UserPersonaRepository = DefaultUserPersonaRepository(
         initialPersonas = seedBuiltInPersonas,
     )
+    override val worldInfoRepository: WorldInfoRepository = DefaultWorldInfoRepository()
     private val secureStore = UiInMemorySecureStore().apply {
         putString("preset_provider_hunyuan_api_key", "ui-test-hunyuan-key")
         putString("preset_provider_tongyi_api_key", "ui-test-tongyi-key")

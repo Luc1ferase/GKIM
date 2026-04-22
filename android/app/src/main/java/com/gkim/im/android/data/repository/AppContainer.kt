@@ -22,6 +22,7 @@ import com.gkim.im.android.data.remote.im.ChatAttachmentEncoder
 import com.gkim.im.android.data.remote.im.ImBackendClient
 import com.gkim.im.android.data.remote.im.ImBackendHttpClient
 import com.gkim.im.android.data.remote.im.ImHttpEndpointResolver
+import com.gkim.im.android.data.remote.im.ImWorldInfoHttpClient
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +37,7 @@ interface AppContainer {
     val companionTurnRepository: CompanionTurnRepository
     val cardInteropRepository: CardInteropRepository
     val userPersonaRepository: UserPersonaRepository
+    val worldInfoRepository: WorldInfoRepository
     val aigcRepository: AigcRepository
     val preferencesStore: PreferencesStore
     val sessionStore: SessionStore
@@ -81,6 +83,12 @@ class DefaultAppContainer(context: Context) : AppContainer {
         httpClient = okHttpClient,
     )
 
+    override val worldInfoRepository: WorldInfoRepository = LiveWorldInfoRepository(
+        default = DefaultWorldInfoRepository(),
+        client = ImWorldInfoHttpClient(okHttpClient),
+        baseUrlProvider = { sessionStore.baseUrl },
+        tokenProvider = { sessionStore.token },
+    )
     override val messagingRepository: MessagingRepository = LiveMessagingRepository(
         backendClient = imBackendClient,
         realtimeGateway = realtimeChatClient,
@@ -88,6 +96,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
         preferencesStore = preferencesStore,
         fallbackRepository = fallbackMessagingRepository,
         chatAttachmentEncoder = chatAttachmentEncoder,
+        onBootstrapLoaded = { worldInfoRepository.refresh() },
     )
     override val contactsRepository: ContactsRepository = LiveContactsRepository(
         messagingRepository = messagingRepository,

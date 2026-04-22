@@ -623,6 +623,7 @@ class LiveMessagingRepository(
     private val chatAttachmentEncoder: ChatAttachmentEncoder = UnsupportedChatAttachmentEncoder(),
     private val shippedBackendOrigin: String = BuildConfig.IM_BACKEND_ORIGIN,
     private val allowDeveloperOverrides: Boolean = BuildConfig.DEBUG,
+    private val onBootstrapLoaded: (suspend () -> Unit)? = null,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : MessagingRepository {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
@@ -944,6 +945,7 @@ class LiveMessagingRepository(
             resolvedUserExternalId = session.user.externalId,
         )
         flushPendingHistoryLoads()
+        runPostBootstrapHook()
 
         integrationStateValue.value = MessagingIntegrationState(
             phase = MessagingIntegrationPhase.RealtimeConnecting,
@@ -978,12 +980,18 @@ class LiveMessagingRepository(
             resolvedUserExternalId = bootstrap.user.externalId,
         )
         flushPendingHistoryLoads()
+        runPostBootstrapHook()
 
         integrationStateValue.value = MessagingIntegrationState(
             phase = MessagingIntegrationPhase.RealtimeConnecting,
             activeUserExternalId = bootstrap.user.externalId,
         )
         realtimeGateway.connect(token = token, endpointOverride = webSocketUrl)
+    }
+
+    private suspend fun runPostBootstrapHook() {
+        val hook = onBootstrapLoaded ?: return
+        runCatching { hook() }
     }
 
     private fun resetRuntimeForBootstrap() {
@@ -1197,6 +1205,7 @@ class LiveMessagingRepository(
                     resolvedUserExternalId = bootstrap.user.externalId,
                     preserveLoadedMessages = true,
                 )
+                runPostBootstrapHook()
                 loadedConversationIds.toList().forEach { conversationId ->
                     loadConversationHistoryNow(
                         conversationId = conversationId,

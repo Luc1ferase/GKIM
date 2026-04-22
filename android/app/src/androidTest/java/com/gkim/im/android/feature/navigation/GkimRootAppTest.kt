@@ -64,6 +64,8 @@ import com.gkim.im.android.data.repository.MessagingIntegrationPhase
 import com.gkim.im.android.data.repository.MessagingIntegrationState
 import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.data.repository.UserPersonaRepository
+import com.gkim.im.android.data.repository.DefaultWorldInfoRepository
+import com.gkim.im.android.data.repository.WorldInfoRepository
 import com.gkim.im.android.data.repository.presetProviders
 import com.gkim.im.android.data.repository.seedBuiltInPersonas
 import com.gkim.im.android.data.repository.seedDrawPoolCharacters
@@ -1363,6 +1365,7 @@ private class UiTestAppContainer(
     override val userPersonaRepository: UserPersonaRepository = DefaultUserPersonaRepository(
         initialPersonas = seedBuiltInPersonas,
     )
+    override val worldInfoRepository: WorldInfoRepository = DefaultWorldInfoRepository()
     override val aigcRepository: AigcRepository = DefaultAigcRepository(
         presets = presetProviders,
         preferencesStore = preferencesStore,
