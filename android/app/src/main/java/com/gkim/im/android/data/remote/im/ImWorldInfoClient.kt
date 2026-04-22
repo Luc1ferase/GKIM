@@ -1,5 +1,6 @@
 package com.gkim.im.android.data.remote.im
 
+import com.gkim.im.android.BuildConfig
 import com.gkim.im.android.data.remote.api.ServiceFactory
 import okhttp3.OkHttpClient
 import retrofit2.http.Body
@@ -9,6 +10,8 @@ import retrofit2.http.HTTP
 import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
+
+const val DEBUG_ACCESS_HEADER = "X-GKIM-Debug-Access"
 
 interface ImWorldInfoClient {
     suspend fun list(baseUrl: String, token: String): LorebookListDto
@@ -77,6 +80,15 @@ interface ImWorldInfoClient {
         lorebookId: String,
         characterId: String,
     )
+
+    suspend fun debugScan(
+        baseUrl: String,
+        token: String,
+        characterId: String,
+        scanText: String,
+        devAccessHeader: String,
+        allowDebug: Boolean = BuildConfig.DEBUG,
+    ): WorldInfoDebugScanResponseDto
 }
 
 private interface ImWorldInfoService {
@@ -173,6 +185,13 @@ private interface ImWorldInfoService {
         @Path("id") lorebookId: String,
         @Path("characterId") characterId: String,
     )
+
+    @POST("api/debug/worldinfo/scan")
+    suspend fun debugScan(
+        @Header("Authorization") authorization: String,
+        @Header(DEBUG_ACCESS_HEADER) debugAccess: String,
+        @Body request: WorldInfoDebugScanRequestDto,
+    ): WorldInfoDebugScanResponseDto
 }
 
 class ImWorldInfoHttpClient(
@@ -286,6 +305,35 @@ class ImWorldInfoHttpClient(
         characterId: String,
     ) {
         serviceFor(baseUrl).unbind(bearerToken(token), lorebookId, characterId)
+    }
+
+    override suspend fun debugScan(
+        baseUrl: String,
+        token: String,
+        characterId: String,
+        scanText: String,
+        devAccessHeader: String,
+        allowDebug: Boolean,
+    ): WorldInfoDebugScanResponseDto {
+        if (!allowDebug) {
+            throw IllegalStateException("debug_scan_disabled_in_release")
+        }
+        if (devAccessHeader.isBlank()) {
+            throw IllegalArgumentException("debug_access_header_missing")
+        }
+        val response = serviceFor(baseUrl).debugScan(
+            authorization = bearerToken(token),
+            debugAccess = devAccessHeader,
+            request = WorldInfoDebugScanRequestDto(
+                characterId = characterId,
+                scanText = scanText,
+            ),
+        )
+        return response.copy(
+            matches = response.matches.sortedWith(
+                compareBy({ it.insertionOrder }, { it.lorebookId }, { it.entryId }),
+            ),
+        )
     }
 
     private fun serviceFor(baseUrl: String): ImWorldInfoService =

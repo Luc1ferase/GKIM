@@ -21,6 +21,7 @@ import com.gkim.im.android.data.remote.im.PerLanguageStringListDto
 import com.gkim.im.android.data.remote.im.UpdateLorebookBindingRequestDto
 import com.gkim.im.android.data.remote.im.UpdateLorebookEntryRequestDto
 import com.gkim.im.android.data.remote.im.UpdateLorebookRequestDto
+import com.gkim.im.android.data.remote.im.WorldInfoDebugScanResponseDto
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -675,4 +676,13 @@ private class FakeWorldInfoBackend : ImWorldInfoClient {
     ) {
         if (failOnUnbind) error("unbind failed")
     }
+
+    override suspend fun debugScan(
+        baseUrl: String,
+        token: String,
+        characterId: String,
+        scanText: String,
+        devAccessHeader: String,
+        allowDebug: Boolean,
+    ): WorldInfoDebugScanResponseDto = WorldInfoDebugScanResponseDto()
 }

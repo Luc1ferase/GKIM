@@ -85,3 +85,17 @@ The system SHALL, at character-card import commit, detect whether the imported p
 
 - **WHEN** a character has more than one binding at export time
 - **THEN** the export response carries a typed warning listing the non-primary lorebook IDs and the exported `character_book` contains only the primary binding's entries
+
+### Requirement: Backend exposes a developer-only debug scan endpoint gated on a dev-access header
+
+The system SHALL expose `POST /api/debug/worldinfo/scan` accepting a `{ characterId, scanText }` body and returning the set of entries that would match if the scan were executed against the authenticated user's lorebooks plus the character's bound lorebooks, with each match carrying `entryId`, `lorebookId`, `insertionOrder`, `constant`, and the literal `matchedKey` that triggered it (null for constant entries). The endpoint MUST require an `X-GKIM-Debug-Access` header in addition to the bearer token, MUST reject requests missing or carrying an incorrect dev-access header with HTTP 403, and SHALL only be enabled when the backend is configured to allow debug traffic. Clients SHOULD gate calls on `BuildConfig.DEBUG` so release builds never dispatch a request.
+
+#### Scenario: Debug scan returns entries in the same total order the allocator would use
+
+- **WHEN** a debug scan request is evaluated
+- **THEN** the response matches are totally ordered by `(insertionOrder asc, lorebookId asc, entryId asc)` matching the production scan's total order so the debug output is a faithful preview
+
+#### Scenario: Debug scan rejects callers without the dev-access header
+
+- **WHEN** a client calls `POST /api/debug/worldinfo/scan` without the `X-GKIM-Debug-Access` header or with an incorrect value
+- **THEN** the backend responds with HTTP 403 and does not expose any scan data

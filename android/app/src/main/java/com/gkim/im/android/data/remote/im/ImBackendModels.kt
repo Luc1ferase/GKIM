@@ -761,6 +761,27 @@ data class UpdateLorebookBindingRequestDto(
     val isPrimary: Boolean,
 )
 
+@Serializable
+data class WorldInfoDebugScanRequestDto(
+    val characterId: String,
+    val scanText: String,
+)
+
+@Serializable
+data class WorldInfoDebugMatchDto(
+    val entryId: String,
+    val lorebookId: String,
+    val insertionOrder: Int,
+    val constant: Boolean = false,
+    val matchedKey: String? = null,
+    val language: String? = null,
+)
+
+@Serializable
+data class WorldInfoDebugScanResponseDto(
+    val matches: List<WorldInfoDebugMatchDto> = emptyList(),
+)
+
 private fun String.toSecondaryGate(): SecondaryGate = when (uppercase()) {
     "AND" -> SecondaryGate.And
     "OR" -> SecondaryGate.Or
