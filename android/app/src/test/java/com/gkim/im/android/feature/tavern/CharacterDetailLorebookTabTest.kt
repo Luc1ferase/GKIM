@@ -229,6 +229,168 @@ class CharacterDetailLorebookTabTest {
         assertTrue(rows.single().isPrimary)
     }
 
+    @Test
+    fun `pickerItems expose unbound lorebooks sorted alphabetically`() = runTest(dispatcher) {
+        val repo = DefaultWorldInfoRepository(
+            initialLorebooks = listOf(
+                sampleLorebook("lb-1", "Gamma", "伽马"),
+                sampleLorebook("lb-2", "Alpha", "阿尔法"),
+                sampleLorebook("lb-3", "Beta", "贝塔"),
+            ),
+            initialBindings = emptyMap(),
+        )
+        val viewModel = CharacterLorebookTabViewModel(repo, CHARACTER_ID) { AppLanguage.English }
+        advanceUntilIdle()
+
+        val picker = viewModel.uiState.value.pickerItems
+        assertEquals(listOf("Alpha", "Beta", "Gamma"), picker.map { it.displayName })
+        assertTrue(viewModel.uiState.value.canBind)
+    }
+
+    @Test
+    fun `pickerItems exclude lorebooks already bound to this character`() = runTest(dispatcher) {
+        val repo = DefaultWorldInfoRepository(
+            initialLorebooks = listOf(
+                sampleLorebook("lb-1", "Alpha", "阿尔法"),
+                sampleLorebook("lb-2", "Beta", "贝塔"),
+                sampleLorebook("lb-3", "Gamma", "伽马"),
+            ),
+            initialBindings = mapOf(
+                "lb-1" to listOf(LorebookBinding(lorebookId = "lb-1", characterId = CHARACTER_ID)),
+            ),
+        )
+        val viewModel = CharacterLorebookTabViewModel(repo, CHARACTER_ID) { AppLanguage.English }
+        advanceUntilIdle()
+
+        val picker = viewModel.uiState.value.pickerItems
+        assertEquals(listOf("lb-2", "lb-3"), picker.map { it.lorebookId }.sorted())
+    }
+
+    @Test
+    fun `pickerItems still include lorebooks bound only to other characters`() = runTest(dispatcher) {
+        val repo = DefaultWorldInfoRepository(
+            initialLorebooks = listOf(
+                sampleLorebook("lb-1", "Alpha", "阿尔法"),
+                sampleLorebook("lb-2", "Beta", "贝塔"),
+            ),
+            initialBindings = mapOf(
+                "lb-1" to listOf(LorebookBinding(lorebookId = "lb-1", characterId = "someone-else")),
+            ),
+        )
+        val viewModel = CharacterLorebookTabViewModel(repo, CHARACTER_ID) { AppLanguage.English }
+        advanceUntilIdle()
+
+        val picker = viewModel.uiState.value.pickerItems
+        assertEquals(listOf("lb-1", "lb-2"), picker.map { it.lorebookId }.sorted())
+    }
+
+    @Test
+    fun `canBind is false when there are no pickerItems`() = runTest(dispatcher) {
+        val repo = DefaultWorldInfoRepository(
+            initialLorebooks = listOf(sampleLorebook("lb-1", "Alpha", "阿尔法")),
+            initialBindings = mapOf(
+                "lb-1" to listOf(LorebookBinding(lorebookId = "lb-1", characterId = CHARACTER_ID)),
+            ),
+        )
+        val viewModel = CharacterLorebookTabViewModel(repo, CHARACTER_ID) { AppLanguage.English }
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.canBind)
+        assertTrue(viewModel.uiState.value.pickerItems.isEmpty())
+    }
+
+    @Test
+    fun `pickerItems fall back to Untitled when displayName is blank`() = runTest(dispatcher) {
+        val repo = DefaultWorldInfoRepository(
+            initialLorebooks = listOf(sampleLorebook("lb-1", english = "", chinese = "")),
+            initialBindings = emptyMap(),
+        )
+        val englishViewModel = CharacterLorebookTabViewModel(repo, CHARACTER_ID) { AppLanguage.English }
+        advanceUntilIdle()
+        assertEquals("Untitled lorebook", englishViewModel.uiState.value.pickerItems.single().displayName)
+
+        val chineseViewModel = CharacterLorebookTabViewModel(repo, CHARACTER_ID) { AppLanguage.Chinese }
+        advanceUntilIdle()
+        assertEquals("未命名世界书", chineseViewModel.uiState.value.pickerItems.single().displayName)
+    }
+
+    @Test
+    fun `bind creates a non-primary binding for this character`() = runTest(dispatcher) {
+        val repo = DefaultWorldInfoRepository(
+            initialLorebooks = listOf(sampleLorebook("lb-1", "Alpha", "阿尔法")),
+            initialBindings = emptyMap(),
+        )
+        val viewModel = CharacterLorebookTabViewModel(repo, CHARACTER_ID) { AppLanguage.English }
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isEmpty)
+
+        viewModel.bind("lb-1")
+        advanceUntilIdle()
+
+        val rows = viewModel.uiState.value.rows
+        assertEquals(1, rows.size)
+        val row = rows.single()
+        assertEquals("lb-1", row.lorebookId)
+        assertFalse(row.isPrimary)
+        assertEquals(null, viewModel.uiState.value.errorMessage)
+        assertTrue(viewModel.uiState.value.pickerItems.isEmpty())
+    }
+
+    @Test
+    fun `bind surfaces bilingual error when lorebook is already bound`() = runTest(dispatcher) {
+        val repo = DefaultWorldInfoRepository(
+            initialLorebooks = listOf(sampleLorebook("lb-1", "Alpha", "阿尔法")),
+            initialBindings = mapOf(
+                "lb-1" to listOf(LorebookBinding(lorebookId = "lb-1", characterId = CHARACTER_ID)),
+            ),
+        )
+        val viewModel = CharacterLorebookTabViewModel(repo, CHARACTER_ID) { AppLanguage.English }
+        advanceUntilIdle()
+
+        viewModel.bind("lb-1")
+        advanceUntilIdle()
+        assertEquals("Lorebook already bound", viewModel.uiState.value.errorMessage)
+
+        val chineseViewModel = CharacterLorebookTabViewModel(repo, CHARACTER_ID) { AppLanguage.Chinese }
+        advanceUntilIdle()
+        chineseViewModel.bind("lb-1")
+        advanceUntilIdle()
+        assertEquals("世界书已绑定", chineseViewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun `bind surfaces bilingual error when lorebook is unknown`() = runTest(dispatcher) {
+        val repo = DefaultWorldInfoRepository(
+            initialLorebooks = listOf(sampleLorebook("lb-1", "Alpha", "阿尔法")),
+            initialBindings = emptyMap(),
+        )
+        val viewModel = CharacterLorebookTabViewModel(repo, CHARACTER_ID) { AppLanguage.English }
+        advanceUntilIdle()
+
+        viewModel.bind("ghost")
+        advanceUntilIdle()
+        assertEquals("Lorebook not found", viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun `clearError resets the error banner`() = runTest(dispatcher) {
+        val repo = DefaultWorldInfoRepository(
+            initialLorebooks = listOf(sampleLorebook("lb-1", "Alpha", "阿尔法")),
+            initialBindings = mapOf(
+                "lb-1" to listOf(LorebookBinding(lorebookId = "lb-1", characterId = CHARACTER_ID)),
+            ),
+        )
+        val viewModel = CharacterLorebookTabViewModel(repo, CHARACTER_ID) { AppLanguage.English }
+        advanceUntilIdle()
+        viewModel.bind("lb-1")
+        advanceUntilIdle()
+        assertNotNull(viewModel.uiState.value.errorMessage)
+
+        viewModel.clearError()
+        advanceUntilIdle()
+        assertEquals(null, viewModel.uiState.value.errorMessage)
+    }
+
     companion object {
         private const val CHARACTER_ID = "char-alpha"
     }
