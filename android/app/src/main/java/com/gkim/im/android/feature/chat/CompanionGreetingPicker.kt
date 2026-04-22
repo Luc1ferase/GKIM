@@ -17,6 +17,7 @@ import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
 import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.CompanionCharacterCard
+import com.gkim.im.android.core.model.MacroSubstitution
 import com.gkim.im.android.core.model.resolve
 
 data class CompanionGreetingOption(
@@ -55,6 +56,20 @@ internal fun shouldShowGreetingPicker(
     companionPathIsEmpty: Boolean,
     options: List<CompanionGreetingOption>,
 ): Boolean = companionPathIsEmpty && options.isNotEmpty()
+
+internal fun applyPersonaMacros(
+    options: List<CompanionGreetingOption>,
+    userDisplayName: String,
+    charDisplayName: String,
+): List<CompanionGreetingOption> = options.map { option ->
+    option.copy(
+        body = MacroSubstitution.substituteMacros(
+            template = option.body,
+            userDisplayName = userDisplayName,
+            charDisplayName = charDisplayName,
+        ),
+    )
+}
 
 @Composable
 fun CompanionGreetingPicker(
