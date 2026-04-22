@@ -2125,7 +2125,7 @@ Upload
   - Score: `96/100`
   - Findings: `No findings; archival pending on emulator-blocked instrumentation tasks`
 - Upload:
-  - Commit: `pending commit in this session`
+  - Commit: `92891e4`
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
