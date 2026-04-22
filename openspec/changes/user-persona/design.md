@@ -90,10 +90,20 @@ Alternatives considered:
 
 The backend substitutes every occurrence of `{{user}}`, `{user}`, and `<user>` with the active persona's `displayName` in the active `AppLanguage`, and every occurrence of `{{char}}`, `{char}`, and `<char>` with the active companion card's `displayName` (or `name` field, whichever is canonical for the card) in the active `AppLanguage`. Substitution happens right before the prompt is sent to the provider — the stored turn text is never rewritten retroactively.
 
+Accepted macro forms — canonical six, shared by backend prompt assembler and Android `MacroSubstitution` helper:
+
+| Role | Double-brace | Single-brace | Angle-bracket | Resolves to                                                                     |
+| ---- | ------------ | ------------ | ------------- | ------------------------------------------------------------------------------- |
+| user | `{{user}}`   | `{user}`     | `<user>`      | Active `UserPersona.displayName` in the active `AppLanguage`                    |
+| char | `{{char}}`   | `{char}`     | `<char>`      | Active `CompanionCharacterCard.displayName` in the active `AppLanguage`         |
+
+Both sides MUST match this list exactly. Substitution is case-insensitive (`{{User}}`, `{{CHAR}}` etc. resolve identically), so ST cards authored with capitalised macros still substitute. Unknown macro-like tokens (`{{random}}`, `{foo}`, `<bar>`, whitespaced `{{ user }}`) pass through as literal text. The canonical form list is mirrored in code at `core/model/MacroSubstitution.kt` via `UserForms` and `CharForms` so the Android client reuses the same list that the backend documents here.
+
 Rationale:
 - Three forms (`{{x}}`, `{x}`, `<x>`) because ST users rely on the double-brace form, some Lobe-chat exports use single-brace, and XML-style is common in Anthropic-flavored system prompts. Accepting all three avoids surprise.
 - Substituting right before provider call keeps the stored message raw, which is important for regeneration, edit, and future prompt diffing tools.
 - Persona-aware substitution upgrades the `llm-text-companion-chat` display-name-only behavior; the contract is backwards compatible because the substituted value is still a string.
+- Shared form table prevents drift between the backend assembler and the client-side preview helper — a new form MUST land in both places together.
 
 ### 5. Persona description injection in the token-budget allocator
 
