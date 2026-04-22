@@ -76,6 +76,7 @@ private enum class SettingsDestination {
     Appearance,
     AiProvider,
     ImValidation,
+    Personas,
     Account,
 }
 
@@ -249,6 +250,7 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
     var showImDeveloperControls by rememberSaveable { mutableStateOf(false) }
 
     SettingsScreen(
+        container = container,
         uiState = uiState,
         destination = destination,
         baseUrl = baseUrl,
@@ -297,6 +299,7 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
 
 @Composable
 private fun SettingsScreen(
+    container: AppContainer,
     uiState: SettingsUiState,
     destination: SettingsDestination,
     baseUrl: String,
@@ -368,6 +371,11 @@ private fun SettingsScreen(
                 onBack = { onNavigateToDestination(SettingsDestination.Menu) },
             )
 
+            SettingsDestination.Personas -> SettingsPersonasScreen(
+                container = container,
+                onBack = { onNavigateToDestination(SettingsDestination.Menu) },
+            )
+
             SettingsDestination.Account -> SettingsAccountScreen(
                 onBack = { onNavigateToDestination(SettingsDestination.Menu) },
             )
@@ -425,6 +433,14 @@ private fun SettingsMenuScreen(
             label = appLanguage.pick("Connection", "连接信息"),
             summary = validationSummary,
         ) { onNavigateToDestination(SettingsDestination.ImValidation) }
+        SettingsMenuEntry(
+            testTag = "settings-menu-personas",
+            label = appLanguage.pick("Personas", "用户角色"),
+            summary = appLanguage.pick(
+                "Manage the {{user}} personas used across companion chats.",
+                "管理陪伴对话中的 {{user}} 角色资料。",
+            ),
+        ) { onNavigateToDestination(SettingsDestination.Personas) }
         SettingsMenuEntry(
             testTag = "settings-menu-account",
             label = appLanguage.pick("Account", "账号"),
@@ -689,6 +705,134 @@ private fun SettingsImValidationScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = AetherColors.OnSurfaceVariant,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsPersonasScreen(
+    container: AppContainer,
+    onBack: () -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    val viewModel = viewModel<PersonaLibraryViewModel>(
+        key = "personaLibrary",
+        factory = simpleViewModelFactory {
+            PersonaLibraryViewModel(
+                repository = container.userPersonaRepository,
+                language = { appLanguage },
+            )
+        },
+    )
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    PageHeader(
+        eyebrow = appLanguage.pick("Settings", "设置"),
+        title = appLanguage.pick("Personas", "用户角色"),
+        description = appLanguage.pick(
+            "Choose how companions address you. The active persona powers the {{user}} macro in chats.",
+            "选择陪伴对象称呼你的方式。当前启用的角色资料会驱动对话中的 {{user}} 占位。",
+        ),
+        leadingLabel = appLanguage.pick("Back", "返回"),
+        onLeading = onBack,
+    )
+
+    Column(
+        modifier = Modifier.testTag("settings-detail-personas"),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        uiState.errorMessage?.let { message ->
+            GlassCard(modifier = Modifier.testTag("settings-personas-error")) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurface,
+                )
+                OutlinedButton(
+                    onClick = viewModel::clearError,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings-personas-error-dismiss"),
+                ) {
+                    Text(appLanguage.pick("Dismiss", "知道了"))
+                }
+            }
+        }
+
+        OutlinedButton(
+            onClick = { /* hook for task 3.2 PersonaEditor */ },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("settings-personas-new"),
+        ) {
+            Text(appLanguage.pick("New persona", "新建角色"))
+        }
+
+        uiState.items.forEach { item ->
+            val pendingOperation = uiState.pendingOperation?.takeIf { it.personaId == item.persona.id }
+            val isPending = pendingOperation != null
+            GlassCard(modifier = Modifier.testTag("settings-personas-card-${item.persona.id}")) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = item.resolved.displayName,
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = AetherColors.OnSurface,
+                    )
+                    if (item.isActive) {
+                        Text(
+                            text = appLanguage.pick("ACTIVE", "已启用"),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.Surface,
+                            modifier = Modifier
+                                .testTag("settings-personas-active-${item.persona.id}")
+                                .background(AetherColors.Primary, RoundedCornerShape(999.dp))
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                    }
+                    if (item.persona.isBuiltIn) {
+                        Text(
+                            text = appLanguage.pick("BUILT-IN", "内置"),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.OnSurfaceVariant,
+                        )
+                    }
+                }
+                Text(
+                    text = item.resolved.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = { viewModel.activate(item.persona.id) },
+                        enabled = item.canActivate && !isPending,
+                        modifier = Modifier.testTag("settings-personas-activate-${item.persona.id}"),
+                    ) {
+                        Text(appLanguage.pick("Activate", "启用"))
+                    }
+                    OutlinedButton(
+                        onClick = { /* hook for task 3.2 PersonaEditor */ },
+                        enabled = item.canEdit && !isPending,
+                        modifier = Modifier.testTag("settings-personas-edit-${item.persona.id}"),
+                    ) {
+                        Text(appLanguage.pick("Edit", "编辑"))
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.duplicate(item.persona.id) },
+                        enabled = item.canDuplicate && !isPending,
+                        modifier = Modifier.testTag("settings-personas-duplicate-${item.persona.id}"),
+                    ) {
+                        Text(appLanguage.pick("Duplicate", "复制"))
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.delete(item.persona.id) },
+                        enabled = item.canDelete && !isPending,
+                        modifier = Modifier.testTag("settings-personas-delete-${item.persona.id}"),
+                    ) {
+                        Text(appLanguage.pick("Delete", "删除"))
+                    }
+                }
             }
         }
     }
