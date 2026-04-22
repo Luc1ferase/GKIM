@@ -44,11 +44,18 @@ enum class ExportedCardFormat(val wireValue: String) {
     }
 }
 
+data class CardExportWarning(
+    val code: String,
+    val field: String? = null,
+    val detail: String? = null,
+)
+
 data class ExportedCardPayload(
     val format: ExportedCardFormat,
     val filename: String,
     val contentType: String,
     val bytes: ByteArray,
+    val warnings: List<CardExportWarning> = emptyList(),
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -56,7 +63,8 @@ data class ExportedCardPayload(
         return format == other.format &&
             filename == other.filename &&
             contentType == other.contentType &&
-            bytes.contentEquals(other.bytes)
+            bytes.contentEquals(other.bytes) &&
+            warnings == other.warnings
     }
 
     override fun hashCode(): Int {
@@ -64,6 +72,7 @@ data class ExportedCardPayload(
         result = 31 * result + filename.hashCode()
         result = 31 * result + contentType.hashCode()
         result = 31 * result + bytes.contentHashCode()
+        result = 31 * result + warnings.hashCode()
         return result
     }
 }
@@ -197,6 +206,7 @@ class LiveCardInteropRepository(
                 filename = dto.filename,
                 contentType = dto.contentType,
                 bytes = decoded,
+                warnings = dto.warnings.map { CardExportWarning(it.code, it.field, it.detail) },
             )
         }
     }

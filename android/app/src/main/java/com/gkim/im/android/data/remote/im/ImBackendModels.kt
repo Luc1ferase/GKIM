@@ -461,12 +461,20 @@ data class CardExportRequestDto(
 )
 
 @Serializable
+data class CardExportWarningDto(
+    val code: String,
+    val field: String? = null,
+    val detail: String? = null,
+)
+
+@Serializable
 data class CardExportResponseDto(
     val format: String,
     val filename: String,
     val contentType: String,
     val encoding: String,
     val payload: String,
+    val warnings: List<CardExportWarningDto> = emptyList(),
 )
 
 @Serializable
