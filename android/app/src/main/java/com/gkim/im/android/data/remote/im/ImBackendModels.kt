@@ -430,12 +430,20 @@ data class CardImportWarningDto(
 )
 
 @Serializable
+data class LorebookImportSummaryDto(
+    val entryCount: Int,
+    val totalTokenEstimate: Int = 0,
+    val hasConstantEntries: Boolean = false,
+)
+
+@Serializable
 data class CardImportPreviewDto(
     val previewToken: String,
     val card: CompanionCharacterCardDto,
     val detectedLanguage: String,
     val warnings: List<CardImportWarningDto> = emptyList(),
     val stExtensionKeys: List<String> = emptyList(),
+    val lorebookSummary: LorebookImportSummaryDto? = null,
 )
 
 @Serializable

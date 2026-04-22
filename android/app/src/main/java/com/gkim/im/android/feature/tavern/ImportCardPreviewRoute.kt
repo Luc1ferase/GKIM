@@ -33,6 +33,7 @@ import com.gkim.im.android.core.model.resolve
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.CardImportPreview
 import com.gkim.im.android.data.repository.CardInteropRepository
+import com.gkim.im.android.data.repository.LorebookImportSummary
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -267,6 +268,46 @@ private fun ImportCardPreviewScreen(
                         )
                     }
                 }
+                state.preview.lorebookSummary?.let { summary ->
+                    item {
+                        GlassCard(modifier = Modifier.testTag("tavern-import-preview-lorebook-summary")) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    modifier = Modifier.testTag("tavern-import-preview-lorebook-title"),
+                                    text = appLanguage.pick("Lorebook import", "世界书导入"),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = AetherColors.OnSurface,
+                                )
+                                Text(
+                                    modifier = Modifier.testTag("tavern-import-preview-lorebook-entry-count"),
+                                    text = lorebookSummaryEntryCountCopy(summary, appLanguage == com.gkim.im.android.core.model.AppLanguage.English),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = AetherColors.OnSurfaceVariant,
+                                )
+                                Text(
+                                    modifier = Modifier.testTag("tavern-import-preview-lorebook-token-estimate"),
+                                    text = appLanguage.pick(
+                                        "Estimated tokens: ${summary.totalTokenEstimate}",
+                                        "预估 token：${summary.totalTokenEstimate}",
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = AetherColors.OnSurfaceVariant,
+                                )
+                                if (summary.hasConstantEntries) {
+                                    Text(
+                                        modifier = Modifier.testTag("tavern-import-preview-lorebook-constant-flag"),
+                                        text = appLanguage.pick(
+                                            "Contains always-on entries (constant = true)",
+                                            "包含常驻条目（constant = true）",
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = AetherColors.Primary,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
                 item {
                     Text(
                         text = if (state.committing) {
@@ -300,6 +341,16 @@ private fun ImportCardPreviewScreen(
             }
         }
     }
+}
+
+internal fun lorebookSummaryEntryCountCopy(
+    summary: LorebookImportSummary,
+    english: Boolean,
+): String = if (english) {
+    val word = if (summary.entryCount == 1) "entry" else "entries"
+    "${summary.entryCount} $word"
+} else {
+    "${summary.entryCount} 条条目"
 }
 
 @Composable

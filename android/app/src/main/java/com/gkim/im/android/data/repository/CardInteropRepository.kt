@@ -15,6 +15,12 @@ data class CardImportWarning(
     val detail: String? = null,
 )
 
+data class LorebookImportSummary(
+    val entryCount: Int,
+    val totalTokenEstimate: Int,
+    val hasConstantEntries: Boolean,
+)
+
 data class CardImportPreview(
     val previewToken: String,
     val card: CompanionCharacterCard,
@@ -22,6 +28,7 @@ data class CardImportPreview(
     val detectedLanguage: String,
     val warnings: List<CardImportWarning>,
     val stExtensionKeys: List<String>,
+    val lorebookSummary: LorebookImportSummary? = null,
 )
 
 enum class ExportedCardFormat(val wireValue: String) {
@@ -149,6 +156,13 @@ class LiveCardInteropRepository(
                         CardImportWarningDto(it.code, it.field, it.detail)
                     },
                     stExtensionKeys = preview.stExtensionKeys,
+                    lorebookSummary = preview.lorebookSummary?.let {
+                        com.gkim.im.android.data.remote.im.LorebookImportSummaryDto(
+                            entryCount = it.entryCount,
+                            totalTokenEstimate = it.totalTokenEstimate,
+                            hasConstantEntries = it.hasConstantEntries,
+                        )
+                    },
                 ),
                 overrides = overrideDto,
                 languageOverride = languageOverride,
@@ -195,4 +209,11 @@ private fun CardImportPreviewDto.toDomain(): CardImportPreview = CardImportPrevi
     detectedLanguage = detectedLanguage,
     warnings = warnings.map { CardImportWarning(it.code, it.field, it.detail) },
     stExtensionKeys = stExtensionKeys,
+    lorebookSummary = lorebookSummary?.let {
+        LorebookImportSummary(
+            entryCount = it.entryCount,
+            totalTokenEstimate = it.totalTokenEstimate,
+            hasConstantEntries = it.hasConstantEntries,
+        )
+    },
 )
