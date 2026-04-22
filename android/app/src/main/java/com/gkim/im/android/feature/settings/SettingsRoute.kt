@@ -79,6 +79,7 @@ internal enum class SettingsDestination {
     Personas,
     PersonaEditor,
     WorldInfo,
+    WorldInfoEditor,
     Account,
 }
 
@@ -324,12 +325,14 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
     var imDevUserExternalId by remember(uiState.imDevUserExternalId) { mutableStateOf(uiState.imDevUserExternalId) }
     var showImDeveloperControls by rememberSaveable { mutableStateOf(false) }
     var editingPersonaId by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingLorebookId by rememberSaveable { mutableStateOf<String?>(null) }
 
     SettingsScreen(
         container = container,
         uiState = uiState,
         destination = destination,
         editingPersonaId = editingPersonaId,
+        editingLorebookId = editingLorebookId,
         baseUrl = baseUrl,
         model = model,
         apiKey = apiKey,
@@ -375,6 +378,14 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
             editingPersonaId = null
             destination = SettingsDestination.Personas
         },
+        onOpenLorebook = { id ->
+            editingLorebookId = id
+            destination = SettingsDestination.WorldInfoEditor
+        },
+        onLorebookEditorDone = {
+            editingLorebookId = null
+            destination = SettingsDestination.WorldInfo
+        },
         onSelectProvider = viewModel::setActiveProvider,
         onSelectLanguage = viewModel::setAppLanguage,
         onSelectThemeMode = viewModel::setThemeMode,
@@ -388,6 +399,7 @@ private fun SettingsScreen(
     uiState: SettingsUiState,
     destination: SettingsDestination,
     editingPersonaId: String?,
+    editingLorebookId: String?,
     baseUrl: String,
     model: String,
     apiKey: String,
@@ -404,6 +416,8 @@ private fun SettingsScreen(
     onNavigateToDestination: (SettingsDestination) -> Unit,
     onEditPersona: (String) -> Unit,
     onPersonaEditorDone: () -> Unit,
+    onOpenLorebook: (String) -> Unit,
+    onLorebookEditorDone: () -> Unit,
     onSelectProvider: (String) -> Unit,
     onSelectLanguage: (AppLanguage) -> Unit,
     onSelectThemeMode: (AppThemeMode) -> Unit,
@@ -481,7 +495,21 @@ private fun SettingsScreen(
             SettingsDestination.WorldInfo -> com.gkim.im.android.feature.settings.worldinfo.WorldInfoLibraryRoute(
                 container = container,
                 onBack = { onNavigateToDestination(SettingsDestination.Menu) },
+                onOpenLorebook = onOpenLorebook,
             )
+
+            SettingsDestination.WorldInfoEditor -> {
+                val id = editingLorebookId
+                if (id != null) {
+                    com.gkim.im.android.feature.settings.worldinfo.WorldInfoEditorRoute(
+                        container = container,
+                        lorebookId = id,
+                        onBack = onLorebookEditorDone,
+                    )
+                } else {
+                    androidx.compose.runtime.SideEffect { onLorebookEditorDone() }
+                }
+            }
 
             SettingsDestination.Account -> SettingsAccountScreen(
                 onBack = { onNavigateToDestination(SettingsDestination.Menu) },
