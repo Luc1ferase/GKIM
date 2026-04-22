@@ -77,6 +77,7 @@ private enum class SettingsDestination {
     AiProvider,
     ImValidation,
     Personas,
+    PersonaEditor,
     Account,
 }
 
@@ -248,11 +249,13 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
     var imDeveloperOverrideOrigin by remember(uiState.imDeveloperOverrideOrigin) { mutableStateOf(uiState.imDeveloperOverrideOrigin) }
     var imDevUserExternalId by remember(uiState.imDevUserExternalId) { mutableStateOf(uiState.imDevUserExternalId) }
     var showImDeveloperControls by rememberSaveable { mutableStateOf(false) }
+    var editingPersonaId by rememberSaveable { mutableStateOf<String?>(null) }
 
     SettingsScreen(
         container = container,
         uiState = uiState,
         destination = destination,
+        editingPersonaId = editingPersonaId,
         baseUrl = baseUrl,
         model = model,
         apiKey = apiKey,
@@ -290,6 +293,14 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
         },
         onToggleImDeveloperControls = { showImDeveloperControls = !showImDeveloperControls },
         onNavigateToDestination = { destination = it },
+        onEditPersona = { id ->
+            editingPersonaId = id
+            destination = SettingsDestination.PersonaEditor
+        },
+        onPersonaEditorDone = {
+            editingPersonaId = null
+            destination = SettingsDestination.Personas
+        },
         onSelectProvider = viewModel::setActiveProvider,
         onSelectLanguage = viewModel::setAppLanguage,
         onSelectThemeMode = viewModel::setThemeMode,
@@ -302,6 +313,7 @@ private fun SettingsScreen(
     container: AppContainer,
     uiState: SettingsUiState,
     destination: SettingsDestination,
+    editingPersonaId: String?,
     baseUrl: String,
     model: String,
     apiKey: String,
@@ -316,6 +328,8 @@ private fun SettingsScreen(
     onImDevUserExternalIdChanged: (String) -> Unit,
     onToggleImDeveloperControls: () -> Unit,
     onNavigateToDestination: (SettingsDestination) -> Unit,
+    onEditPersona: (String) -> Unit,
+    onPersonaEditorDone: () -> Unit,
     onSelectProvider: (String) -> Unit,
     onSelectLanguage: (AppLanguage) -> Unit,
     onSelectThemeMode: (AppThemeMode) -> Unit,
@@ -373,8 +387,22 @@ private fun SettingsScreen(
 
             SettingsDestination.Personas -> SettingsPersonasScreen(
                 container = container,
+                onEditPersona = onEditPersona,
                 onBack = { onNavigateToDestination(SettingsDestination.Menu) },
             )
+
+            SettingsDestination.PersonaEditor -> {
+                val id = editingPersonaId
+                if (id != null) {
+                    PersonaEditorRoute(
+                        container = container,
+                        personaId = id,
+                        onDone = onPersonaEditorDone,
+                    )
+                } else {
+                    androidx.compose.runtime.SideEffect { onPersonaEditorDone() }
+                }
+            }
 
             SettingsDestination.Account -> SettingsAccountScreen(
                 onBack = { onNavigateToDestination(SettingsDestination.Menu) },
@@ -713,6 +741,7 @@ private fun SettingsImValidationScreen(
 @Composable
 private fun SettingsPersonasScreen(
     container: AppContainer,
+    onEditPersona: (String) -> Unit,
     onBack: () -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
@@ -812,7 +841,7 @@ private fun SettingsPersonasScreen(
                         Text(appLanguage.pick("Activate", "启用"))
                     }
                     OutlinedButton(
-                        onClick = { /* hook for task 3.2 PersonaEditor */ },
+                        onClick = { onEditPersona(item.persona.id) },
                         enabled = item.canEdit && !isPending,
                         modifier = Modifier.testTag("settings-personas-edit-${item.persona.id}"),
                     ) {
