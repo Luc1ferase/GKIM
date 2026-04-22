@@ -13,6 +13,7 @@ import com.gkim.im.android.core.model.FeedPost
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
 import com.gkim.im.android.core.model.PromptCategory
+import com.gkim.im.android.core.model.UserPersona
 import com.gkim.im.android.core.model.WorkshopPrompt
 
 val seedContacts = listOf(
@@ -372,6 +373,19 @@ val seedDrawPoolCharacters = listOf(
         avatarText = "GM",
         accent = AccentTone.Primary,
         source = CompanionCharacterSource.Drawn,
+    ),
+)
+
+val seedBuiltInPersonas: List<UserPersona> = listOf(
+    UserPersona(
+        id = "persona-builtin-default",
+        displayName = LocalizedText(english = "You", chinese = "你"),
+        description = LocalizedText(
+            english = "A curious traveller getting to know the companion.",
+            chinese = "一位好奇的旅人，正在与同伴建立联系。",
+        ),
+        isBuiltIn = true,
+        isActive = true,
     ),
 )
 

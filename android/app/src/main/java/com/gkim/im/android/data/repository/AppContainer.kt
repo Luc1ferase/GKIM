@@ -35,6 +35,7 @@ interface AppContainer {
     val companionRosterRepository: CompanionRosterRepository
     val companionTurnRepository: CompanionTurnRepository
     val cardInteropRepository: CardInteropRepository
+    val userPersonaRepository: UserPersonaRepository
     val aigcRepository: AigcRepository
     val preferencesStore: PreferencesStore
     val sessionStore: SessionStore
@@ -113,6 +114,12 @@ class DefaultAppContainer(context: Context) : AppContainer {
             baseUrlProvider = { sessionStore.baseUrl },
             tokenProvider = { sessionStore.token },
         ),
+    )
+    override val userPersonaRepository: UserPersonaRepository = LiveUserPersonaRepository(
+        default = DefaultUserPersonaRepository(initialPersonas = seedBuiltInPersonas),
+        backendClient = imBackendClient,
+        baseUrlProvider = { sessionStore.baseUrl },
+        tokenProvider = { sessionStore.token },
     )
     override val aigcRepository: AigcRepository = DefaultAigcRepository(
         presets = presetProviders,

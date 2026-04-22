@@ -33,10 +33,13 @@ import com.gkim.im.android.data.repository.DefaultCompanionRosterRepository
 import com.gkim.im.android.data.repository.DefaultCompanionTurnRepository
 import com.gkim.im.android.data.repository.DefaultContactsRepository
 import com.gkim.im.android.data.repository.DefaultFeedRepository
+import com.gkim.im.android.data.repository.DefaultUserPersonaRepository
 import com.gkim.im.android.data.repository.FeedRepository
 import com.gkim.im.android.data.repository.InMemoryMessagingRepository
 import com.gkim.im.android.data.repository.MessagingRepository
+import com.gkim.im.android.data.repository.UserPersonaRepository
 import com.gkim.im.android.data.repository.presetProviders
+import com.gkim.im.android.data.repository.seedBuiltInPersonas
 import com.gkim.im.android.data.repository.seedDrawPoolCharacters
 import com.gkim.im.android.data.repository.seedContacts
 import com.gkim.im.android.data.repository.seedConversations
@@ -121,6 +124,9 @@ private class LoginEndpointTestAppContainer(
             baseUrlProvider = { sessionStore.baseUrl },
             tokenProvider = { sessionStore.token },
         ),
+    )
+    override val userPersonaRepository: UserPersonaRepository = DefaultUserPersonaRepository(
+        initialPersonas = seedBuiltInPersonas,
     )
     override val aigcRepository: AigcRepository = DefaultAigcRepository(
         presets = presetProviders,

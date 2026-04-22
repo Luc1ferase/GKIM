@@ -36,13 +36,16 @@ import com.gkim.im.android.data.repository.DefaultAigcRepository
 import com.gkim.im.android.data.repository.DefaultCompanionRosterRepository
 import com.gkim.im.android.data.repository.DefaultCompanionTurnRepository
 import com.gkim.im.android.data.repository.DefaultFeedRepository
+import com.gkim.im.android.data.repository.DefaultUserPersonaRepository
 import com.gkim.im.android.data.repository.FeedRepository
 import com.gkim.im.android.data.repository.InMemoryMessagingRepository
 import com.gkim.im.android.data.repository.LiveContactsRepository
 import com.gkim.im.android.data.repository.LiveMessagingRepository
 import com.gkim.im.android.data.repository.MessagingIntegrationPhase
 import com.gkim.im.android.data.repository.MessagingRepository
+import com.gkim.im.android.data.repository.UserPersonaRepository
 import com.gkim.im.android.data.repository.presetProviders
+import com.gkim.im.android.data.repository.seedBuiltInPersonas
 import com.gkim.im.android.data.repository.seedDrawPoolCharacters
 import com.gkim.im.android.data.repository.seedConversations
 import com.gkim.im.android.data.repository.seedPresetCharacters
@@ -237,6 +240,9 @@ private class LiveImageValidationContainer(
             baseUrlProvider = { sessionStore.baseUrl },
             tokenProvider = { sessionStore.token },
         ),
+    )
+    override val userPersonaRepository: UserPersonaRepository = DefaultUserPersonaRepository(
+        initialPersonas = seedBuiltInPersonas,
     )
     private val secureStore = UiInMemorySecureStore().apply {
         putString("preset_provider_hunyuan_api_key", "ui-test-hunyuan-key")
