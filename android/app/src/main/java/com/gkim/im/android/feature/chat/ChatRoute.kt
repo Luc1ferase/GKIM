@@ -57,10 +57,13 @@ import com.gkim.im.android.core.model.MessageAttachment
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageStatus
 import com.gkim.im.android.core.model.TaskStatus
+import com.gkim.im.android.core.model.UserPersona
 import com.gkim.im.android.core.util.formatChatTimestamp
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.MessagingRepository
+import com.gkim.im.android.data.repository.UserPersonaRepository
+import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,9 +74,18 @@ import kotlinx.coroutines.flow.stateIn
 private data class ChatUiState(
     val conversation: Conversation? = null,
     val activeProvider: AigcProvider? = null,
+    val activePersona: UserPersona? = null,
     val latestTask: AigcTask? = null,
     val draftRequest: DraftAigcRequest = DraftAigcRequest(),
     val generationActionFeedback: String? = null,
+)
+
+private data class CoreChatState(
+    val conversation: Conversation?,
+    val providers: List<AigcProvider>,
+    val activeProviderId: String,
+    val history: List<AigcTask>,
+    val draftRequest: DraftAigcRequest,
 )
 
 internal data class GenerationFeedback(
@@ -86,6 +98,7 @@ private class ChatViewModel(
     private val messagingRepository: MessagingRepository,
     private val aigcRepository: AigcRepository,
     private val generatedImageSaver: GeneratedImageSaver,
+    userPersonaRepository: UserPersonaRepository,
 ) : ViewModel() {
     private val resolvedConversationId = if (conversationId.isBlank() || conversationId == "studio") messagingRepository.ensureStudioRoom().id else conversationId
     private val generationActionFeedback = MutableStateFlow<String?>(null)
@@ -94,18 +107,26 @@ private class ChatViewModel(
         messagingRepository.loadConversationHistory(resolvedConversationId)
     }
 
-    private val baseUiState = combine(
+    private val coreChatState = combine(
         messagingRepository.conversation(resolvedConversationId),
         aigcRepository.providers,
         aigcRepository.activeProviderId,
         aigcRepository.history,
         aigcRepository.draftRequest,
     ) { conversation, providers, activeProviderId, history, draftRequest ->
+        CoreChatState(conversation, providers, activeProviderId, history, draftRequest)
+    }
+
+    private val baseUiState = combine(
+        coreChatState,
+        userPersonaRepository.observeActivePersona(),
+    ) { core, activePersona ->
         ChatUiState(
-            conversation = conversation,
-            activeProvider = providers.firstOrNull { it.id == activeProviderId },
-            latestTask = history.firstOrNull(),
-            draftRequest = draftRequest,
+            conversation = core.conversation,
+            activeProvider = core.providers.firstOrNull { it.id == core.activeProviderId },
+            activePersona = activePersona,
+            latestTask = core.history.firstOrNull(),
+            draftRequest = core.draftRequest,
         )
     }
 
@@ -177,6 +198,7 @@ fun ChatRoute(
                 messagingRepository = container.messagingRepository,
                 aigcRepository = container.aigcRepository,
                 generatedImageSaver = container.generatedImageSaver,
+                userPersonaRepository = container.userPersonaRepository,
             )
         },
     )
@@ -207,6 +229,9 @@ fun ChatRoute(
         isSecondaryMenuOpen = isSecondaryMenuOpen,
         onPromptChanged = { prompt = it },
         onBack = { navController.popBackStack() },
+        onPersonaPillTap = {
+            navController.navigate(ChatChromePersonaPillDefaults.DestinationRoute)
+        },
         onToggleSecondaryMenu = { isSecondaryMenuOpen = !isSecondaryMenuOpen },
         onPickChatImage = chatAttachmentPicker.pickImage,
         onPickGenerationImage = generationSourcePicker.pickImage,
@@ -243,6 +268,7 @@ private fun ChatScreen(
     isSecondaryMenuOpen: Boolean,
     onPromptChanged: (String) -> Unit,
     onBack: () -> Unit,
+    onPersonaPillTap: () -> Unit,
     onToggleSecondaryMenu: () -> Unit,
     onPickChatImage: () -> Unit,
     onPickGenerationImage: () -> Unit,
@@ -273,7 +299,9 @@ private fun ChatScreen(
     ) {
         ChatTopBar(
             conversation = uiState.conversation,
+            activePersona = uiState.activePersona,
             onBack = onBack,
+            onPersonaPillTap = onPersonaPillTap,
         )
 
         Box(
@@ -539,8 +567,12 @@ private fun LatestGenerationCard(
 @Composable
 private fun ChatTopBar(
     conversation: Conversation?,
+    activePersona: UserPersona?,
     onBack: () -> Unit,
+    onPersonaPillTap: () -> Unit,
 ) {
+    val language = LocalAppLanguage.current
+    val personaPill = chatChromePersonaPill(activePersona, language)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -579,6 +611,9 @@ private fun ChatTopBar(
                     modifier = Modifier.testTag("chat-contact-title"),
                 )
             }
+        }
+        Box(modifier = Modifier.testTag("chat-persona-pill")) {
+            PillAction(label = personaPill.label, onClick = onPersonaPillTap)
         }
     }
 }
