@@ -89,6 +89,15 @@ fun CharacterDetailRoute(
         },
         onExportPng = { pendingExportFormat = ExportedCardFormat.Png },
         onExportJson = { pendingExportFormat = ExportedCardFormat.Json },
+        lorebookTab = {
+            CharacterLorebookTabSection(
+                container = container,
+                characterId = card.id,
+                onManageLorebook = { lorebookId ->
+                    navController.navigate("settings?worldinfoLorebookId=$lorebookId")
+                },
+            )
+        },
     )
 
     pendingExportFormat?.let { format ->
@@ -112,6 +121,7 @@ private fun CharacterDetailScreen(
     onActivate: () -> Unit,
     onExportPng: () -> Unit,
     onExportJson: () -> Unit,
+    lorebookTab: @Composable () -> Unit = {},
 ) {
     val appLanguage = LocalAppLanguage.current
     LazyColumn(
@@ -170,6 +180,7 @@ private fun CharacterDetailScreen(
                 Text(text = appLanguage.pick("Notes", "备注") + ": " + character.creatorNotes, style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
             }
         }
+        item { lorebookTab() }
         if (character.tags.isNotEmpty()) {
             item {
                 GlassCard(modifier = Modifier.testTag("character-detail-tags")) {

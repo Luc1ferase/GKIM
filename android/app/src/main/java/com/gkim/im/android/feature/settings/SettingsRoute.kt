@@ -309,7 +309,11 @@ internal class SettingsViewModel(
 }
 
 @Composable
-fun SettingsRoute(navController: NavHostController, container: AppContainer) {
+fun SettingsRoute(
+    navController: NavHostController,
+    container: AppContainer,
+    initialWorldInfoLorebookId: String? = null,
+) {
     val viewModel = viewModel<SettingsViewModel>(factory = simpleViewModelFactory {
         SettingsViewModel(container.aigcRepository, container.preferencesStore, container.messagingRepository)
     })
@@ -318,7 +322,12 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
     val presetProviderConfig = uiState.activePresetProviderConfig
     val activeModelValue = if (activeProvider?.id == "custom") uiState.customProvider.model else presetProviderConfig?.model.orEmpty()
     val activeApiKeyValue = if (activeProvider?.id == "custom") uiState.customProvider.apiKey else presetProviderConfig?.apiKey.orEmpty()
-    var destination by rememberSaveable { mutableStateOf(SettingsDestination.Menu) }
+    var destination by rememberSaveable(initialWorldInfoLorebookId) {
+        mutableStateOf(
+            if (initialWorldInfoLorebookId != null) SettingsDestination.WorldInfoEditor
+            else SettingsDestination.Menu,
+        )
+    }
     var baseUrl by remember(uiState.customProvider.baseUrl) { mutableStateOf(uiState.customProvider.baseUrl) }
     var model by remember(uiState.activeProviderId, activeModelValue) { mutableStateOf(activeModelValue) }
     var apiKey by remember(uiState.activeProviderId, activeApiKeyValue) { mutableStateOf(activeApiKeyValue) }
@@ -326,7 +335,9 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
     var imDevUserExternalId by remember(uiState.imDevUserExternalId) { mutableStateOf(uiState.imDevUserExternalId) }
     var showImDeveloperControls by rememberSaveable { mutableStateOf(false) }
     var editingPersonaId by rememberSaveable { mutableStateOf<String?>(null) }
-    var editingLorebookId by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingLorebookId by rememberSaveable(initialWorldInfoLorebookId) {
+        mutableStateOf(initialWorldInfoLorebookId)
+    }
     var editingEntryId by rememberSaveable { mutableStateOf<String?>(null) }
 
     SettingsScreen(

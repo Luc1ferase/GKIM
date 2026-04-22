@@ -183,7 +183,15 @@ fun GkimRootApp(
                                         mediaPickerControllerFactory = mediaPickerControllerFactory,
                                     )
                                 }
-                                composable("settings") { SettingsRoute(resolvedNavController, resolvedContainer) }
+                                composable("settings?worldinfoLorebookId={worldinfoLorebookId}") { backStackEntry ->
+                                    SettingsRoute(
+                                        navController = resolvedNavController,
+                                        container = resolvedContainer,
+                                        initialWorldInfoLorebookId = backStackEntry.arguments
+                                            ?.getString("worldinfoLorebookId")
+                                            ?.takeIf { it.isNotBlank() },
+                                    )
+                                }
                                 composable("user-search") {
                                     UserSearchRoute(
                                         container = resolvedContainer,
