@@ -14,6 +14,11 @@ The system SHALL expose authenticated HTTP endpoints for lorebook lifecycle: `GE
 - **WHEN** a client calls `DELETE /api/lorebooks/{id}` on a lorebook that has at least one `LorebookBinding`
 - **THEN** the backend rejects the request with `errorCode = "lorebook_has_bindings"` and the lorebook is not deleted
 
+#### Scenario: Entry CRUD is scoped to the parent lorebook
+
+- **WHEN** an authenticated client calls `GET /api/lorebooks/{id}/entries`, `POST /api/lorebooks/{id}/entries`, `PATCH /api/lorebooks/{id}/entries/{entryId}`, or `DELETE /api/lorebooks/{id}/entries/{entryId}` on a lorebook they own
+- **THEN** the backend returns only entries whose `lorebookId` matches `{id}`, rewrites the created entry's `lorebookId` to `{id}` regardless of the request body's value, and rejects the request with a typed `not_found` error when the lorebook id does not belong to the authenticated user
+
 #### Scenario: Binding CRUD controls character attachment
 
 - **WHEN** a client calls `POST /api/lorebooks/{id}/bindings` with `{ characterId, isPrimary }`

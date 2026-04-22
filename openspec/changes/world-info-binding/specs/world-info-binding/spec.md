@@ -69,7 +69,7 @@ The system SHALL execute a single-pass keyword scan once per companion turn on t
 
 ### Requirement: Matched entries are sorted by a deterministic total order and budget-dropped by `insertionOrder`
 
-The system SHALL produce a deterministic total order over matched entries using `(insertionOrder ascending, lorebookId ascending, entryId ascending)`. When the bundle token count exceeds the allocator's assigned budget for the `worldInfoEntries` section, the system MUST drop entries in reverse order of that total ordering (highest `insertionOrder` first) until the bundle fits or is empty. When a single lorebook's contribution exceeds its own `tokenBudget`, the system MUST drop that lorebook's remaining entries before dropping any other lorebook's entries.
+The system SHALL produce a deterministic total order over matched entries using `(insertionOrder ascending, lorebookId ascending, entryId ascending)`. When the bundle token count exceeds the allocator's assigned budget for the `worldInfoEntries` section, the system MUST drop entries in reverse order of that total ordering (highest `insertionOrder` first) until the bundle fits or is empty. When a single lorebook's contribution exceeds its own `tokenBudget`, the system MUST drop that lorebook's remaining entries before dropping any other lorebook's entries. The `worldInfoEntries` section MUST sit between the `userPersonaDescription` section (above) and the `rollingSummary` section (below) in the allocator's priority ordering, matching the allocator clause in the `im-backend` delta so client-side expectations stay aligned with server behavior.
 
 #### Scenario: Equal `insertionOrder` values resolve deterministically
 
@@ -85,6 +85,11 @@ The system SHALL produce a deterministic total order over matched entries using 
 
 - **WHEN** the total matched bundle exceeds the section's allocator budget after per-lorebook dropping
 - **THEN** entries are dropped in reverse total-order (highest `insertionOrder` first) until the bundle fits or is empty
+
+#### Scenario: Section priority sits between `userPersonaDescription` and `rollingSummary`
+
+- **WHEN** the allocator assembles a prompt that includes `userPersonaDescription`, `worldInfoEntries`, and `rollingSummary` in the same turn
+- **THEN** the emitted prompt orders them as `...`, `userPersonaDescription`, `worldInfoEntries`, `rollingSummary`, `...` so the matched lorebook entries always appear below the user's persona description and above the rolling chat summary
 
 ### Requirement: Import from ST `character_book` auto-materializes a bound lorebook; export round-trips it back
 
