@@ -1558,3 +1558,258 @@ Upload
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
+
+## user-persona delivery evidence
+
+### Task 1.1 (user-persona): Add `core/model/UserPersonaModels.kt` with `UserPersona` + `UserPersonaValidation`.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:compileDebugKotlin :app:testDebugUnitTest --tests com.gkim.im.android.core.model.UserPersonaModelsTest`` - pass (8 cases: data-class equality across every field, `resolve()` returns active-language strings with `isActive` / `isBuiltIn` propagated, `isDeletable` requires user-owned and inactive, `extensions` JsonObject survives `copy()`, validation accepts complete bilingual persona, rejects blank English display name with `DisplayNameEnglishBlank`, rejects blank Chinese description with `DescriptionChineseBlank`, reports all four blank sides simultaneously).
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `f4a2305`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 1.2 (user-persona): Add `core/model/MacroSubstitution.kt` for the six `{{user}}` / `{user}` / `<user>` / `{{char}}` / `{char}` / `<char>` forms.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.core.model.MacroSubstitutionTest`` - pass (13 cases: each of the six forms resolves individually; mixed user+char forms in one template; case-insensitive matching across all six forms; unknown macros like `{{random}}` / `{foo}` / `<bar>` / whitespaced `{{ user }}` stay untouched; empty user leaves user macros raw while char still resolves; empty char leaves char macros raw while user still resolves; both empty leaves template untouched; no-macro template untouched; repeated forms all substitute; `UserForms` + `CharForms` expose the canonical six-form list).
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `90e7310`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 1.3 (user-persona): Extend `ImBackendModels.kt` with `UserPersonaDto`, `UserPersonaListDto`, `UserPersonaActivateRequestDto`.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendPayloadsTest`` - pass (20 cases = 16 legacy + 4 new persona cases: `UserPersonaDto` decodes bilingual `displayName` + `description` + timestamps + extensions JsonObject passthrough and re-encodes to equal JSON; `toUserPersona()` converts to domain with `isActive` preserved; `UserPersonaListDto` round-trips a two-persona list with `activePersonaId`; `UserPersonaActivateRequestDto` round-trips `personaId`; `UserPersonaDto.fromUserPersona(domain)` → encode → decode → `toUserPersona()` returns a domain value equal to the original including the `extensions` bag).
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `1e25456`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 1.4 (user-persona): Extend `ImBackendClient` with persona CRUD + `activatePersona` + `getActivePersona`; implement in `ImBackendHttpClient`.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendHttpClientTest`` - pass (30 cases = 18 legacy + 12 new persona endpoint cases: `listPersonas` attaches bearer token and decodes `UserPersonaListDto` + raises on 404; `createPersona` POSTs body to `/api/personas` and decodes the stored persona + raises on 409 duplicate conflict; `updatePersona` POSTs body to `/api/personas/{personaId}` + raises on 404 for missing persona; `deletePersona` POSTs to `/api/personas/{personaId}/delete` and attaches bearer token + raises on 409 when server blocks deleting the active persona; `activatePersona` POSTs to `/api/personas/{personaId}/activate` and returns the new active persona with `isActive=true` + raises on 404 unknown persona; `getActivePersona` GETs `/api/personas/active` and returns the built-in default persona + raises on 404 when no active persona is set).
+- Review:
+  - Score: `97/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `e75de3b`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 1.5 (user-persona): Finalize `openspec/changes/user-persona/specs/im-backend/spec.md` with persistence, CRUD, active-singleton, built-in seeding, macro substitution, allocator integration.
+
+- Verification:
+  - ``npx --yes openspec validate user-persona --strict`` - pass (`Change 'user-persona' is valid`; 5 ADDED Requirements in `im-backend/spec.md` — persistence + CRUD, exactly-one-active + delete-built-in-or-active rejection, built-in seeding on first bootstrap, macro substitution for all six forms, allocator integration with priority + drop position).
+- Review:
+  - Score: `95/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `eba5500`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 2.1 (user-persona): Add `UserPersonaRepository` interface + `DefaultUserPersonaRepository` with invariants.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.UserPersonaRepositoryTest`` - pass (11 cases: activate flips active flag exclusively; activate unknown returns `Rejected(UnknownPersona)`; delete built-in returns `Rejected(BuiltInPersonaImmutable)`; delete active returns `Rejected(ActivePersonaNotDeletable)`; delete inactive user-owned succeeds; duplicate produces bilingual-suffixed user-owned copy with fresh id + `isActive=false`; duplicate unknown returns `Rejected(UnknownPersona)`; create normalizes to `isBuiltIn=false` + `isActive=false` + clock timestamps; update preserves `isBuiltIn` / `isActive` / `createdAt`; `observeActivePersona` emits null when none active; ingesting multiple actives collapses to exactly one via `enforceSingleActive`).
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `deb7d61`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 2.2 (user-persona): Add `LiveUserPersonaRepository` binding to `ImBackendClient` with rollback on 4xx/5xx.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.LiveUserPersonaRepositoryTest`` - pass (12 cases: merge semantics for `refresh` with both `activePersonaId=non-null` and `=null` + `getActivePersona`; activate forwards to backend and replaces local with returned record; activate rolls back to previous active on 409; delete rolls back on 409 for active-persona deletion; delete short-circuits on `Rejected(BuiltInPersonaImmutable)` without reaching backend; create rolls back on 500 and reconciles server-returned id on success; duplicate rolls back on backend create failure; update rolls back on 422; mutations without session (null baseUrl) short-circuit to local-only Success without calling the backend).
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `6f0e31b`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 2.3 (user-persona): Register `userPersonaRepository` in `AppContainer` + `DefaultAppContainer` + instrumentation containers.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests "com.gkim.im.android.data.repository.*Test"`` - pass (all repository tests green after wiring `LiveUserPersonaRepository` into `DefaultAppContainer` with `baseUrlProvider` / `tokenProvider` from the session store; the three instrumentation `AppContainer` impls — `UiTestAppContainer`, `LiveImageValidationContainer`, `LoginEndpointTestAppContainer` — each gain a `DefaultUserPersonaRepository(initialPersonas = seedBuiltInPersonas)` override; `seedBuiltInPersonas` in `SeedData.kt` exposes the single built-in `persona-builtin-default` with `isBuiltIn=true` + `isActive=true` + bilingual `displayName = LocalizedText("You", "你")` matching the backend seed contract).
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `28d0156`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 3.1 (user-persona): Add Settings → Personas section with list + active badge + Activate/Edit/Duplicate/Delete entry points.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.feature.settings.PersonaListPresentationTest`` - pass (9 cases: built-ins first then user personas each ordered by `createdAt` ascending; active flag surfaces as active badge; built-ins cannot be deleted; active persona cannot be deleted or activated again but remains editable + duplicable; inactive built-in shows `canActivate=true` + `canDelete=false`; activate clears `pendingOperation` + `errorMessage` on success; language provider drives resolved display; delete on active surfaces "Active persona cannot be deleted"; failed mutation surfaces `server_busy`; init triggers `repository.refresh()` once).
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `09bdaea`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 3.2 (user-persona): Add `PersonaEditorRoute` + `PersonaEditorViewModel` with bilingual fields + save/cancel.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.feature.settings.PersonaEditorPresentationTest`` - pass (7 cases: loads existing persona with `canSave=false` when no changes; blank English display name surfaces `DisplayNameEnglishBlank` and blocks save; all four blank sides surface simultaneously and block save; save success calls `UserPersonaRepository.update` + updates baseline snapshot so `canSave` flips back to false + persisted record reflects new description; cancel restores loaded snapshot; unknown persona id surfaces "Persona not found"; built-in persona cannot be saved even with valid fields).
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `1c493f0`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 3.3 (user-persona): Add instrumentation `PersonaLibraryInstrumentationTest` on `codex_api34`.
+
+- Verification:
+  - ``ANDROID_SERIAL=emulator-5554 JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.settings.PersonaLibraryInstrumentationTest,com.gkim.im.android.feature.chat.PersonaIntegrationChatTest`` - pass ("Starting 12 tests on codex_api34(AVD) - 14 / Finished 12 tests on codex_api34(AVD) - 14 / BUILD SUCCESSFUL in 1m 2s"; 7 library + 5 integration = 12, zero failed, zero skipped).
+  - `PersonaLibraryInstrumentationTest` (7 cases): built-in persona renders active badge; editing built-in description round-trips through the editor and renders back on the list; `settings-personas-new` opens the editor in create mode and saving adds the new persona to the list; activating an inactive persona moves the active badge; delete is disabled for the active persona and enabled for inactive user personas; deleting an inactive user persona removes its card; built-in badge renders only for seed personas.
+- Review:
+  - Score: `95/100`
+  - Findings: Tests run hermetically via `createComposeRule()` + `TestablePersonasScreen`, which mirrors the production testTag structure but does not exercise the full DI container / navigation graph. This matches the `CardImportInstrumentationTest` pattern — behavior invariants under test (active badge placement, delete-disabled-on-active, activate-flips-badge, new-persona creation) are captured without requiring the live `ImBackendHttpClient`. A future slice could add a full route-level instrumentation once the Settings entry is exposed via a deep-linkable navigation target.
+- Upload:
+  - Commit: `12ad376`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 4.1 (user-persona): Extend chat chrome with active-persona pill that routes to Settings → Personas.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatChromePersonaPillTest`` - pass (7 cases: English label resolution for active persona; Chinese label resolution for active persona; English fallback "Choose persona" when no persona is active; Chinese fallback "选择角色" when no persona is active; destination route is `"settings"`; label updates when active persona changes; label updates when language flips while persona is held constant).
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `e503d68`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 4.2 (user-persona): Wire greeting picker preview to use `MacroSubstitution` with active persona + companion display names.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.GreetingPickerMacroSubstitutionTest`` - pass (10 cases: user + char macros resolve in preview body; raw input list not mutated; returned list is a fresh instance; all six forms substitute with both names; case-insensitive for imported ST cards; blank user leaves user macros raw while char resolves; blank char leaves char macros raw while user resolves; both blank leaves every body raw; `index` + `label` preserved across the transform; empty input returns empty list).
+  - Render-time callsites use `applyPersonaMacros(resolveCompanionGreetings(card, language), activePersona.displayName.resolve(language), card?.resolve(language)?.name.orEmpty())` before passing options to `CompanionGreetingPicker`; the stored raw `firstMes` / `alternateGreetings` on the card remain unchanged so the backend still sees the raw macro forms when assembling prompts.
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `ce770a5`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 4.3 (user-persona): Add "Talking as {personaName}" footer under chrome pills with accessibility semantics.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatChromePersonaFooterTest`` - pass (8 cases: English footer renders "Talking as Nova"; Chinese footer renders "以 新星 的身份对话"; `contentDescription` mirrors visible `text` for both languages; null active persona returns null so chrome omits the line; footer updates when persona changes; footer updates when language changes; `activePersonaId` propagates from the active persona; `EnglishPrefix` / `ChinesePrefix` / `ChineseSuffix` constants match the spec labels).
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `896cf0a`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 5.1 (user-persona): Finalize `openspec/changes/user-persona/specs/im-backend/spec.md` end-to-end.
+
+- Verification:
+  - ``npx --yes openspec validate user-persona --strict`` - pass (`Change 'user-persona' is valid`; the im-backend delta covers all five contract areas — persistence + CRUD, exactly-one-active + built-in / active deletion guards, built-in seeding on first bootstrap, macro substitution in assembled prompts for the six forms, allocator integration with priority + drop position).
+- Review:
+  - Score: `95/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `eba5500`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 5.2 (user-persona): Document persona description slot in the allocator and the MacroSubstitution six-form list in design.md.
+
+- Verification:
+  - ``rg -n "Persona description injection" openspec/changes/user-persona/design.md`` - pass (design.md § 5 names the exact priority slot — above rolling summary, below pinned facts, above persona `exampleDialogue` — and the drop order position — between rolling summary and non-critical preset sections — with the nine-step ladder spelled out; § 5 also codifies "Never drop" items and notes that `{{user}}` substitution survives a dropped description).
+  - ``rg -n "Macro substitution" openspec/changes/user-persona/design.md`` - pass (design.md § 4 carries an explicit form-list table with all six canonical forms — user: `{{user}}` / `{user}` / `<user>`; char: `{{char}}` / `{char}` / `<char>` — plus a note that the list is case-insensitive and mirrored by `core/model/MacroSubstitution.kt`'s `UserForms` / `CharForms` lists; the table is the single-source-of-truth reference for both the backend prompt assembler and the Android `MacroSubstitution` helper).
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `eba5500`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 6.1 (user-persona): Focused unit suites — 11 files totalling 135 `@Test` cases.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest`` - pass (`BUILD SUCCESSFUL`; 11 targeted suites on-disk: `UserPersonaModelsTest` 8, `MacroSubstitutionTest` 13, `UserPersonaRepositoryTest` 11, `LiveUserPersonaRepositoryTest` 12, `PersonaListPresentationTest` 9, `PersonaEditorPresentationTest` 7, `ChatChromePersonaPillTest` 7, `GreetingPickerMacroSubstitutionTest` 10, `ChatChromePersonaFooterTest` 8, `ImBackendPayloadsTest` 20 (16 legacy + 4 persona DTO), `ImBackendHttpClientTest` 30 (18 legacy + 12 persona endpoint) — 135 total cases across the persona slice; no failures, no regressions in legacy suites; compile clean via `:app:compileDebugKotlin` on the same invocation).
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `9e1dc0e` (tick). Tests landed incrementally across `f4a2305` / `90e7310` / `1e25456` / `e75de3b` / `deb7d61` / `6f0e31b` / `28d0156` / `09bdaea` / `1c493f0` / `e503d68` / `ce770a5` / `896cf0a`.
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 6.2 (user-persona): Instrumentation coverage on `codex_api34` — `PersonaLibraryInstrumentationTest` + `PersonaIntegrationChatTest`.
+
+- Verification:
+  - ``ANDROID_SERIAL=emulator-5554 JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.settings.PersonaLibraryInstrumentationTest,com.gkim.im.android.feature.chat.PersonaIntegrationChatTest`` - pass ("Starting 12 tests on codex_api34(AVD) - 14 / Finished 12 tests on codex_api34(AVD) - 14 / BUILD SUCCESSFUL in 1m 2s"; 7 persona-library + 5 persona-integration = 12 tests, zero failed, zero skipped).
+  - `PersonaIntegrationChatTest` (5 cases) wires the production pure projections `chatChromePersonaPill(activePersona, language)`, `chatChromePersonaFooter(activePersona, language)`, and `MacroSubstitution.substituteMacros(...)` together with `remember { mutableStateOf(activeId, language) }` inside a `TestableChatChrome` composable; mid-session persona switch flips pill label + footer text + greeting preview in one recomposition (e.g. "Welcome Nova, Eris is listening." → "Welcome Auric, Eris is listening." after tapping `chat-switch-active-persona-auric`); Chinese-language rendering produces "新星" / "以 新星 的身份对话" and a language toggle without persona switch flips pill + footer copy to the other language.
+- Review:
+  - Score: `95/100`
+  - Findings: Hermetic approach via `createComposeRule()` pairs the persona projections with simulated state transitions; the actual chat screen composition + ViewModel stack are covered by the unit suites in 6.1. A future slice could add a full Compose UI test that boots `ChatRoute` against an in-memory AppContainer for end-to-end chrome assertions.
+- Upload:
+  - Commit: `12ad376`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
+
+### Task 6.3 (user-persona): Record verification, review, score (≥95), and GitHub upload evidence in `docs/DELIVERY_WORKFLOW.md` for this slice.
+
+- Verification:
+  - ``rg -n "## user-persona delivery evidence" docs/DELIVERY_WORKFLOW.md`` - pass (section present with task rows 1.1 through 6.2 plus this recording task, each carrying its own verification command, score, commit SHA, branch, push remote; explicit pointers to `openspec/changes/user-persona/specs/im-backend/spec.md` (tasks 1.5 + 5.1), `openspec/changes/user-persona/specs/core/im-app/spec.md` (task 5.1 companion delta), `openspec/changes/user-persona/specs/user-persona/spec.md` (task 5.1 capability delta), and the macro-form table in `openspec/changes/user-persona/design.md` § 4 (task 5.2)).
+  - ``npx --yes openspec validate user-persona --strict`` - pass (`Change 'user-persona' is valid`; change artifacts still valid after the delivery-evidence append).
+  - ``npx --yes openspec archive user-persona --yes`` - pass (archived to `openspec/changes/archive/2026-04-22-user-persona/` with `core/im-app`, `im-backend`, `user-persona` spec updates applied).
+- Review:
+  - Score: `96/100`
+  - Findings: `No findings`
+- Upload:
+  - Commit: `pending commit in this session`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
