@@ -1,9 +1,17 @@
 package com.gkim.im.android.data.remote.im
 
+import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AttachmentType
+import com.gkim.im.android.core.model.LocalizedText
+import com.gkim.im.android.core.model.Lorebook
+import com.gkim.im.android.core.model.LorebookBinding
+import com.gkim.im.android.core.model.LorebookEntry
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
+import com.gkim.im.android.core.model.SecondaryGate
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -692,5 +700,462 @@ class ImBackendPayloadsTest {
         val decoded = json.decodeFromString<UserPersonaDto>(encoded)
         val roundTripped = decoded.toUserPersona()
         assertEquals(domain, roundTripped)
+    }
+
+    @Test
+    fun `lorebook dto carries bilingual fields and extensions passthrough`() {
+        val raw = """
+            {
+              "id": "lorebook-atlas",
+              "ownerId": "user-nox",
+              "displayName": { "english": "World Atlas", "chinese": "世界图鉴" },
+              "description": { "english": "Cross-character notes.", "chinese": "跨角色的笔记。" },
+              "isGlobal": true,
+              "isBuiltIn": false,
+              "tokenBudget": 2048,
+              "extensions": { "st": { "custom": "from ST" } },
+              "createdAt": 1700000000,
+              "updatedAt": 1700001234
+            }
+        """.trimIndent()
+        val dto = json.decodeFromString<LorebookDto>(raw)
+
+        assertEquals("lorebook-atlas", dto.id)
+        assertEquals("user-nox", dto.ownerId)
+        assertEquals("World Atlas", dto.displayName.english)
+        assertEquals("世界图鉴", dto.displayName.chinese)
+        assertEquals("跨角色的笔记。", dto.description.chinese)
+        assertTrue(dto.isGlobal)
+        assertEquals(2048, dto.tokenBudget)
+        assertEquals(1_700_000_000L, dto.createdAt)
+        assertTrue(dto.extensions.containsKey("st"))
+
+        val lorebook = dto.toLorebook()
+        assertEquals("lorebook-atlas", lorebook.id)
+        assertEquals("World Atlas", lorebook.displayName.english)
+        assertEquals(2048, lorebook.tokenBudget)
+
+        val encoded = json.encodeToString(LorebookDto.serializer(), dto)
+        val decoded = json.decodeFromString<LorebookDto>(encoded)
+        assertEquals(dto, decoded)
+    }
+
+    @Test
+    fun `lorebook dto defaults absent optional fields to sensible values`() {
+        val raw = """
+            {
+              "id": "lb-minimal",
+              "ownerId": "user-nox",
+              "displayName": { "english": "Minimal", "chinese": "精简" }
+            }
+        """.trimIndent()
+        val dto = json.decodeFromString<LorebookDto>(raw)
+
+        assertEquals("", dto.description.english)
+        assertFalse(dto.isGlobal)
+        assertFalse(dto.isBuiltIn)
+        assertEquals(Lorebook.DefaultTokenBudget, dto.tokenBudget)
+        assertEquals(0L, dto.createdAt)
+        assertTrue(dto.extensions.isEmpty())
+    }
+
+    @Test
+    fun `lorebook dto round trip through fromLorebook and back preserves every field`() {
+        val domain = Lorebook(
+            id = "lorebook-atlas",
+            ownerId = "user-nox",
+            displayName = LocalizedText("World Atlas", "世界图鉴"),
+            description = LocalizedText("Cross-character notes.", "跨角色的笔记。"),
+            isGlobal = true,
+            isBuiltIn = false,
+            tokenBudget = 2048,
+            extensions = buildJsonObject { put("st_probability", JsonPrimitive(100)) },
+            createdAt = 1_700_000_000L,
+            updatedAt = 1_700_001_234L,
+        )
+        val dto = LorebookDto.fromLorebook(domain)
+        val encoded = json.encodeToString(LorebookDto.serializer(), dto)
+        val decoded = json.decodeFromString<LorebookDto>(encoded)
+        assertEquals(domain, decoded.toLorebook())
+    }
+
+    @Test
+    fun `lorebook list dto wraps collection`() {
+        val listDto = LorebookListDto(
+            lorebooks = listOf(
+                LorebookDto(
+                    id = "lb-1",
+                    ownerId = "user-nox",
+                    displayName = LocalizedTextDto("One", "一"),
+                ),
+                LorebookDto(
+                    id = "lb-2",
+                    ownerId = "user-nox",
+                    displayName = LocalizedTextDto("Two", "二"),
+                    isGlobal = true,
+                ),
+            ),
+        )
+        val encoded = json.encodeToString(LorebookListDto.serializer(), listDto)
+        val decoded = json.decodeFromString<LorebookListDto>(encoded)
+        assertEquals(listDto, decoded)
+        assertEquals(2, decoded.lorebooks.size)
+        assertTrue(decoded.lorebooks[1].isGlobal)
+    }
+
+    @Test
+    fun `lorebook summary dto feeds the settings badge`() {
+        val summary = LorebookSummaryDto(
+            id = "lb-1",
+            displayName = LocalizedTextDto("Atlas", "图鉴"),
+            entryCount = 7,
+            isGlobal = true,
+        )
+        val encoded = json.encodeToString(LorebookSummaryDto.serializer(), summary)
+        val decoded = json.decodeFromString<LorebookSummaryDto>(encoded)
+        assertEquals(summary, decoded)
+        assertEquals(7, decoded.entryCount)
+    }
+
+    @Test
+    fun `bootstrap bundle carries lorebook summaries for the Settings badge`() {
+        val bootstrap = json.decodeFromString<BootstrapBundleDto>(
+            """
+            {
+              "user": {
+                "id": "user-nox",
+                "externalId": "nox-dev",
+                "displayName": "Nox Dev",
+                "title": "IM Milestone Owner",
+                "avatarText": "NX"
+              },
+              "contacts": [],
+              "conversations": [],
+              "lorebookSummaries": [
+                {
+                  "id": "lb-1",
+                  "displayName": { "english": "Atlas", "chinese": "图鉴" },
+                  "entryCount": 3,
+                  "isGlobal": false
+                },
+                {
+                  "id": "lb-2",
+                  "displayName": { "english": "Global notes", "chinese": "全局笔记" },
+                  "entryCount": 12,
+                  "isGlobal": true
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        assertEquals(2, bootstrap.lorebookSummaries.size)
+        assertEquals("lb-1", bootstrap.lorebookSummaries[0].id)
+        assertEquals(3, bootstrap.lorebookSummaries[0].entryCount)
+        assertTrue(bootstrap.lorebookSummaries[1].isGlobal)
+    }
+
+    @Test
+    fun `bootstrap bundle defaults lorebook summaries to empty when absent`() {
+        val bootstrap = json.decodeFromString<BootstrapBundleDto>(
+            """
+            {
+              "user": {
+                "id": "user-nox",
+                "externalId": "nox-dev",
+                "displayName": "Nox Dev",
+                "title": "IM Milestone Owner",
+                "avatarText": "NX"
+              },
+              "contacts": [],
+              "conversations": []
+            }
+            """.trimIndent(),
+        )
+        assertTrue(bootstrap.lorebookSummaries.isEmpty())
+    }
+
+    @Test
+    fun `create lorebook request round-trips through kotlinx serialization`() {
+        val request = CreateLorebookRequestDto(
+            displayName = LocalizedTextDto("New Atlas", "新图鉴"),
+            description = LocalizedTextDto("Notes", "笔记"),
+            isGlobal = true,
+            tokenBudget = 1500,
+        )
+        val encoded = json.encodeToString(CreateLorebookRequestDto.serializer(), request)
+        val decoded = json.decodeFromString<CreateLorebookRequestDto>(encoded)
+        assertEquals(request, decoded)
+    }
+
+    @Test
+    fun `update lorebook request carries only changed fields via nullable opt-in`() {
+        val partial = UpdateLorebookRequestDto(tokenBudget = 4096)
+        val encoded = json.encodeToString(UpdateLorebookRequestDto.serializer(), partial)
+        val decoded = json.decodeFromString<UpdateLorebookRequestDto>(encoded)
+        assertEquals(partial, decoded)
+        assertEquals(4096, decoded.tokenBudget)
+        assertNull(decoded.displayName)
+        assertNull(decoded.isGlobal)
+    }
+
+    @Test
+    fun `per-language string list dto converts to and from language map`() {
+        val dto = PerLanguageStringListDto(
+            english = listOf("moon", "moons"),
+            chinese = listOf("月亮", "双月"),
+        )
+        val map = dto.toLanguageMap()
+        assertEquals(listOf("moon", "moons"), map[AppLanguage.English])
+        assertEquals(listOf("月亮", "双月"), map[AppLanguage.Chinese])
+
+        val back = PerLanguageStringListDto.fromLanguageMap(map)
+        assertEquals(dto, back)
+    }
+
+    @Test
+    fun `per-language string list dto omits language key when list is empty`() {
+        val englishOnly = PerLanguageStringListDto(english = listOf("moon"))
+        val map = englishOnly.toLanguageMap()
+        assertEquals(listOf("moon"), map[AppLanguage.English])
+        assertFalse(map.containsKey(AppLanguage.Chinese))
+    }
+
+    @Test
+    fun `lorebook entry dto serializes each secondary gate variant and maps to domain`() {
+        SecondaryGate.values().forEach { gate ->
+            val dto = LorebookEntryDto(
+                id = "entry-${gate.name.lowercase()}",
+                lorebookId = "lb-1",
+                name = LocalizedTextDto("Entry ${gate.name}", "条目 ${gate.name}"),
+                secondaryGate = when (gate) {
+                    SecondaryGate.None -> "NONE"
+                    SecondaryGate.And -> "AND"
+                    SecondaryGate.Or -> "OR"
+                },
+            )
+            val encoded = json.encodeToString(LorebookEntryDto.serializer(), dto)
+            val decoded = json.decodeFromString<LorebookEntryDto>(encoded)
+            assertEquals(dto, decoded)
+            assertEquals(gate, decoded.toLorebookEntry().secondaryGate)
+        }
+    }
+
+    @Test
+    fun `lorebook entry dto tolerates lowercase gate strings when decoding`() {
+        val dto = LorebookEntryDto(
+            id = "entry-1",
+            lorebookId = "lb-1",
+            name = LocalizedTextDto("Entry", "条目"),
+            secondaryGate = "and",
+        )
+        val domain = dto.toLorebookEntry()
+        assertEquals(SecondaryGate.And, domain.secondaryGate)
+    }
+
+    @Test
+    fun `lorebook entry dto preserves per-language key lists through json round-trip`() {
+        val dto = LorebookEntryDto(
+            id = "entry-moons",
+            lorebookId = "lb-1",
+            name = LocalizedTextDto("Two moons", "双月"),
+            keysByLang = PerLanguageStringListDto(
+                english = listOf("moon", "moons"),
+                chinese = listOf("月亮", "双月"),
+            ),
+            secondaryKeysByLang = PerLanguageStringListDto(
+                english = listOf("night"),
+                chinese = listOf("夜晚"),
+            ),
+            secondaryGate = "AND",
+            content = LocalizedTextDto("Two moons hang above.", "天上挂着双月。"),
+            constant = true,
+            scanDepth = 5,
+            insertionOrder = 10,
+            comment = "authoring note",
+            extensions = buildJsonObject { put("st_probability", JsonPrimitive(100)) },
+        )
+        val encoded = json.encodeToString(LorebookEntryDto.serializer(), dto)
+        val decoded = json.decodeFromString<LorebookEntryDto>(encoded)
+        assertEquals(dto, decoded)
+
+        val domain = decoded.toLorebookEntry()
+        assertEquals(listOf("moon", "moons"), domain.keysByLang[AppLanguage.English])
+        assertEquals(listOf("月亮", "双月"), domain.keysByLang[AppLanguage.Chinese])
+        assertEquals(listOf("night"), domain.secondaryKeysByLang[AppLanguage.English])
+        assertEquals(SecondaryGate.And, domain.secondaryGate)
+        assertTrue(domain.constant)
+        assertEquals(5, domain.scanDepth)
+        assertEquals(10, domain.insertionOrder)
+        assertEquals(JsonPrimitive(100), domain.extensions["st_probability"])
+    }
+
+    @Test
+    fun `lorebook entry dto defaults match domain spec`() {
+        val raw = """
+            {
+              "id": "entry-minimal",
+              "lorebookId": "lb-1",
+              "name": { "english": "Minimal", "chinese": "精简" }
+            }
+        """.trimIndent()
+        val dto = json.decodeFromString<LorebookEntryDto>(raw)
+
+        assertEquals("NONE", dto.secondaryGate)
+        assertEquals("", dto.content.english)
+        assertTrue(dto.enabled)
+        assertFalse(dto.constant)
+        assertFalse(dto.caseSensitive)
+        assertEquals(LorebookEntry.DefaultScanDepth, dto.scanDepth)
+        assertEquals(0, dto.insertionOrder)
+        assertTrue(dto.keysByLang.english.isEmpty())
+        assertTrue(dto.keysByLang.chinese.isEmpty())
+
+        val domain = dto.toLorebookEntry()
+        assertEquals(SecondaryGate.None, domain.secondaryGate)
+        assertEquals(LorebookEntry.DefaultScanDepth, domain.scanDepth)
+        assertTrue(domain.keysByLang.isEmpty())
+    }
+
+    @Test
+    fun `lorebook entry dto round trip through fromLorebookEntry preserves every field`() {
+        val domain = LorebookEntry(
+            id = "entry-round",
+            lorebookId = "lb-1",
+            name = LocalizedText("Round trip", "往返"),
+            keysByLang = mapOf(
+                AppLanguage.English to listOf("alpha", "beta"),
+                AppLanguage.Chinese to listOf("甲", "乙"),
+            ),
+            secondaryKeysByLang = mapOf(
+                AppLanguage.English to listOf("night"),
+            ),
+            secondaryGate = SecondaryGate.Or,
+            content = LocalizedText("Body", "正文"),
+            enabled = false,
+            constant = true,
+            caseSensitive = true,
+            scanDepth = 7,
+            insertionOrder = 15,
+            comment = "c",
+            extensions = buildJsonObject { put("st", JsonPrimitive("x")) },
+        )
+        val dto = LorebookEntryDto.fromLorebookEntry(domain)
+        val encoded = json.encodeToString(LorebookEntryDto.serializer(), dto)
+        val decoded = json.decodeFromString<LorebookEntryDto>(encoded)
+        assertEquals(domain, decoded.toLorebookEntry())
+    }
+
+    @Test
+    fun `lorebook entry list dto wraps collection`() {
+        val listDto = LorebookEntryListDto(
+            entries = listOf(
+                LorebookEntryDto(
+                    id = "e1",
+                    lorebookId = "lb-1",
+                    name = LocalizedTextDto("A", "甲"),
+                ),
+                LorebookEntryDto(
+                    id = "e2",
+                    lorebookId = "lb-1",
+                    name = LocalizedTextDto("B", "乙"),
+                ),
+            ),
+        )
+        val encoded = json.encodeToString(LorebookEntryListDto.serializer(), listDto)
+        val decoded = json.decodeFromString<LorebookEntryListDto>(encoded)
+        assertEquals(listDto, decoded)
+    }
+
+    @Test
+    fun `create and update lorebook entry requests round-trip`() {
+        val create = CreateLorebookEntryRequestDto(
+            name = LocalizedTextDto("New", "新"),
+            keysByLang = PerLanguageStringListDto(english = listOf("x")),
+            secondaryGate = "OR",
+            content = LocalizedTextDto("body", "正文"),
+            scanDepth = 2,
+        )
+        assertEquals(
+            create,
+            json.decodeFromString<CreateLorebookEntryRequestDto>(
+                json.encodeToString(CreateLorebookEntryRequestDto.serializer(), create),
+            ),
+        )
+
+        val update = UpdateLorebookEntryRequestDto(insertionOrder = 5, enabled = false)
+        val updEncoded = json.encodeToString(UpdateLorebookEntryRequestDto.serializer(), update)
+        val updDecoded = json.decodeFromString<UpdateLorebookEntryRequestDto>(updEncoded)
+        assertEquals(update, updDecoded)
+        assertEquals(5, updDecoded.insertionOrder)
+        assertFalse(updDecoded.enabled!!)
+        assertNull(updDecoded.name)
+    }
+
+    @Test
+    fun `lorebook binding dto serializes primary flag and converts to domain`() {
+        val dto = LorebookBindingDto(
+            lorebookId = "lb-1",
+            characterId = "card-aria",
+            isPrimary = true,
+        )
+        val encoded = json.encodeToString(LorebookBindingDto.serializer(), dto)
+        val decoded = json.decodeFromString<LorebookBindingDto>(encoded)
+        assertEquals(dto, decoded)
+
+        val domain = decoded.toLorebookBinding()
+        assertEquals("lb-1", domain.lorebookId)
+        assertEquals("card-aria", domain.characterId)
+        assertTrue(domain.isPrimary)
+    }
+
+    @Test
+    fun `lorebook binding dto defaults primary flag to false when absent`() {
+        val dto = json.decodeFromString<LorebookBindingDto>(
+            """{ "lorebookId": "lb-1", "characterId": "card-aria" }""",
+        )
+        assertFalse(dto.isPrimary)
+    }
+
+    @Test
+    fun `lorebook binding dto round trip through fromLorebookBinding preserves fields`() {
+        val domain = LorebookBinding(
+            lorebookId = "lb-1",
+            characterId = "card-aria",
+            isPrimary = true,
+        )
+        val dto = LorebookBindingDto.fromLorebookBinding(domain)
+        assertEquals(domain, dto.toLorebookBinding())
+    }
+
+    @Test
+    fun `lorebook binding list dto wraps collection`() {
+        val listDto = LorebookBindingListDto(
+            bindings = listOf(
+                LorebookBindingDto("lb-1", "card-aria", isPrimary = true),
+                LorebookBindingDto("lb-1", "card-nova"),
+            ),
+        )
+        val encoded = json.encodeToString(LorebookBindingListDto.serializer(), listDto)
+        val decoded = json.decodeFromString<LorebookBindingListDto>(encoded)
+        assertEquals(listDto, decoded)
+    }
+
+    @Test
+    fun `create and update lorebook binding requests round-trip`() {
+        val create = CreateLorebookBindingRequestDto(
+            characterId = "card-aria",
+            isPrimary = true,
+        )
+        assertEquals(
+            create,
+            json.decodeFromString<CreateLorebookBindingRequestDto>(
+                json.encodeToString(CreateLorebookBindingRequestDto.serializer(), create),
+            ),
+        )
+
+        val update = UpdateLorebookBindingRequestDto(isPrimary = false)
+        val encoded = json.encodeToString(UpdateLorebookBindingRequestDto.serializer(), update)
+        val decoded = json.decodeFromString<UpdateLorebookBindingRequestDto>(encoded)
+        assertEquals(update, decoded)
     }
 }

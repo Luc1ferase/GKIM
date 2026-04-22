@@ -1,5 +1,6 @@
 package com.gkim.im.android.data.remote.im
 
+import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.ChatMessage
 import com.gkim.im.android.core.model.Contact
 import com.gkim.im.android.core.model.Conversation
@@ -9,9 +10,13 @@ import com.gkim.im.android.core.model.CompanionDrawResult
 import com.gkim.im.android.core.model.AttachmentType
 import com.gkim.im.android.core.model.AccentTone
 import com.gkim.im.android.core.model.LocalizedText
+import com.gkim.im.android.core.model.Lorebook
+import com.gkim.im.android.core.model.LorebookBinding
+import com.gkim.im.android.core.model.LorebookEntry
 import com.gkim.im.android.core.model.MessageAttachment
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
+import com.gkim.im.android.core.model.SecondaryGate
 import com.gkim.im.android.core.model.UserPersona
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -163,6 +168,7 @@ data class BootstrapBundleDto(
     val user: BackendUserDto,
     val contacts: List<ContactProfileDto>,
     val conversations: List<ConversationSummaryDto>,
+    val lorebookSummaries: List<LorebookSummaryDto> = emptyList(),
 ) {
     fun toBootstrapState(
         activeUserExternalId: String,
@@ -507,6 +513,249 @@ data class UserPersonaListDto(
 data class UserPersonaActivateRequestDto(
     val personaId: String,
 )
+
+@Serializable
+data class PerLanguageStringListDto(
+    val english: List<String> = emptyList(),
+    val chinese: List<String> = emptyList(),
+) {
+    fun toLanguageMap(): Map<AppLanguage, List<String>> {
+        val map = mutableMapOf<AppLanguage, List<String>>()
+        if (english.isNotEmpty()) map[AppLanguage.English] = english
+        if (chinese.isNotEmpty()) map[AppLanguage.Chinese] = chinese
+        return map
+    }
+
+    companion object {
+        fun fromLanguageMap(map: Map<AppLanguage, List<String>>): PerLanguageStringListDto =
+            PerLanguageStringListDto(
+                english = map[AppLanguage.English].orEmpty(),
+                chinese = map[AppLanguage.Chinese].orEmpty(),
+            )
+    }
+}
+
+@Serializable
+data class LorebookDto(
+    val id: String,
+    val ownerId: String,
+    val displayName: LocalizedTextDto,
+    val description: LocalizedTextDto = LocalizedTextDto("", ""),
+    val isGlobal: Boolean = false,
+    val isBuiltIn: Boolean = false,
+    val tokenBudget: Int = Lorebook.DefaultTokenBudget,
+    val extensions: JsonObject = JsonObject(emptyMap()),
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
+) {
+    fun toLorebook(): Lorebook = Lorebook(
+        id = id,
+        ownerId = ownerId,
+        displayName = displayName.toLocalizedText(),
+        description = description.toLocalizedText(),
+        isGlobal = isGlobal,
+        isBuiltIn = isBuiltIn,
+        tokenBudget = tokenBudget,
+        extensions = extensions,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
+
+    companion object {
+        fun fromLorebook(lorebook: Lorebook): LorebookDto = LorebookDto(
+            id = lorebook.id,
+            ownerId = lorebook.ownerId,
+            displayName = LocalizedTextDto(
+                lorebook.displayName.english,
+                lorebook.displayName.chinese,
+            ),
+            description = LocalizedTextDto(
+                lorebook.description.english,
+                lorebook.description.chinese,
+            ),
+            isGlobal = lorebook.isGlobal,
+            isBuiltIn = lorebook.isBuiltIn,
+            tokenBudget = lorebook.tokenBudget,
+            extensions = lorebook.extensions,
+            createdAt = lorebook.createdAt,
+            updatedAt = lorebook.updatedAt,
+        )
+    }
+}
+
+@Serializable
+data class LorebookListDto(
+    val lorebooks: List<LorebookDto>,
+)
+
+@Serializable
+data class LorebookSummaryDto(
+    val id: String,
+    val displayName: LocalizedTextDto,
+    val entryCount: Int,
+    val isGlobal: Boolean = false,
+    val isBuiltIn: Boolean = false,
+)
+
+@Serializable
+data class CreateLorebookRequestDto(
+    val displayName: LocalizedTextDto,
+    val description: LocalizedTextDto = LocalizedTextDto("", ""),
+    val isGlobal: Boolean = false,
+    val tokenBudget: Int = Lorebook.DefaultTokenBudget,
+    val extensions: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
+data class UpdateLorebookRequestDto(
+    val displayName: LocalizedTextDto? = null,
+    val description: LocalizedTextDto? = null,
+    val isGlobal: Boolean? = null,
+    val tokenBudget: Int? = null,
+    val extensions: JsonObject? = null,
+)
+
+@Serializable
+data class LorebookEntryDto(
+    val id: String,
+    val lorebookId: String,
+    val name: LocalizedTextDto,
+    val keysByLang: PerLanguageStringListDto = PerLanguageStringListDto(),
+    val secondaryKeysByLang: PerLanguageStringListDto = PerLanguageStringListDto(),
+    val secondaryGate: String = "NONE",
+    val content: LocalizedTextDto = LocalizedTextDto("", ""),
+    val enabled: Boolean = true,
+    val constant: Boolean = false,
+    val caseSensitive: Boolean = false,
+    val scanDepth: Int = LorebookEntry.DefaultScanDepth,
+    val insertionOrder: Int = 0,
+    val comment: String = "",
+    val extensions: JsonObject = JsonObject(emptyMap()),
+) {
+    fun toLorebookEntry(): LorebookEntry = LorebookEntry(
+        id = id,
+        lorebookId = lorebookId,
+        name = name.toLocalizedText(),
+        keysByLang = keysByLang.toLanguageMap(),
+        secondaryKeysByLang = secondaryKeysByLang.toLanguageMap(),
+        secondaryGate = secondaryGate.toSecondaryGate(),
+        content = content.toLocalizedText(),
+        enabled = enabled,
+        constant = constant,
+        caseSensitive = caseSensitive,
+        scanDepth = scanDepth,
+        insertionOrder = insertionOrder,
+        comment = comment,
+        extensions = extensions,
+    )
+
+    companion object {
+        fun fromLorebookEntry(entry: LorebookEntry): LorebookEntryDto = LorebookEntryDto(
+            id = entry.id,
+            lorebookId = entry.lorebookId,
+            name = LocalizedTextDto(entry.name.english, entry.name.chinese),
+            keysByLang = PerLanguageStringListDto.fromLanguageMap(entry.keysByLang),
+            secondaryKeysByLang = PerLanguageStringListDto.fromLanguageMap(
+                entry.secondaryKeysByLang,
+            ),
+            secondaryGate = entry.secondaryGate.toWireName(),
+            content = LocalizedTextDto(entry.content.english, entry.content.chinese),
+            enabled = entry.enabled,
+            constant = entry.constant,
+            caseSensitive = entry.caseSensitive,
+            scanDepth = entry.scanDepth,
+            insertionOrder = entry.insertionOrder,
+            comment = entry.comment,
+            extensions = entry.extensions,
+        )
+    }
+}
+
+@Serializable
+data class LorebookEntryListDto(
+    val entries: List<LorebookEntryDto>,
+)
+
+@Serializable
+data class CreateLorebookEntryRequestDto(
+    val name: LocalizedTextDto,
+    val keysByLang: PerLanguageStringListDto = PerLanguageStringListDto(),
+    val secondaryKeysByLang: PerLanguageStringListDto = PerLanguageStringListDto(),
+    val secondaryGate: String = "NONE",
+    val content: LocalizedTextDto = LocalizedTextDto("", ""),
+    val enabled: Boolean = true,
+    val constant: Boolean = false,
+    val caseSensitive: Boolean = false,
+    val scanDepth: Int = LorebookEntry.DefaultScanDepth,
+    val insertionOrder: Int = 0,
+    val comment: String = "",
+    val extensions: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
+data class UpdateLorebookEntryRequestDto(
+    val name: LocalizedTextDto? = null,
+    val keysByLang: PerLanguageStringListDto? = null,
+    val secondaryKeysByLang: PerLanguageStringListDto? = null,
+    val secondaryGate: String? = null,
+    val content: LocalizedTextDto? = null,
+    val enabled: Boolean? = null,
+    val constant: Boolean? = null,
+    val caseSensitive: Boolean? = null,
+    val scanDepth: Int? = null,
+    val insertionOrder: Int? = null,
+    val comment: String? = null,
+    val extensions: JsonObject? = null,
+)
+
+@Serializable
+data class LorebookBindingDto(
+    val lorebookId: String,
+    val characterId: String,
+    val isPrimary: Boolean = false,
+) {
+    fun toLorebookBinding(): LorebookBinding = LorebookBinding(
+        lorebookId = lorebookId,
+        characterId = characterId,
+        isPrimary = isPrimary,
+    )
+
+    companion object {
+        fun fromLorebookBinding(binding: LorebookBinding): LorebookBindingDto = LorebookBindingDto(
+            lorebookId = binding.lorebookId,
+            characterId = binding.characterId,
+            isPrimary = binding.isPrimary,
+        )
+    }
+}
+
+@Serializable
+data class LorebookBindingListDto(
+    val bindings: List<LorebookBindingDto>,
+)
+
+@Serializable
+data class CreateLorebookBindingRequestDto(
+    val characterId: String,
+    val isPrimary: Boolean = false,
+)
+
+@Serializable
+data class UpdateLorebookBindingRequestDto(
+    val isPrimary: Boolean,
+)
+
+private fun String.toSecondaryGate(): SecondaryGate = when (uppercase()) {
+    "AND" -> SecondaryGate.And
+    "OR" -> SecondaryGate.Or
+    else -> SecondaryGate.None
+}
+
+private fun SecondaryGate.toWireName(): String = when (this) {
+    SecondaryGate.None -> "NONE"
+    SecondaryGate.And -> "AND"
+    SecondaryGate.Or -> "OR"
+}
 
 private fun MessageAttachmentDto.toMessageAttachment(
     backendBaseUrl: String?,
