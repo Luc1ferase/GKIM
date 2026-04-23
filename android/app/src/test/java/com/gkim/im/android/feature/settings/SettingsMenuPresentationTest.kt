@@ -163,7 +163,7 @@ class SettingsMenuPresentationTest {
     }
 
     @Test
-    fun `companion section contains persona library preset library and world info`() {
+    fun `companion section contains persona library preset library world info and memory shortcut`() {
         val sections = buildSettingsMenuSections(SettingsUiState(), isDebugBuild = true)
         val companion = sections.first { it.id == SettingsSectionId.Companion }
         val destinations = companion.items.map { it.destination }
@@ -172,6 +172,7 @@ class SettingsMenuPresentationTest {
                 SettingsDestination.Personas,
                 SettingsDestination.Presets,
                 SettingsDestination.WorldInfo,
+                SettingsDestination.CompanionMemoryChooser,
             ),
             destinations,
         )

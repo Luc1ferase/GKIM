@@ -83,6 +83,8 @@ internal enum class SettingsDestination {
     WorldInfo,
     WorldInfoEditor,
     WorldInfoEntryEditor,
+    CompanionMemoryChooser,
+    CompanionMemoryPanel,
     Account,
 }
 
@@ -113,6 +115,41 @@ internal data class SettingsMenuSection(
     val chineseCaption: String? = null,
     val items: List<SettingsMenuItem>,
 )
+
+internal data class CompanionMemoryChooserEntry(
+    val cardId: String,
+    val displayName: com.gkim.im.android.core.model.LocalizedText,
+    val roleLabel: com.gkim.im.android.core.model.LocalizedText,
+    val isActive: Boolean,
+)
+
+internal fun buildCompanionMemoryChooserEntries(
+    presetCharacters: List<com.gkim.im.android.core.model.CompanionCharacterCard>,
+    ownedCharacters: List<com.gkim.im.android.core.model.CompanionCharacterCard>,
+    userCharacters: List<com.gkim.im.android.core.model.CompanionCharacterCard>,
+    activeCardId: String,
+): List<CompanionMemoryChooserEntry> {
+    val seen = mutableSetOf<String>()
+    val merged = mutableListOf<com.gkim.im.android.core.model.CompanionCharacterCard>()
+    (userCharacters + ownedCharacters + presetCharacters).forEach { card ->
+        if (seen.add(card.id)) merged += card
+    }
+    val activeIndex = merged.indexOfFirst { it.id == activeCardId }
+    val ordered = if (activeIndex > 0) {
+        val active = merged[activeIndex]
+        listOf(active) + merged.filterIndexed { index, _ -> index != activeIndex }
+    } else {
+        merged
+    }
+    return ordered.map { card ->
+        CompanionMemoryChooserEntry(
+            cardId = card.id,
+            displayName = card.displayName,
+            roleLabel = card.roleLabel,
+            isActive = card.id == activeCardId,
+        )
+    }
+}
 
 internal fun buildSettingsMenuItems(
     uiState: SettingsUiState,
@@ -176,6 +213,14 @@ internal fun buildSettingsMenuItems(
             chineseSummary = "管理绑定到伙伴角色的世界书。",
         ),
         SettingsMenuItem(
+            destination = SettingsDestination.CompanionMemoryChooser,
+            testTag = "settings-menu-companion-memory",
+            englishLabel = "Companion memory",
+            chineseLabel = "伙伴记忆",
+            englishSummary = "Open the memory panel for a recently active companion.",
+            chineseSummary = "为最近使用的伙伴打开记忆面板。",
+        ),
+        SettingsMenuItem(
             destination = SettingsDestination.Account,
             testTag = "settings-menu-account",
             englishLabel = "Account",
@@ -196,6 +241,7 @@ internal fun buildSettingsMenuSections(
         items[SettingsDestination.Personas],
         items[SettingsDestination.Presets],
         items[SettingsDestination.WorldInfo],
+        items[SettingsDestination.CompanionMemoryChooser],
     )
     val appearanceItems = listOfNotNull(items[SettingsDestination.Appearance])
     val aigcItems = listOfNotNull(items[SettingsDestination.AiProvider])
@@ -441,6 +487,7 @@ fun SettingsRoute(
         mutableStateOf(initialWorldInfoLorebookId)
     }
     var editingEntryId by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingCompanionMemoryCardId by rememberSaveable { mutableStateOf<String?>(null) }
 
     SettingsScreen(
         container = container,
@@ -450,6 +497,7 @@ fun SettingsRoute(
         editingLorebookId = editingLorebookId,
         editingEntryId = editingEntryId,
         editingPresetId = editingPresetId,
+        editingCompanionMemoryCardId = editingCompanionMemoryCardId,
         baseUrl = baseUrl,
         model = model,
         apiKey = apiKey,
@@ -519,6 +567,14 @@ fun SettingsRoute(
             editingEntryId = null
             destination = SettingsDestination.WorldInfoEditor
         },
+        onOpenCompanionMemory = { id ->
+            editingCompanionMemoryCardId = id
+            destination = SettingsDestination.CompanionMemoryPanel
+        },
+        onCompanionMemoryPanelDone = {
+            editingCompanionMemoryCardId = null
+            destination = SettingsDestination.CompanionMemoryChooser
+        },
         onSelectProvider = viewModel::setActiveProvider,
         onSelectLanguage = viewModel::setAppLanguage,
         onSelectThemeMode = viewModel::setThemeMode,
@@ -535,6 +591,7 @@ private fun SettingsScreen(
     editingPresetId: String?,
     editingLorebookId: String?,
     editingEntryId: String?,
+    editingCompanionMemoryCardId: String?,
     baseUrl: String,
     model: String,
     apiKey: String,
@@ -557,6 +614,8 @@ private fun SettingsScreen(
     onLorebookEditorDone: () -> Unit,
     onOpenEntry: (String) -> Unit,
     onEntryEditorDone: () -> Unit,
+    onOpenCompanionMemory: (String) -> Unit,
+    onCompanionMemoryPanelDone: () -> Unit,
     onSelectProvider: (String) -> Unit,
     onSelectLanguage: (AppLanguage) -> Unit,
     onSelectThemeMode: (AppThemeMode) -> Unit,
@@ -682,6 +741,25 @@ private fun SettingsScreen(
                     )
                 } else {
                     androidx.compose.runtime.SideEffect { onEntryEditorDone() }
+                }
+            }
+
+            SettingsDestination.CompanionMemoryChooser -> SettingsCompanionMemoryChooserScreen(
+                container = container,
+                onOpenMemory = onOpenCompanionMemory,
+                onBack = { onNavigateToDestination(SettingsDestination.Menu) },
+            )
+
+            SettingsDestination.CompanionMemoryPanel -> {
+                val id = editingCompanionMemoryCardId
+                if (id != null) {
+                    com.gkim.im.android.feature.chat.MemoryPanelRoute(
+                        container = container,
+                        cardId = id,
+                        onDone = onCompanionMemoryPanelDone,
+                    )
+                } else {
+                    androidx.compose.runtime.SideEffect { onCompanionMemoryPanelDone() }
                 }
             }
 
@@ -1264,6 +1342,90 @@ private fun SettingsPresetsScreen(
                         Text(appLanguage.pick("Delete", "删除"))
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsCompanionMemoryChooserScreen(
+    container: AppContainer,
+    onOpenMemory: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    val roster = container.companionRosterRepository
+    val presetCharacters by roster.presetCharacters.collectAsStateWithLifecycle()
+    val ownedCharacters by roster.ownedCharacters.collectAsStateWithLifecycle()
+    val userCharacters by roster.userCharacters.collectAsStateWithLifecycle()
+    val activeCharacterId by roster.activeCharacterId.collectAsStateWithLifecycle()
+
+    val entries = remember(presetCharacters, ownedCharacters, userCharacters, activeCharacterId) {
+        buildCompanionMemoryChooserEntries(
+            presetCharacters = presetCharacters,
+            ownedCharacters = ownedCharacters,
+            userCharacters = userCharacters,
+            activeCardId = activeCharacterId,
+        )
+    }
+
+    PageHeader(
+        eyebrow = appLanguage.pick("Settings", "设置"),
+        title = appLanguage.pick("Companion memory", "伙伴记忆"),
+        description = appLanguage.pick(
+            "Pick a companion to open its memory panel. The active companion appears first.",
+            "选择一个伙伴打开其记忆面板。当前启用的伙伴置顶。",
+        ),
+        leadingLabel = appLanguage.pick("Back", "返回"),
+        onLeading = onBack,
+    )
+
+    Column(
+        modifier = Modifier.testTag("settings-detail-companion-memory-chooser"),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (entries.isEmpty()) {
+            GlassCard(modifier = Modifier.testTag("settings-companion-memory-empty")) {
+                Text(
+                    text = appLanguage.pick(
+                        "No companions available yet. Draw or import a card first.",
+                        "暂无可用伙伴。请先抽卡或导入角色卡。",
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                )
+            }
+        }
+        entries.forEach { entry ->
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("settings-companion-memory-entry-${entry.cardId}")
+                    .clickable { onOpenMemory(entry.cardId) },
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = entry.displayName.resolve(appLanguage),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = AetherColors.OnSurface,
+                    )
+                    if (entry.isActive) {
+                        Text(
+                            text = appLanguage.pick("ACTIVE", "已启用"),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.Surface,
+                            modifier = Modifier
+                                .testTag("settings-companion-memory-active-${entry.cardId}")
+                                .background(AetherColors.Primary, RoundedCornerShape(999.dp))
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                    }
+                }
+                Text(
+                    text = entry.roleLabel.resolve(appLanguage),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                )
             }
         }
     }
