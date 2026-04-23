@@ -2079,15 +2079,15 @@ Upload
 ### Task 7.2 (world-info-binding): Instrumentation `WorldInfoRuntimeSmokeInstrumentationTest` on `codex_api34`.
 
 - Verification:
-  - `` not yet executed — blocked on emulator availability`` - pending (test plan: seed a lorebook with 3 entries — 1 constant + 2 keyword-gated with distinct keys — bind to the active character, submit a turn whose body matches one keyword, assert via the debug endpoint from 7.1 that exactly the constant + matched entry fire).
+  - ``JAVA_HOME='C:\Program Files\Java\jdk-17' ANDROID_SDK_ROOT='D:\Android\Sdk' ANDROID_HOME='D:\Android\Sdk' ./android/gradlew.bat --no-daemon -p android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.tavern.WorldInfoRuntimeSmokeInstrumentationTest -Pandroid.testInstrumentationRunnerArguments.liveImDebugAccessHeader=<APP_DEBUG_ACCESS_KEY>`` - pass (1 case: `debugScanReturnsConstantAndMatchingKeywordEntry` on `codex_api34(AVD) - 14`, 45.055s, 0 failures, 0 errors; JUnit XML: `android/app/build/outputs/androidTest-results/connected/debug/TEST-codex_api34(AVD) - 14-_app-.xml`). Exercises the full runtime scan contract end-to-end: dev session issued against `LiveEndpointOverrides.httpBaseUrl()` (default `http://10.0.2.2:18080/`, routed through the host-side SSH port-forward to the DO origin), lorebook + 3 entries (`Constant` / 常驻 constant=true io=10, `Dragon` / 巨龙 keyword=`dragon` io=20, `Crown` / 王冠 keyword=`crown` io=30) provisioned, bound to character `architect-oracle`, `POST /api/debug/worldinfo/scan` called with scanText `"the dragon roars across the battlefield"`, and the response asserted to (a) include both the constant entry and the dragon entry, (b) exclude the crown entry, (c) carry exactly 2 matches from our lorebook, (d) preserve `constant = true` + null `matchedKey` + null `language` on the constant match and `constant = false` + `matchedKey = "dragon"` + `language = "english"` + `insertionOrder = 20` on the dragon match, (e) respect the allocator total order `(insertionOrder asc, lorebookId asc, entryId asc)` via client-side re-sort. Runtime dependency: backend on `chat.lastxuans.sbs` origin (DO host `167.71.203.18`) with migration `202604220001_world_info_binding.sql` applied and `APP_DEBUG_ACCESS_KEY` present in `/etc/gkim-im-backend/gkim-im-backend.env`.
 - Review:
-  - Score: `n/a`
-  - Findings: `deferred — codex_api34 emulator not available in this session`
+  - Score: `96/100`
+  - Findings: `No findings`
 - Upload:
-  - Commit: `pending emulator run`
+  - Commit: `45e9ede`
   - Branch: `feature/ai-companion-im`
-  - Push: `pending`
-- Result: `deferred`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
 
 ### Task 8.1 (world-info-binding): Focused unit suites — 12 files totalling 174 `@Test` cases.
 
