@@ -765,6 +765,22 @@ private fun ChatMessageRow(
                             modifier = Modifier.testTag("chat-companion-failed-copy-${message.id}"),
                         )
                     }
+                    if (companionPresentation.tone == CompanionLifecycleTone.Timeout) {
+                        Text(
+                            text = SafetyCopy.localizedTimeoutCopy(language),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AetherColors.OnSurface,
+                            modifier = Modifier.testTag("chat-companion-timeout-copy-${message.id}"),
+                        )
+                    }
+                    if (companionPresentation.showSwitchPresetHint) {
+                        Text(
+                            text = SafetyCopy.localizedTimeoutPresetHint(language),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = AetherColors.OnSurfaceVariant,
+                            modifier = Modifier.testTag("chat-companion-switch-preset-hint-${message.id}"),
+                        )
+                    }
                     if (companionPresentation.showCheckConnectionHint) {
                         Text(
                             text = if (language == AppLanguage.English) "Check your connection, then retry." else "请检查网络连接后重试。",
@@ -1034,7 +1050,10 @@ internal data class CompanionLifecyclePresentation(
     val failedSubtype: FailedSubtype? = null,
     val showEditUserTurn: Boolean = false,
     val showCheckConnectionHint: Boolean = false,
+    val showSwitchPresetHint: Boolean = false,
 )
+
+internal const val TIMEOUT_PRESET_HINT_MAX_REPLY_TOKENS_CAP: Int = 1024
 
 internal enum class CompanionLifecycleTone {
     Thinking, Streaming, Completed, Failed, Timeout, Blocked,
@@ -1043,6 +1062,7 @@ internal enum class CompanionLifecycleTone {
 internal fun companionLifecyclePresentation(
     message: ChatMessage,
     isMostRecentCompanionVariant: Boolean,
+    activePresetMaxReplyTokens: Int? = null,
 ): CompanionLifecyclePresentation? {
     val meta = message.companionTurnMeta ?: return null
     val modelBadge = meta.model?.takeIf { it.isNotBlank() }
@@ -1101,15 +1121,20 @@ internal fun companionLifecyclePresentation(
                 showCheckConnectionHint = needsConnectionHint,
             )
         }
-        MessageStatus.Timeout -> CompanionLifecyclePresentation(
-            statusLine = message.body.takeIf { it.isNotBlank() }?.let { "Timed out · $it" } ?: "Timed out",
-            body = "",
-            showBody = false,
-            showRegenerate = false,
-            showRetry = true,
-            modelBadge = modelBadge,
-            tone = CompanionLifecycleTone.Timeout,
-        )
+        MessageStatus.Timeout -> {
+            val showSwitchPresetHint = activePresetMaxReplyTokens != null &&
+                activePresetMaxReplyTokens > TIMEOUT_PRESET_HINT_MAX_REPLY_TOKENS_CAP
+            CompanionLifecyclePresentation(
+                statusLine = message.body.takeIf { it.isNotBlank() }?.let { "Timed out · $it" } ?: "Timed out",
+                body = "",
+                showBody = false,
+                showRegenerate = false,
+                showRetry = true,
+                modelBadge = modelBadge,
+                tone = CompanionLifecycleTone.Timeout,
+                showSwitchPresetHint = showSwitchPresetHint,
+            )
+        }
         MessageStatus.Blocked -> CompanionLifecyclePresentation(
             statusLine = message.body.takeIf { it.isNotBlank() }?.let { "Blocked · $it" } ?: "Blocked",
             body = "",
