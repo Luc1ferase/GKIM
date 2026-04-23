@@ -26,8 +26,12 @@ import com.gkim.im.android.data.remote.im.ImGatewayEvent
 import com.gkim.im.android.data.remote.im.deriveWebSocketUrl
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.repository.CompanionMemoryRepository
+import com.gkim.im.android.data.repository.CompanionPresetRepository
 import com.gkim.im.android.data.repository.CompanionRosterRepository
 import com.gkim.im.android.data.repository.CompanionTurnRepository
+import com.gkim.im.android.data.repository.DefaultCompanionMemoryRepository
+import com.gkim.im.android.data.repository.DefaultCompanionPresetRepository
 import com.gkim.im.android.data.repository.CardInteropRepository
 import com.gkim.im.android.data.repository.DefaultCardInteropRepository
 import com.gkim.im.android.data.repository.LiveCardInteropRepository
@@ -247,6 +251,8 @@ private class LiveImageValidationContainer(
         initialPersonas = seedBuiltInPersonas,
     )
     override val worldInfoRepository: WorldInfoRepository = DefaultWorldInfoRepository()
+    override val companionMemoryRepository: CompanionMemoryRepository = DefaultCompanionMemoryRepository()
+    override val companionPresetRepository: CompanionPresetRepository = DefaultCompanionPresetRepository()
     private val secureStore = UiInMemorySecureStore().apply {
         putString("preset_provider_hunyuan_api_key", "ui-test-hunyuan-key")
         putString("preset_provider_tongyi_api_key", "ui-test-tongyi-key")

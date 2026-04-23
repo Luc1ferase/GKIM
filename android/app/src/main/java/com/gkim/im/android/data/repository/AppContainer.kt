@@ -38,6 +38,8 @@ interface AppContainer {
     val cardInteropRepository: CardInteropRepository
     val userPersonaRepository: UserPersonaRepository
     val worldInfoRepository: WorldInfoRepository
+    val companionMemoryRepository: CompanionMemoryRepository
+    val companionPresetRepository: CompanionPresetRepository
     val aigcRepository: AigcRepository
     val preferencesStore: PreferencesStore
     val sessionStore: SessionStore
@@ -129,6 +131,17 @@ class DefaultAppContainer(context: Context) : AppContainer {
     )
     override val userPersonaRepository: UserPersonaRepository = LiveUserPersonaRepository(
         default = DefaultUserPersonaRepository(initialPersonas = seedBuiltInPersonas),
+        backendClient = imBackendClient,
+        baseUrlProvider = { sessionStore.baseUrl },
+        tokenProvider = { sessionStore.token },
+    )
+    override val companionMemoryRepository: CompanionMemoryRepository = LiveCompanionMemoryRepository(
+        backend = imBackendClient,
+        baseUrlProvider = { sessionStore.baseUrl.orEmpty() },
+        tokenProvider = { sessionStore.token.orEmpty() },
+    )
+    override val companionPresetRepository: CompanionPresetRepository = LiveCompanionPresetRepository(
+        default = DefaultCompanionPresetRepository(),
         backendClient = imBackendClient,
         baseUrlProvider = { sessionStore.baseUrl },
         tokenProvider = { sessionStore.token },

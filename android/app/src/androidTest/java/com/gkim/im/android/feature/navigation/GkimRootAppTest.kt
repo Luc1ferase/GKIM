@@ -46,8 +46,12 @@ import com.gkim.im.android.data.remote.aigc.RemoteAigcProviderClient
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.repository.CompanionMemoryRepository
+import com.gkim.im.android.data.repository.CompanionPresetRepository
 import com.gkim.im.android.data.repository.CompanionRosterRepository
 import com.gkim.im.android.data.repository.CompanionTurnRepository
+import com.gkim.im.android.data.repository.DefaultCompanionMemoryRepository
+import com.gkim.im.android.data.repository.DefaultCompanionPresetRepository
 import com.gkim.im.android.data.repository.CardInteropRepository
 import com.gkim.im.android.data.repository.DefaultCardInteropRepository
 import com.gkim.im.android.data.repository.LiveCardInteropRepository
@@ -1366,6 +1370,8 @@ private class UiTestAppContainer(
         initialPersonas = seedBuiltInPersonas,
     )
     override val worldInfoRepository: WorldInfoRepository = DefaultWorldInfoRepository()
+    override val companionMemoryRepository: CompanionMemoryRepository = DefaultCompanionMemoryRepository()
+    override val companionPresetRepository: CompanionPresetRepository = DefaultCompanionPresetRepository()
     override val aigcRepository: AigcRepository = DefaultAigcRepository(
         presets = presetProviders,
         preferencesStore = preferencesStore,

@@ -22,7 +22,7 @@
 
 - [x] 3.2 Add `android/app/src/main/java/com/gkim/im/android/data/repository/LiveCompanionPresetRepository.kt` that binds the default repository to `ImBackendClient` endpoints. On cold start, `refresh()` loads the library and active-preset in parallel, merging them into the stream. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.LiveCompanionPresetRepositoryTest` exercises merge semantics, reorder on activate, and handles 409 (delete-active).
 
-- [ ] 3.3 Register `companionMemoryRepository` and `companionPresetRepository` in `AppContainer` + `DefaultAppContainer`, exposing them via lazy singletons. Do not alter the peer-IM code path. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.*Test` remains green; `rg -n "companionMemoryRepository|companionPresetRepository" android/app/src/main/java` confirms wiring in `AppContainer` and view models that need them.
+- [x] 3.3 Register `companionMemoryRepository` and `companionPresetRepository` in `AppContainer` + `DefaultAppContainer`, exposing them via lazy singletons. Do not alter the peer-IM code path. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.*Test` remains green; `rg -n "companionMemoryRepository|companionPresetRepository" android/app/src/main/java` confirms wiring in `AppContainer` and view models that need them.
 
 ## 4. Android Settings: preset library
 
