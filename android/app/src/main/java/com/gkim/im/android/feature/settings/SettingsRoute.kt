@@ -78,6 +78,8 @@ internal enum class SettingsDestination {
     ImValidation,
     Personas,
     PersonaEditor,
+    Presets,
+    PresetEditor,
     WorldInfo,
     WorldInfoEditor,
     WorldInfoEntryEditor,
@@ -137,6 +139,14 @@ internal fun buildSettingsMenuItems(
             chineseLabel = "用户角色",
             englishSummary = "Manage the {{user}} personas used across companion chats.",
             chineseSummary = "管理陪伴对话中的 {{user}} 角色资料。",
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.Presets,
+            testTag = "settings-menu-presets",
+            englishLabel = "Presets",
+            chineseLabel = "预设",
+            englishSummary = "Manage the prompt presets that shape companion replies.",
+            chineseSummary = "管理用于塑造伙伴回复的提示预设。",
         ),
         SettingsMenuItem(
             destination = SettingsDestination.WorldInfo,
@@ -335,6 +345,7 @@ fun SettingsRoute(
     var imDevUserExternalId by remember(uiState.imDevUserExternalId) { mutableStateOf(uiState.imDevUserExternalId) }
     var showImDeveloperControls by rememberSaveable { mutableStateOf(false) }
     var editingPersonaId by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingPresetId by rememberSaveable { mutableStateOf<String?>(null) }
     var editingLorebookId by rememberSaveable(initialWorldInfoLorebookId) {
         mutableStateOf(initialWorldInfoLorebookId)
     }
@@ -347,6 +358,7 @@ fun SettingsRoute(
         editingPersonaId = editingPersonaId,
         editingLorebookId = editingLorebookId,
         editingEntryId = editingEntryId,
+        editingPresetId = editingPresetId,
         baseUrl = baseUrl,
         model = model,
         apiKey = apiKey,
@@ -392,6 +404,14 @@ fun SettingsRoute(
             editingPersonaId = null
             destination = SettingsDestination.Personas
         },
+        onEditPreset = { id ->
+            editingPresetId = id
+            destination = SettingsDestination.PresetEditor
+        },
+        onPresetEditorDone = {
+            editingPresetId = null
+            destination = SettingsDestination.Presets
+        },
         onOpenLorebook = { id ->
             editingLorebookId = id
             destination = SettingsDestination.WorldInfoEditor
@@ -421,6 +441,7 @@ private fun SettingsScreen(
     uiState: SettingsUiState,
     destination: SettingsDestination,
     editingPersonaId: String?,
+    editingPresetId: String?,
     editingLorebookId: String?,
     editingEntryId: String?,
     baseUrl: String,
@@ -439,6 +460,8 @@ private fun SettingsScreen(
     onNavigateToDestination: (SettingsDestination) -> Unit,
     onEditPersona: (String) -> Unit,
     onPersonaEditorDone: () -> Unit,
+    onEditPreset: (String) -> Unit,
+    onPresetEditorDone: () -> Unit,
     onOpenLorebook: (String) -> Unit,
     onLorebookEditorDone: () -> Unit,
     onOpenEntry: (String) -> Unit,
@@ -514,6 +537,22 @@ private fun SettingsScreen(
                     )
                 } else {
                     androidx.compose.runtime.SideEffect { onPersonaEditorDone() }
+                }
+            }
+
+            SettingsDestination.Presets -> SettingsPresetsScreen(
+                container = container,
+                onEditPreset = onEditPreset,
+                onBack = { onNavigateToDestination(SettingsDestination.Menu) },
+            )
+
+            SettingsDestination.PresetEditor -> {
+                val id = editingPresetId
+                if (id != null) {
+                    // TODO(task 4.2): wire PresetEditorRoute(container, presetId = id, onDone = onPresetEditorDone).
+                    androidx.compose.runtime.SideEffect { onPresetEditorDone() }
+                } else {
+                    androidx.compose.runtime.SideEffect { onPresetEditorDone() }
                 }
             }
 
@@ -973,6 +1012,135 @@ private fun SettingsPersonasScreen(
                         onClick = { viewModel.delete(item.persona.id) },
                         enabled = item.canDelete && !isPending,
                         modifier = Modifier.testTag("settings-personas-delete-${item.persona.id}"),
+                    ) {
+                        Text(appLanguage.pick("Delete", "删除"))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsPresetsScreen(
+    container: AppContainer,
+    onEditPreset: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    val viewModel = viewModel<PresetLibraryViewModel>(
+        key = "presetLibrary",
+        factory = simpleViewModelFactory {
+            PresetLibraryViewModel(
+                repository = container.companionPresetRepository,
+                language = { appLanguage },
+            )
+        },
+    )
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    PageHeader(
+        eyebrow = appLanguage.pick("Settings", "设置"),
+        title = appLanguage.pick("Presets", "预设"),
+        description = appLanguage.pick(
+            "Presets shape the system prompt and reply parameters. Built-ins are locked; duplicate to customise.",
+            "预设用于控制系统提示与回复参数。内置预设无法修改，可复制后自定义。",
+        ),
+        leadingLabel = appLanguage.pick("Back", "返回"),
+        onLeading = onBack,
+    )
+
+    Column(
+        modifier = Modifier.testTag("settings-detail-presets"),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        uiState.errorMessage?.let { message ->
+            GlassCard(modifier = Modifier.testTag("settings-presets-error")) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurface,
+                )
+                OutlinedButton(
+                    onClick = viewModel::clearError,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings-presets-error-dismiss"),
+                ) {
+                    Text(appLanguage.pick("Dismiss", "知道了"))
+                }
+            }
+        }
+
+        OutlinedButton(
+            onClick = { /* hook for task 4.2 PresetEditor */ },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("settings-presets-new"),
+        ) {
+            Text(appLanguage.pick("New preset", "新建预设"))
+        }
+
+        uiState.items.forEach { item ->
+            val pendingOperation = uiState.pendingOperation?.takeIf { it.presetId == item.preset.id }
+            val isPending = pendingOperation != null
+            GlassCard(modifier = Modifier.testTag("settings-presets-card-${item.preset.id}")) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = item.resolved.displayName,
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = AetherColors.OnSurface,
+                    )
+                    if (item.isActive) {
+                        Text(
+                            text = appLanguage.pick("ACTIVE", "已启用"),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.Surface,
+                            modifier = Modifier
+                                .testTag("settings-presets-active-${item.preset.id}")
+                                .background(AetherColors.Primary, RoundedCornerShape(999.dp))
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                    }
+                    if (item.preset.isBuiltIn) {
+                        Text(
+                            text = appLanguage.pick("BUILT-IN", "内置"),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.OnSurfaceVariant,
+                        )
+                    }
+                }
+                Text(
+                    text = item.resolved.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = { viewModel.activate(item.preset.id) },
+                        enabled = item.canActivate && !isPending,
+                        modifier = Modifier.testTag("settings-presets-activate-${item.preset.id}"),
+                    ) {
+                        Text(appLanguage.pick("Activate", "启用"))
+                    }
+                    OutlinedButton(
+                        onClick = { onEditPreset(item.preset.id) },
+                        enabled = item.canEdit && !isPending,
+                        modifier = Modifier.testTag("settings-presets-edit-${item.preset.id}"),
+                    ) {
+                        Text(appLanguage.pick("Edit", "编辑"))
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.duplicate(item.preset.id) },
+                        enabled = item.canDuplicate && !isPending,
+                        modifier = Modifier.testTag("settings-presets-duplicate-${item.preset.id}"),
+                    ) {
+                        Text(appLanguage.pick("Duplicate", "复制"))
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.delete(item.preset.id) },
+                        enabled = item.canDelete && !isPending,
+                        modifier = Modifier.testTag("settings-presets-delete-${item.preset.id}"),
                     ) {
                         Text(appLanguage.pick("Delete", "删除"))
                     }

@@ -30,3 +30,20 @@ data class PresetParams(
 
 val Preset.isDeletable: Boolean
     get() = !isBuiltIn && !isActive
+
+data class ResolvedPreset(
+    val id: String,
+    val displayName: String,
+    val description: String,
+    val isBuiltIn: Boolean,
+    val isActive: Boolean,
+)
+
+fun Preset.resolve(language: AppLanguage): ResolvedPreset =
+    ResolvedPreset(
+        id = id,
+        displayName = displayName.resolve(language),
+        description = description.resolve(language),
+        isBuiltIn = isBuiltIn,
+        isActive = isActive,
+    )
