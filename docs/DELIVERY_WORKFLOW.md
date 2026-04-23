@@ -2473,3 +2473,16 @@ Upload
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
+
+### Task 1.5 (companion-settings-and-safety-reframe): Finalize `specs/im-backend/spec.md` so block-reason closed set, failure-subtype closed set, and content-policy acknowledgment endpoints are captured as Requirements with Scenarios. (commit `<pending>`)
+
+- Verification:
+  - `openspec validate companion-settings-and-safety-reframe --strict` → `Change 'companion-settings-and-safety-reframe' is valid`. The `specs/im-backend/spec.md` delta (established in the initial proposal commit 6d4a662 and unchanged since) already carries four ADDED Requirements: (1) `Backend emits companion-turn block events with a closed set of typed wire-key reasons` (3 Scenarios: provider refusal → `provider_refusal`; self-harm → `self_harm`; unclassified → `other`) — enumerates all six wire keys (`self_harm`, `illegal`, `nsfw_denied`, `minor_safety`, `provider_refusal`, `other`) and requires additive-only evolution; (2) `Backend emits companion-turn failure events with a closed set of typed subtype wire keys` (6 Scenarios: budget → `prompt_budget_exceeded`; auth → `authentication_failed`; upstream outage → `provider_unavailable`; network → `network_error`; generic retryable → `transient`; unclassifiable → `unknown`); (3) `Backend honors a retry hint that extends the idle bound on timed-out companion turns` (2 Scenarios: 1.5× idle bound; no leak into later turns) — bonus coverage supporting §2.3's "Retry with longer wait" CTA; (4) `Backend persists per-account content-policy acknowledgment with version gating` (4 Scenarios: GET returns record or empty state; POST records per-account; version bump invalidates; rejected version). All three concerns named in §1.5 are captured (closed sets as Requirements + Scenarios; acknowledgment endpoints `POST`/`GET /api/account/content-policy-acknowledgment` with version gating) and the strict validator confirms. No spec-content changes needed for §1.5 — the delta finalized in the initial proposal matches design.md Decisions #2/#3 exactly.
+- Review:
+  - Score: `96/100`
+  - Findings: `The spec delta's block-reason Requirement enumerates the exact six wire keys that Android §1.1's BlockReason enum surfaces (matching 1:1), and requires additive-only evolution — the forward-compat contract that §1.4's reasonAsBlockReason falls back to BlockReason.Other depends on. The failure-subtype Requirement mirrors §1.3's FailedSubtype enum 1:1 and likewise pins additive evolution. The acknowledgment endpoints Requirement pins the POST/GET verb pair, the version-gating semantics (required-version comparison → re-prompt when bumped), per-account persistence, and typed-error rejection for mismatched versions — covering the full surface §4.1/§4.2 will integrate against. The bonus timeout retry-hint Requirement gives §2.3 a concrete contract to wire against (1.5× idle bound for a single retried turn, no leak). Four Requirements + 15 Scenarios total — coverage is thorough and the openspec strict validator confirms structural compliance.`
+- Upload:
+  - Commit: `<pending>`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`

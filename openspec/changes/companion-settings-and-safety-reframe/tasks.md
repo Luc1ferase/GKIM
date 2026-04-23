@@ -8,7 +8,7 @@
 
 - [x] 1.4 Extend `android/app/src/main/java/com/gkim/im/android/data/remote/im/ImBackendModels.kt` so `ImGatewayEvent.CompanionTurnBlocked` carries the wire-key reason and so the companion-turn failure event carries a typed subtype key (extending the failure payload from `llm-text-companion-chat`). Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendPayloadsTest` covers block-reason round-trip for every enum variant and failure-subtype round-trip.
 
-- [ ] 1.5 Finalize `openspec/changes/companion-settings-and-safety-reframe/specs/im-backend/spec.md` so the block-reason closed set, the failure-subtype closed set, and the content-policy acknowledgment endpoints are all captured as requirements with scenarios. Verification: `openspec validate companion-settings-and-safety-reframe --strict` passes.
+- [x] 1.5 Finalize `openspec/changes/companion-settings-and-safety-reframe/specs/im-backend/spec.md` so the block-reason closed set, the failure-subtype closed set, and the content-policy acknowledgment endpoints are all captured as requirements with scenarios. Verification: `openspec validate companion-settings-and-safety-reframe --strict` passes.
 
 ## 2. Chat safety and failure bubbles
 
