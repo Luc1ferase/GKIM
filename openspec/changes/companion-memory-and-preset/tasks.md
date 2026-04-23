@@ -8,7 +8,7 @@
 
 - [x] 1.4 Extend `android/app/src/main/java/com/gkim/im/android/data/remote/im/ImBackendClient.kt` with: `getCompanionMemory(baseUrl, token, cardId)`, `resetCompanionMemory(baseUrl, token, cardId, scope)`, `listCompanionMemoryPins(baseUrl, token, cardId)`, `createCompanionMemoryPin(...)`, `updateCompanionMemoryPin(...)`, `deleteCompanionMemoryPin(...)`, `listPresets(baseUrl, token)`, `createPreset(...)`, `updatePreset(...)`, `deletePreset(...)`, `activatePreset(baseUrl, token, presetId)`, and `getActivePreset(baseUrl, token)`. Implement in `ImBackendHttpClient`. Default stubs for backward-compat call `error("not implemented")`. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.ImBackendHttpClientTest` covers success, 404, and 409 (active-preset delete block) paths for every new endpoint.
 
-- [ ] 1.5 Finalize `openspec/changes/companion-memory-and-preset/specs/im-backend/spec.md` so memory persistence, pin CRUD, preset library CRUD, active-preset selection, deterministic summarization trigger, token-budget allocator integration, and reset semantics are all captured as requirements with scenarios. Verification: `openspec validate companion-memory-and-preset --strict` passes.
+- [x] 1.5 Finalize `openspec/changes/companion-memory-and-preset/specs/im-backend/spec.md` so memory persistence, pin CRUD, preset library CRUD, active-preset selection, deterministic summarization trigger, token-budget allocator integration, and reset semantics are all captured as requirements with scenarios. Verification: `openspec validate companion-memory-and-preset --strict` passes.
 
 ## 2. Companion memory repository (Android)
 

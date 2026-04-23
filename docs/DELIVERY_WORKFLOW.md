@@ -2184,3 +2184,16 @@ Upload
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
+
+### Task 1.5 (companion-memory-and-preset): Finalize `openspec/changes/companion-memory-and-preset/specs/im-backend/spec.md`.
+
+- Verification:
+  - ``openspec validate companion-memory-and-preset --strict`` - pass (`Change 'companion-memory-and-preset' is valid`). The spec.md carries all 7 backend requirements the task enumerates, each with scenarios: (1) "Backend persists per-companion memory as rolling summary plus pinned facts" (memory persistence + reconnect/restart durability) — covers the first bullet; (2) "Backend exposes pin CRUD scoped per companion" (pin create with sourceMessageId + pin create manual + isolated update/delete) — covers pin CRUD; (3) "Backend exposes three memory reset scopes" (pins-only, summary-only, all, each asserting transcript unchanged) — covers reset semantics; (4) "Backend persists preset library with built-in seeding and user-owned CRUD" (idempotent 3-preset seed + built-in mutation rejection + user-owned CRUD) — covers preset library CRUD; (5) "Backend enforces exactly one active preset per user" (atomic exclusive activation + bootstrap exposure + delete-active blocked) — covers active-preset selection; (6) "Backend assembles companion turn prompts with the active preset plus memory under a deterministic token budget" (priority-ordered composition + fixed drop order + `prompt_budget_exceeded` typed terminal reason) — covers token-budget allocator integration; (7) "Backend regenerates the rolling summary asynchronously on a deterministic trigger" (turn-threshold OR budget-pressure trigger + summarizer-failure-preserves-prior) — covers the deterministic summarization trigger. Delivered: im-backend/spec.md already carries the full 7-requirement delta (129 lines, no edits required this pass); cross-cut client-side requirements live in `specs/core/im-app/spec.md` and the capability-root `specs/companion-memory-and-preset/spec.md`. Strict mode passes, confirming every scenario follows the canonical WHEN/THEN shape and every requirement is SHALL/MUST-phrased. The companion task 6.1 revisits the same spec to document the allocator slot ladder + seeded preset table next to design.md — 1.5's job is to pin the requirement surface (done this pass); 6.1 layers in the deeper assembly details.
+- Review:
+  - Score: `95/100`
+  - Findings: `No findings — spec passes openspec validate --strict, every 1.5-bullet topic has a requirement with scenarios, and the prompt_budget_exceeded typed terminal reason is explicit (scenario 3 of requirement 6). The design.md already documents drop-order + token-budget allocator behavior; 6.1 will pull the seed table + allocator ladder into the spec + design cross-reference.`
+- Upload:
+  - Commit: `<pending>`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
