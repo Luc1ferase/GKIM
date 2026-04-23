@@ -2180,7 +2180,7 @@ Upload
   - Score: `95/100`
   - Findings: `No findings — every endpoint has success + 404 + (where applicable) 409 coverage, the 409-on-delete-active invariant is exercised by \`deletePreset raises on 409 when preset is active\`, bearer-token propagation is asserted on every path, and CompanionMemoryResetScope wire-key serialization is asserted both single-scope and three-scope round-trip.`
 - Upload:
-  - Commit: `<pending>`
+  - Commit: `32d5972`
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
