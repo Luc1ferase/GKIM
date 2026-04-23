@@ -17,13 +17,17 @@ interface CompanionMemoryRepository {
         cardId: String,
         sourceMessageId: String?,
         text: LocalizedText,
-    ): CompanionMemoryPin
+    ): Result<CompanionMemoryPin>
 
-    suspend fun updatePin(pinId: String, text: LocalizedText): CompanionMemoryPin?
-    suspend fun deletePin(pinId: String): Boolean
+    suspend fun updatePin(pinId: String, text: LocalizedText): Result<CompanionMemoryPin>
+    suspend fun deletePin(pinId: String): Result<Unit>
     suspend fun reset(cardId: String, scope: CompanionMemoryResetScope)
     suspend fun refresh(cardId: String)
 }
+
+class UnknownPinException(pinId: String) : NoSuchElementException(
+    "No pin with id=$pinId in local repository state",
+)
 
 data class CompanionMemorySnapshot(
     val memory: CompanionMemory? = null,
@@ -49,7 +53,7 @@ open class DefaultCompanionMemoryRepository(
         cardId: String,
         sourceMessageId: String?,
         text: LocalizedText,
-    ): CompanionMemoryPin {
+    ): Result<CompanionMemoryPin> {
         val pin = CompanionMemoryPin(
             id = idGenerator(),
             sourceMessageId = sourceMessageId,
@@ -58,26 +62,28 @@ open class DefaultCompanionMemoryRepository(
             pinnedByUser = true,
         )
         mutate(cardId) { it.copy(pins = it.pins + pin) }
-        return pin
+        return Result.success(pin)
     }
 
-    override suspend fun updatePin(pinId: String, text: LocalizedText): CompanionMemoryPin? {
-        val (cardId, existing) = locatePin(pinId) ?: return null
+    override suspend fun updatePin(pinId: String, text: LocalizedText): Result<CompanionMemoryPin> {
+        val (cardId, existing) = locatePin(pinId)
+            ?: return Result.failure(UnknownPinException(pinId))
         val updated = existing.copy(text = text)
         mutate(cardId) { snapshot ->
             snapshot.copy(
                 pins = snapshot.pins.map { if (it.id == pinId) updated else it },
             )
         }
-        return updated
+        return Result.success(updated)
     }
 
-    override suspend fun deletePin(pinId: String): Boolean {
-        val (cardId, _) = locatePin(pinId) ?: return false
+    override suspend fun deletePin(pinId: String): Result<Unit> {
+        val (cardId, _) = locatePin(pinId)
+            ?: return Result.failure(UnknownPinException(pinId))
         mutate(cardId) { snapshot ->
             snapshot.copy(pins = snapshot.pins.filterNot { it.id == pinId })
         }
-        return true
+        return Result.success(Unit)
     }
 
     override suspend fun reset(cardId: String, scope: CompanionMemoryResetScope) {
@@ -123,7 +129,7 @@ open class DefaultCompanionMemoryRepository(
         state.value = state.value + (cardId to transform(current))
     }
 
-    private fun locatePin(pinId: String): Pair<String, CompanionMemoryPin>? {
+    protected fun locatePin(pinId: String): Pair<String, CompanionMemoryPin>? {
         state.value.forEach { (cardId, snapshot) ->
             val found = snapshot.pins.firstOrNull { it.id == pinId }
             if (found != null) return cardId to found

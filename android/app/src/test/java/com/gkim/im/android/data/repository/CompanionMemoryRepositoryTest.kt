@@ -7,7 +7,6 @@ import com.gkim.im.android.core.model.LocalizedText
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -77,7 +76,7 @@ class CompanionMemoryRepositoryTest {
             cardId = cardId,
             sourceMessageId = "message-9",
             text = LocalizedText("second", "第二"),
-        )
+        ).getOrThrow()
 
         assertEquals("pin-generated-1", created.id)
         assertEquals("message-9", created.sourceMessageId)
@@ -98,10 +97,9 @@ class CompanionMemoryRepositoryTest {
         val updated = repo.updatePin(
             pinId = "pin-b",
             text = LocalizedText("B'", "乙撇"),
-        )
+        ).getOrThrow()
 
-        assertNotNull(updated)
-        assertEquals(LocalizedText("B'", "乙撇"), updated!!.text)
+        assertEquals(LocalizedText("B'", "乙撇"), updated.text)
         assertEquals("createdAt on updated pin is preserved", 2_000L, updated.createdAt)
 
         val pins = repo.observePins(cardId).first()
@@ -110,13 +108,14 @@ class CompanionMemoryRepositoryTest {
     }
 
     @Test
-    fun `updatePin on unknown pin returns null and leaves state unchanged`() = runBlocking {
+    fun `updatePin on unknown pin returns failure and leaves state unchanged`() = runBlocking {
         val a = pin(id = "pin-a", english = "A", chinese = "甲", createdAt = 1_000L)
         val repo = repositoryWithSnapshot(memorySnapshot(pins = listOf(a)))
 
-        val updated = repo.updatePin(pinId = "pin-missing", text = LocalizedText("X", "X"))
+        val result = repo.updatePin(pinId = "pin-missing", text = LocalizedText("X", "X"))
 
-        assertNull(updated)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is UnknownPinException)
         assertEquals(listOf(a), repo.observePins(cardId).first())
     }
 
@@ -128,15 +127,17 @@ class CompanionMemoryRepositoryTest {
 
         val removed = repo.deletePin("pin-a")
 
-        assertTrue(removed)
+        assertTrue(removed.isSuccess)
         val pins = repo.observePins(cardId).first()
         assertEquals(listOf("pin-b"), pins.map { it.id })
     }
 
     @Test
-    fun `deletePin on unknown pin returns false`() = runBlocking {
+    fun `deletePin on unknown pin returns failure`() = runBlocking {
         val repo = repositoryWithSnapshot(memorySnapshot())
-        assertFalse(repo.deletePin("pin-nothing"))
+        val result = repo.deletePin("pin-nothing")
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is UnknownPinException)
     }
 
     @Test
@@ -253,7 +254,7 @@ class CompanionMemoryRepositoryTest {
             cardId = "card-fresh",
             sourceMessageId = null,
             text = LocalizedText("Hi", "嗨"),
-        )
+        ).getOrThrow()
 
         assertEquals("pin-fresh-1", created.id)
         assertNull(
