@@ -50,7 +50,7 @@
 
 ## 7. Verification and delivery evidence
 
-- [ ] 7.1 Add focused unit suites: `CompanionMemoryModelsTest`, `PresetModelsTest`, `CompanionMemoryRepositoryTest`, `LiveCompanionMemoryRepositoryTest`, `CompanionPresetRepositoryTest`, `LiveCompanionPresetRepositoryTest`, `ImBackendPayloadsTest` (memory + preset DTOs), `ImBackendHttpClientTest` (new endpoints), plus the presentation tests listed above. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest` fully green.
+- [x] 7.1 Add focused unit suites: `CompanionMemoryModelsTest`, `PresetModelsTest`, `CompanionMemoryRepositoryTest`, `LiveCompanionMemoryRepositoryTest`, `CompanionPresetRepositoryTest`, `LiveCompanionPresetRepositoryTest`, `ImBackendPayloadsTest` (memory + preset DTOs), `ImBackendHttpClientTest` (new endpoints), plus the presentation tests listed above. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest` fully green.
 
 - [ ] 7.2 Add instrumentation coverage on `codex_api34`: `PresetLibraryInstrumentationTest` and `MemoryAndPresetIntegrationTest` (defined in §4.3 and §5.4). Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest` runs both suites green.
 
