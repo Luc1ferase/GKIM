@@ -2422,7 +2422,7 @@ Upload
 
 ## companion-settings-and-safety-reframe delivery evidence
 
-### Task 1.1 (companion-settings-and-safety-reframe): Add `BlockReason.kt` closed enum with wire keys + `fromWireKey` unknown fallback. (commit `<pending>`)
+### Task 1.1 (companion-settings-and-safety-reframe): Add `BlockReason.kt` closed enum with wire keys + `fromWireKey` unknown fallback. (commit `55bb1e9`)
 
 - Verification:
   - `JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.core.model.BlockReasonTest` → `BUILD SUCCESSFUL in 27s`; XML at `TEST-com.gkim.im.android.core.model.BlockReasonTest.xml` carries `tests="5" skipped="0" failures="0" errors="0" time="0.019"`. 5 cases: `enum values enumerate the closed set in design-doc order` (SelfHarm, Illegal, NsfwDenied, MinorSafety, ProviderRefusal, Other — the exact order listed in design.md Decision #2); `each enum value exposes the lowercase snake_case wire key` (asserts all 6 wireKeys: `self_harm`, `illegal`, `nsfw_denied`, `minor_safety`, `provider_refusal`, `other`); `fromWireKey round trips every known wire key back to its enum` (iterates BlockReason.entries and asserts fromWireKey(wireKey) = enum for every variant); `fromWireKey falls back to Other on unknown wire key` (unknown string `"something_new_server_added"`, mixed-case `"SELF_HARM"`, and empty string all fall to Other — forward-compat for future backend additions); `fromWireKey falls back to Other on null` (null safety). Delivered: `BlockReason.kt` with `enum class BlockReason(val wireKey: String)` + 6 variants carrying the lowercase snake_case wire keys from design.md, plus `companion object { fun fromWireKey(key: String?): BlockReason }` that iterates `BlockReason.entries` and returns `Other` on any miss (including null, empty string, uppercased). The `entries.firstOrNull { it.wireKey == raw } ?: Other` expression uses Kotlin 1.9+'s `entries` property (preferred over deprecated `values()`).
@@ -2430,7 +2430,7 @@ Upload
   - Score: `96/100`
   - Findings: `Enum closed-set + Other escape hatch is the standard forward-compatible pattern called out in design.md Decision #2. Wire keys are lowercase snake_case matching the backend contract the spec delta fixes. The fromWireKey contract handles null, empty string, unknown key, and mixed case — all fallback to Other without throwing. Test covers order, all six wire keys, round-trip, and three distinct unknown scenarios (unknown key / mixed case / empty) + null — complete coverage of the documented contract with zero flaky-edge gaps.`
 - Upload:
-  - Commit: `<pending>`
+  - Commit: `55bb1e9`
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
