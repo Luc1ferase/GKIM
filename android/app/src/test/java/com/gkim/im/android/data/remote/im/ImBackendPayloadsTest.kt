@@ -2,16 +2,24 @@ package com.gkim.im.android.data.remote.im
 
 import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AttachmentType
+import com.gkim.im.android.core.model.CompanionMemory
+import com.gkim.im.android.core.model.CompanionMemoryPin
+import com.gkim.im.android.core.model.CompanionMemoryResetScope
 import com.gkim.im.android.core.model.LocalizedText
 import com.gkim.im.android.core.model.Lorebook
 import com.gkim.im.android.core.model.LorebookBinding
 import com.gkim.im.android.core.model.LorebookEntry
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
+import com.gkim.im.android.core.model.Preset
+import com.gkim.im.android.core.model.PresetParams
+import com.gkim.im.android.core.model.PresetTemplate
 import com.gkim.im.android.core.model.SecondaryGate
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -1157,5 +1165,347 @@ class ImBackendPayloadsTest {
         val encoded = json.encodeToString(UpdateLorebookBindingRequestDto.serializer(), update)
         val decoded = json.decodeFromString<UpdateLorebookBindingRequestDto>(encoded)
         assertEquals(update, decoded)
+    }
+
+    @Test
+    fun `companion memory dto round trip preserves every field`() {
+        val dto = CompanionMemoryDto(
+            userId = "user-nox",
+            companionCardId = "card-aria",
+            summary = LocalizedTextDto("She remembers the lighthouse.", "她记得那座灯塔。"),
+            summaryUpdatedAt = 1_710_000_000_000L,
+            summaryTurnCursor = 42,
+            tokenBudgetHint = 1024,
+        )
+        val encoded = json.encodeToString(CompanionMemoryDto.serializer(), dto)
+        val decoded = json.decodeFromString<CompanionMemoryDto>(encoded)
+        assertEquals(dto, decoded)
+
+        val domain = decoded.toCompanionMemory()
+        assertEquals("user-nox", domain.userId)
+        assertEquals("card-aria", domain.companionCardId)
+        assertEquals(LocalizedText("She remembers the lighthouse.", "她记得那座灯塔。"), domain.summary)
+        assertEquals(1_710_000_000_000L, domain.summaryUpdatedAt)
+        assertEquals(42, domain.summaryTurnCursor)
+        assertEquals(1024, domain.tokenBudgetHint)
+    }
+
+    @Test
+    fun `companion memory dto applies defaults when optional fields omitted`() {
+        val dto = json.decodeFromString<CompanionMemoryDto>(
+            """{ "userId": "user-nox", "companionCardId": "card-aria" }""",
+        )
+        assertEquals(LocalizedTextDto("", ""), dto.summary)
+        assertEquals(0L, dto.summaryUpdatedAt)
+        assertEquals(0, dto.summaryTurnCursor)
+        assertNull(dto.tokenBudgetHint)
+    }
+
+    @Test
+    fun `companion memory dto fromCompanionMemory round trips domain`() {
+        val domain = CompanionMemory(
+            userId = "user-nox",
+            companionCardId = "card-aria",
+            summary = LocalizedText("Kept confidences.", "保留的倾诉。"),
+            summaryUpdatedAt = 1_711_000_000_000L,
+            summaryTurnCursor = 7,
+            tokenBudgetHint = 512,
+        )
+        val dto = CompanionMemoryDto.fromCompanionMemory(domain)
+        assertEquals(domain, dto.toCompanionMemory())
+    }
+
+    @Test
+    fun `companion memory pin dto round trip preserves every field`() {
+        val dto = CompanionMemoryPinDto(
+            id = "pin-1",
+            sourceMessageId = "message-42",
+            text = LocalizedTextDto("Her favorite color is dusk.", "她最爱的颜色是暮色。"),
+            createdAt = 1_712_000_000_000L,
+            pinnedByUser = true,
+        )
+        val encoded = json.encodeToString(CompanionMemoryPinDto.serializer(), dto)
+        val decoded = json.decodeFromString<CompanionMemoryPinDto>(encoded)
+        assertEquals(dto, decoded)
+
+        val domain = decoded.toCompanionMemoryPin()
+        assertEquals("pin-1", domain.id)
+        assertEquals("message-42", domain.sourceMessageId)
+        assertEquals(LocalizedText("Her favorite color is dusk.", "她最爱的颜色是暮色。"), domain.text)
+        assertEquals(1_712_000_000_000L, domain.createdAt)
+        assertTrue(domain.pinnedByUser)
+    }
+
+    @Test
+    fun `companion memory pin dto tolerates null sourceMessageId`() {
+        val dto = json.decodeFromString<CompanionMemoryPinDto>(
+            """{ "id": "pin-9", "text": { "english": "hi", "chinese": "你好" } }""",
+        )
+        assertNull(dto.sourceMessageId)
+        assertEquals(0L, dto.createdAt)
+        assertTrue("pinnedByUser defaults true when omitted", dto.pinnedByUser)
+    }
+
+    @Test
+    fun `companion memory pin dto fromCompanionMemoryPin round trips domain`() {
+        val domain = CompanionMemoryPin(
+            id = "pin-2",
+            sourceMessageId = null,
+            text = LocalizedText("Auto-pinned by summarizer.", "摘要自动置顶。"),
+            createdAt = 1_713_000_000_000L,
+            pinnedByUser = false,
+        )
+        val dto = CompanionMemoryPinDto.fromCompanionMemoryPin(domain)
+        assertEquals(domain, dto.toCompanionMemoryPin())
+    }
+
+    @Test
+    fun `companion memory pin list dto wraps collection`() {
+        val listDto = CompanionMemoryPinListDto(
+            pins = listOf(
+                CompanionMemoryPinDto(
+                    id = "pin-1",
+                    sourceMessageId = "message-1",
+                    text = LocalizedTextDto("one", "一"),
+                    createdAt = 1L,
+                    pinnedByUser = true,
+                ),
+                CompanionMemoryPinDto(
+                    id = "pin-2",
+                    sourceMessageId = null,
+                    text = LocalizedTextDto("two", "二"),
+                    createdAt = 2L,
+                    pinnedByUser = false,
+                ),
+            ),
+        )
+        val encoded = json.encodeToString(CompanionMemoryPinListDto.serializer(), listDto)
+        val decoded = json.decodeFromString<CompanionMemoryPinListDto>(encoded)
+        assertEquals(listDto, decoded)
+    }
+
+    @Test
+    fun `companion memory pin list dto defaults to empty list`() {
+        val decoded = json.decodeFromString<CompanionMemoryPinListDto>("""{}""")
+        assertTrue(decoded.pins.isEmpty())
+    }
+
+    @Test
+    fun `companion memory reset request dto encodes all three wire keys`() {
+        listOf(
+            CompanionMemoryResetScope.Pins to "pins",
+            CompanionMemoryResetScope.Summary to "summary",
+            CompanionMemoryResetScope.All to "all",
+        ).forEach { (scope, wireKey) ->
+            val dto = CompanionMemoryResetRequestDto.fromCompanionMemoryResetScope(scope)
+            assertEquals(wireKey, dto.scope)
+
+            val encoded = json.encodeToString(CompanionMemoryResetRequestDto.serializer(), dto)
+            val decoded = json.decodeFromString<CompanionMemoryResetRequestDto>(encoded)
+            assertEquals(dto, decoded)
+            assertEquals(scope, decoded.toCompanionMemoryResetScope())
+        }
+    }
+
+    @Test
+    fun `companion memory reset request dto decode is case insensitive`() {
+        val decoded = json.decodeFromString<CompanionMemoryResetRequestDto>(
+            """{ "scope": "SUMMARY" }""",
+        )
+        assertEquals(CompanionMemoryResetScope.Summary, decoded.toCompanionMemoryResetScope())
+    }
+
+    @Test
+    fun `companion memory reset request dto falls back to pins on unknown scope`() {
+        val decoded = json.decodeFromString<CompanionMemoryResetRequestDto>(
+            """{ "scope": "nonsense" }""",
+        )
+        assertEquals(CompanionMemoryResetScope.Pins, decoded.toCompanionMemoryResetScope())
+    }
+
+    @Test
+    fun `preset params dto defaults all to null`() {
+        val decoded = json.decodeFromString<PresetParamsDto>("""{}""")
+        assertNull(decoded.temperature)
+        assertNull(decoded.topP)
+        assertNull(decoded.maxReplyTokens)
+        assertEquals(PresetParams(), decoded.toPresetParams())
+    }
+
+    @Test
+    fun `preset params dto round trips explicit values`() {
+        val dto = PresetParamsDto(temperature = 0.9, topP = 0.95, maxReplyTokens = 1024)
+        val encoded = json.encodeToString(PresetParamsDto.serializer(), dto)
+        val decoded = json.decodeFromString<PresetParamsDto>(encoded)
+        assertEquals(dto, decoded)
+        assertEquals(
+            PresetParams(temperature = 0.9, topP = 0.95, maxReplyTokens = 1024),
+            decoded.toPresetParams(),
+        )
+    }
+
+    @Test
+    fun `preset template dto round trip preserves every slot`() {
+        val dto = PresetTemplateDto(
+            systemPrefix = LocalizedTextDto("Stay in character.", "保持角色。"),
+            systemSuffix = LocalizedTextDto("Never break the fourth wall.", "不要跳戏。"),
+            formatInstructions = LocalizedTextDto("Prefer prose.", "少用旁白。"),
+            postHistoryInstructions = LocalizedTextDto("Continue the scene.", "延续场景。"),
+        )
+        val encoded = json.encodeToString(PresetTemplateDto.serializer(), dto)
+        val decoded = json.decodeFromString<PresetTemplateDto>(encoded)
+        assertEquals(dto, decoded)
+
+        val domain = decoded.toPresetTemplate()
+        assertEquals(LocalizedText("Stay in character.", "保持角色。"), domain.systemPrefix)
+        assertEquals(LocalizedText("Never break the fourth wall.", "不要跳戏。"), domain.systemSuffix)
+        assertEquals(LocalizedText("Prefer prose.", "少用旁白。"), domain.formatInstructions)
+        assertEquals(LocalizedText("Continue the scene.", "延续场景。"), domain.postHistoryInstructions)
+    }
+
+    @Test
+    fun `preset template dto defaults all slots to empty localized text`() {
+        val decoded = json.decodeFromString<PresetTemplateDto>("""{}""")
+        val domain = decoded.toPresetTemplate()
+        assertEquals(PresetTemplate(), domain)
+    }
+
+    @Test
+    fun `preset dto full round trip preserves every field including extensions bag`() {
+        val dto = PresetDto(
+            id = "preset-roleplay",
+            displayName = LocalizedTextDto("Roleplay Immersive", "沉浸角色扮演"),
+            description = LocalizedTextDto("Deep roleplay.", "沉浸角色扮演预设。"),
+            template = PresetTemplateDto(
+                systemPrefix = LocalizedTextDto("Stay in character.", "保持角色。"),
+                systemSuffix = LocalizedTextDto("Never break.", "不要跳戏。"),
+                formatInstructions = LocalizedTextDto("Prose only.", "少用旁白。"),
+                postHistoryInstructions = LocalizedTextDto("Continue.", "延续。"),
+            ),
+            params = PresetParamsDto(temperature = 0.9, topP = 0.95, maxReplyTokens = 1024),
+            isBuiltIn = true,
+            isActive = true,
+            createdAt = 1_700_000_000L,
+            updatedAt = 1_700_000_500L,
+            extensions = buildJsonObject {
+                put("st", buildJsonObject { put("legacy", "passthrough") })
+                put("impersonation", "off")
+            },
+        )
+        val encoded = json.encodeToString(PresetDto.serializer(), dto)
+        val decoded = json.decodeFromString<PresetDto>(encoded)
+        assertEquals(dto, decoded)
+
+        val domain = decoded.toPreset()
+        assertEquals("preset-roleplay", domain.id)
+        assertEquals(LocalizedText("Roleplay Immersive", "沉浸角色扮演"), domain.displayName)
+        assertEquals(0.9, domain.params.temperature!!, 1e-9)
+        assertTrue(domain.isBuiltIn)
+        assertTrue(domain.isActive)
+        assertEquals(1_700_000_500L, domain.updatedAt)
+        assertEquals(JsonPrimitive("off"), domain.extensions["impersonation"])
+        assertTrue(
+            "nested ST payload survives round trip",
+            domain.extensions["st"] is JsonObject,
+        )
+    }
+
+    @Test
+    fun `preset dto preserves unknown extensions keys across serialization`() {
+        val rawJson = """
+            {
+              "id": "preset-forward",
+              "displayName": { "english": "Forward", "chinese": "向前" },
+              "extensions": {
+                "st": { "legacy": "passthrough" },
+                "future_feature": { "enabled": true, "weight": 0.42 },
+                "scalar": 7
+              }
+            }
+        """.trimIndent()
+        val decoded = json.decodeFromString<PresetDto>(rawJson)
+        val reEncoded = json.encodeToString(PresetDto.serializer(), decoded)
+        val roundTripped = json.decodeFromString<PresetDto>(reEncoded)
+        assertEquals(decoded.extensions, roundTripped.extensions)
+        assertTrue(
+            "unknown nested object survives round trip",
+            roundTripped.extensions["future_feature"] is JsonObject,
+        )
+        assertEquals(JsonPrimitive(7), roundTripped.extensions["scalar"])
+    }
+
+    @Test
+    fun `preset dto fromPreset round trips domain including extensions`() {
+        val domain = Preset(
+            id = "preset-concise",
+            displayName = LocalizedText("Concise", "简洁"),
+            description = LocalizedText("Short replies.", "简短回复。"),
+            template = PresetTemplate(
+                systemPrefix = LocalizedText.of("Be concise."),
+                systemSuffix = LocalizedText.Empty,
+                formatInstructions = LocalizedText.of("No filler."),
+                postHistoryInstructions = LocalizedText.Empty,
+            ),
+            params = PresetParams(temperature = 0.5, topP = null, maxReplyTokens = 256),
+            isBuiltIn = false,
+            isActive = false,
+            createdAt = 1_700_000_000L,
+            updatedAt = 1_700_000_100L,
+            extensions = buildJsonObject { put("tag", "shortform") },
+        )
+        val dto = PresetDto.fromPreset(domain)
+        assertEquals(domain, dto.toPreset())
+    }
+
+    @Test
+    fun `preset dto defaults non required fields when decoded from minimal json`() {
+        val decoded = json.decodeFromString<PresetDto>(
+            """{ "id": "preset-min", "displayName": { "english": "Min", "chinese": "最小" } }""",
+        )
+        assertEquals(LocalizedTextDto("", ""), decoded.description)
+        assertEquals(PresetTemplateDto(), decoded.template)
+        assertEquals(PresetParamsDto(), decoded.params)
+        assertFalse(decoded.isBuiltIn)
+        assertFalse(decoded.isActive)
+        assertEquals(0L, decoded.createdAt)
+        assertEquals(0L, decoded.updatedAt)
+        assertEquals(JsonObject(emptyMap()), decoded.extensions)
+    }
+
+    @Test
+    fun `preset list dto wraps presets with optional active id`() {
+        val listDto = PresetListDto(
+            presets = listOf(
+                PresetDto(
+                    id = "preset-default",
+                    displayName = LocalizedTextDto("Default", "默认"),
+                ),
+                PresetDto(
+                    id = "preset-concise",
+                    displayName = LocalizedTextDto("Concise", "简洁"),
+                    isActive = true,
+                ),
+            ),
+            activePresetId = "preset-concise",
+        )
+        val encoded = json.encodeToString(PresetListDto.serializer(), listDto)
+        val decoded = json.decodeFromString<PresetListDto>(encoded)
+        assertEquals(listDto, decoded)
+    }
+
+    @Test
+    fun `preset list dto defaults to empty list and null active id`() {
+        val decoded = json.decodeFromString<PresetListDto>("""{}""")
+        assertTrue(decoded.presets.isEmpty())
+        assertNull(decoded.activePresetId)
+    }
+
+    @Test
+    fun `preset activate request dto round trips`() {
+        val dto = PresetActivateRequestDto(presetId = "preset-roleplay")
+        val encoded = json.encodeToString(PresetActivateRequestDto.serializer(), dto)
+        val decoded = json.decodeFromString<PresetActivateRequestDto>(encoded)
+        assertEquals(dto, decoded)
+        assertEquals("preset-roleplay", decoded.presetId)
     }
 }

@@ -7,6 +7,9 @@ import com.gkim.im.android.core.model.Conversation
 import com.gkim.im.android.core.model.CompanionCharacterCard
 import com.gkim.im.android.core.model.CompanionCharacterSource
 import com.gkim.im.android.core.model.CompanionDrawResult
+import com.gkim.im.android.core.model.CompanionMemory
+import com.gkim.im.android.core.model.CompanionMemoryPin
+import com.gkim.im.android.core.model.CompanionMemoryResetScope
 import com.gkim.im.android.core.model.AttachmentType
 import com.gkim.im.android.core.model.AccentTone
 import com.gkim.im.android.core.model.LocalizedText
@@ -16,6 +19,9 @@ import com.gkim.im.android.core.model.LorebookEntry
 import com.gkim.im.android.core.model.MessageAttachment
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
+import com.gkim.im.android.core.model.Preset
+import com.gkim.im.android.core.model.PresetParams
+import com.gkim.im.android.core.model.PresetTemplate
 import com.gkim.im.android.core.model.SecondaryGate
 import com.gkim.im.android.core.model.UserPersona
 import kotlinx.serialization.Serializable
@@ -808,6 +814,209 @@ data class WorldInfoDebugMatchDto(
 data class WorldInfoDebugScanResponseDto(
     val matches: List<WorldInfoDebugMatchDto> = emptyList(),
 )
+
+@Serializable
+data class CompanionMemoryDto(
+    val userId: String,
+    val companionCardId: String,
+    val summary: LocalizedTextDto = LocalizedTextDto("", ""),
+    val summaryUpdatedAt: Long = 0L,
+    val summaryTurnCursor: Int = 0,
+    val tokenBudgetHint: Int? = null,
+) {
+    fun toCompanionMemory(): CompanionMemory = CompanionMemory(
+        userId = userId,
+        companionCardId = companionCardId,
+        summary = summary.toLocalizedText(),
+        summaryUpdatedAt = summaryUpdatedAt,
+        summaryTurnCursor = summaryTurnCursor,
+        tokenBudgetHint = tokenBudgetHint,
+    )
+
+    companion object {
+        fun fromCompanionMemory(memory: CompanionMemory): CompanionMemoryDto = CompanionMemoryDto(
+            userId = memory.userId,
+            companionCardId = memory.companionCardId,
+            summary = LocalizedTextDto(memory.summary.english, memory.summary.chinese),
+            summaryUpdatedAt = memory.summaryUpdatedAt,
+            summaryTurnCursor = memory.summaryTurnCursor,
+            tokenBudgetHint = memory.tokenBudgetHint,
+        )
+    }
+}
+
+@Serializable
+data class CompanionMemoryPinDto(
+    val id: String,
+    val sourceMessageId: String? = null,
+    val text: LocalizedTextDto = LocalizedTextDto("", ""),
+    val createdAt: Long = 0L,
+    val pinnedByUser: Boolean = true,
+) {
+    fun toCompanionMemoryPin(): CompanionMemoryPin = CompanionMemoryPin(
+        id = id,
+        sourceMessageId = sourceMessageId,
+        text = text.toLocalizedText(),
+        createdAt = createdAt,
+        pinnedByUser = pinnedByUser,
+    )
+
+    companion object {
+        fun fromCompanionMemoryPin(pin: CompanionMemoryPin): CompanionMemoryPinDto = CompanionMemoryPinDto(
+            id = pin.id,
+            sourceMessageId = pin.sourceMessageId,
+            text = LocalizedTextDto(pin.text.english, pin.text.chinese),
+            createdAt = pin.createdAt,
+            pinnedByUser = pin.pinnedByUser,
+        )
+    }
+}
+
+@Serializable
+data class CompanionMemoryPinListDto(
+    val pins: List<CompanionMemoryPinDto> = emptyList(),
+)
+
+@Serializable
+data class CompanionMemoryResetRequestDto(
+    val scope: String,
+) {
+    fun toCompanionMemoryResetScope(): CompanionMemoryResetScope = when (scope.lowercase()) {
+        "summary" -> CompanionMemoryResetScope.Summary
+        "all" -> CompanionMemoryResetScope.All
+        else -> CompanionMemoryResetScope.Pins
+    }
+
+    companion object {
+        fun fromCompanionMemoryResetScope(
+            scope: CompanionMemoryResetScope,
+        ): CompanionMemoryResetRequestDto = CompanionMemoryResetRequestDto(
+            scope = scope.toWireKey(),
+        )
+    }
+}
+
+@Serializable
+data class PresetParamsDto(
+    val temperature: Double? = null,
+    val topP: Double? = null,
+    val maxReplyTokens: Int? = null,
+) {
+    fun toPresetParams(): PresetParams = PresetParams(
+        temperature = temperature,
+        topP = topP,
+        maxReplyTokens = maxReplyTokens,
+    )
+
+    companion object {
+        fun fromPresetParams(params: PresetParams): PresetParamsDto = PresetParamsDto(
+            temperature = params.temperature,
+            topP = params.topP,
+            maxReplyTokens = params.maxReplyTokens,
+        )
+    }
+}
+
+@Serializable
+data class PresetTemplateDto(
+    val systemPrefix: LocalizedTextDto = LocalizedTextDto("", ""),
+    val systemSuffix: LocalizedTextDto = LocalizedTextDto("", ""),
+    val formatInstructions: LocalizedTextDto = LocalizedTextDto("", ""),
+    val postHistoryInstructions: LocalizedTextDto = LocalizedTextDto("", ""),
+) {
+    fun toPresetTemplate(): PresetTemplate = PresetTemplate(
+        systemPrefix = systemPrefix.toLocalizedText(),
+        systemSuffix = systemSuffix.toLocalizedText(),
+        formatInstructions = formatInstructions.toLocalizedText(),
+        postHistoryInstructions = postHistoryInstructions.toLocalizedText(),
+    )
+
+    companion object {
+        fun fromPresetTemplate(template: PresetTemplate): PresetTemplateDto = PresetTemplateDto(
+            systemPrefix = LocalizedTextDto(
+                template.systemPrefix.english,
+                template.systemPrefix.chinese,
+            ),
+            systemSuffix = LocalizedTextDto(
+                template.systemSuffix.english,
+                template.systemSuffix.chinese,
+            ),
+            formatInstructions = LocalizedTextDto(
+                template.formatInstructions.english,
+                template.formatInstructions.chinese,
+            ),
+            postHistoryInstructions = LocalizedTextDto(
+                template.postHistoryInstructions.english,
+                template.postHistoryInstructions.chinese,
+            ),
+        )
+    }
+}
+
+@Serializable
+data class PresetDto(
+    val id: String,
+    val displayName: LocalizedTextDto,
+    val description: LocalizedTextDto = LocalizedTextDto("", ""),
+    val template: PresetTemplateDto = PresetTemplateDto(),
+    val params: PresetParamsDto = PresetParamsDto(),
+    val isBuiltIn: Boolean = false,
+    val isActive: Boolean = false,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
+    val extensions: JsonObject = JsonObject(emptyMap()),
+) {
+    fun toPreset(): Preset = Preset(
+        id = id,
+        displayName = displayName.toLocalizedText(),
+        description = description.toLocalizedText(),
+        template = template.toPresetTemplate(),
+        params = params.toPresetParams(),
+        isBuiltIn = isBuiltIn,
+        isActive = isActive,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        extensions = extensions,
+    )
+
+    companion object {
+        fun fromPreset(preset: Preset): PresetDto = PresetDto(
+            id = preset.id,
+            displayName = LocalizedTextDto(
+                preset.displayName.english,
+                preset.displayName.chinese,
+            ),
+            description = LocalizedTextDto(
+                preset.description.english,
+                preset.description.chinese,
+            ),
+            template = PresetTemplateDto.fromPresetTemplate(preset.template),
+            params = PresetParamsDto.fromPresetParams(preset.params),
+            isBuiltIn = preset.isBuiltIn,
+            isActive = preset.isActive,
+            createdAt = preset.createdAt,
+            updatedAt = preset.updatedAt,
+            extensions = preset.extensions,
+        )
+    }
+}
+
+@Serializable
+data class PresetListDto(
+    val presets: List<PresetDto> = emptyList(),
+    val activePresetId: String? = null,
+)
+
+@Serializable
+data class PresetActivateRequestDto(
+    val presetId: String,
+)
+
+private fun CompanionMemoryResetScope.toWireKey(): String = when (this) {
+    CompanionMemoryResetScope.Pins -> "pins"
+    CompanionMemoryResetScope.Summary -> "summary"
+    CompanionMemoryResetScope.All -> "all"
+}
 
 private fun String.toSecondaryGate(): SecondaryGate = when (uppercase()) {
     "AND" -> SecondaryGate.And
