@@ -2167,7 +2167,7 @@ Upload
   - Score: `95/100`
   - Findings: `No findings — DTOs mirror domain shape, every optional field carries a default so the wire contract is backwards-compatible, the extensions bag passthrough is covered by a dedicated forward-compat test, and CompanionMemoryResetScope wire keys are lowercase per design.md § 7 "pins / summary / all" reset granularity enumeration.`
 - Upload:
-  - Commit: `<pending>`
+  - Commit: `a6d9a82`
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
