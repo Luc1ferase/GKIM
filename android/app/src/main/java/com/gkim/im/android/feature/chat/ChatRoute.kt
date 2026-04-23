@@ -43,6 +43,7 @@ import coil.request.ImageRequest
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.BlockReasonCopy
 import com.gkim.im.android.core.designsystem.GlassCard
+import com.gkim.im.android.core.designsystem.SafetyCopy
 import com.gkim.im.android.core.media.GeneratedImageSaveResult
 import com.gkim.im.android.core.media.GeneratedImageSaver
 import com.gkim.im.android.core.designsystem.PillAction
@@ -55,6 +56,7 @@ import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AttachmentType
 import com.gkim.im.android.core.model.BlockReason
 import com.gkim.im.android.core.model.ChatMessage
+import com.gkim.im.android.core.model.FailedSubtype
 import com.gkim.im.android.core.model.Conversation
 import com.gkim.im.android.core.model.DraftAigcRequest
 import com.gkim.im.android.core.model.MediaInput
@@ -647,6 +649,8 @@ private fun ChatMessageRow(
     onRetrySubmission: () -> Unit = {},
     onComposeNewMessage: () -> Unit = {},
     onLearnMorePolicy: () -> Unit = {},
+    onRetryCompanionTurn: () -> Unit = {},
+    onEditUserTurn: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val language = LocalAppLanguage.current
@@ -753,6 +757,22 @@ private fun ChatMessageRow(
                             modifier = Modifier.testTag("chat-companion-block-copy-${message.id}"),
                         )
                     }
+                    companionPresentation.failedSubtype?.let { subtype ->
+                        Text(
+                            text = SafetyCopy.localizedFailedCopy(subtype, language),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AetherColors.OnSurface,
+                            modifier = Modifier.testTag("chat-companion-failed-copy-${message.id}"),
+                        )
+                    }
+                    if (companionPresentation.showCheckConnectionHint) {
+                        Text(
+                            text = if (language == AppLanguage.English) "Check your connection, then retry." else "请检查网络连接后重试。",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = AetherColors.OnSurfaceVariant,
+                            modifier = Modifier.testTag("chat-companion-connection-hint-${message.id}"),
+                        )
+                    }
                     if (variantNavigation != null) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -795,10 +815,22 @@ private fun ChatMessageRow(
                     }
                     if (companionPresentation.showRetry) {
                         Text(
-                            text = "Retry",
+                            text = if (language == AppLanguage.English) "Retry" else "重试",
                             style = MaterialTheme.typography.labelLarge,
                             color = AetherColors.Primary,
-                            modifier = Modifier.testTag("chat-companion-retry-${message.id}"),
+                            modifier = Modifier
+                                .clickable(onClick = onRetryCompanionTurn)
+                                .testTag("chat-companion-retry-${message.id}"),
+                        )
+                    }
+                    if (companionPresentation.showEditUserTurn) {
+                        Text(
+                            text = if (language == AppLanguage.English) "Edit message" else "编辑消息",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.Primary,
+                            modifier = Modifier
+                                .clickable(onClick = onEditUserTurn)
+                                .testTag("chat-companion-edit-user-turn-${message.id}"),
                         )
                     }
                     if (companionPresentation.showComposeNew) {
@@ -999,6 +1031,9 @@ internal data class CompanionLifecyclePresentation(
     val blockReason: BlockReason? = null,
     val showComposeNew: Boolean = false,
     val showLearnMorePolicy: Boolean = false,
+    val failedSubtype: FailedSubtype? = null,
+    val showEditUserTurn: Boolean = false,
+    val showCheckConnectionHint: Boolean = false,
 )
 
 internal enum class CompanionLifecycleTone {
@@ -1039,15 +1074,33 @@ internal fun companionLifecyclePresentation(
             modelBadge = modelBadge,
             tone = CompanionLifecycleTone.Completed,
         )
-        MessageStatus.Failed -> CompanionLifecyclePresentation(
-            statusLine = message.body.takeIf { it.isNotBlank() }?.let { "Failed · $it" } ?: "Failed",
-            body = "",
-            showBody = false,
-            showRegenerate = false,
-            showRetry = true,
-            modelBadge = modelBadge,
-            tone = CompanionLifecycleTone.Failed,
-        )
+        MessageStatus.Failed -> {
+            val subtype = meta.failedSubtypeKey?.let(FailedSubtype::fromWireKey)
+            val canRetry = when (subtype) {
+                FailedSubtype.PromptBudgetExceeded, FailedSubtype.AuthenticationFailed -> false
+                else -> true
+            }
+            val needsEdit = when (subtype) {
+                FailedSubtype.PromptBudgetExceeded, FailedSubtype.AuthenticationFailed -> true
+                else -> false
+            }
+            val needsConnectionHint = when (subtype) {
+                FailedSubtype.ProviderUnavailable, FailedSubtype.NetworkError -> true
+                else -> false
+            }
+            CompanionLifecyclePresentation(
+                statusLine = message.body.takeIf { it.isNotBlank() }?.let { "Failed · $it" } ?: "Failed",
+                body = "",
+                showBody = false,
+                showRegenerate = false,
+                showRetry = canRetry,
+                modelBadge = modelBadge,
+                tone = CompanionLifecycleTone.Failed,
+                failedSubtype = subtype,
+                showEditUserTurn = needsEdit,
+                showCheckConnectionHint = needsConnectionHint,
+            )
+        }
         MessageStatus.Timeout -> CompanionLifecyclePresentation(
             statusLine = message.body.takeIf { it.isNotBlank() }?.let { "Timed out · $it" } ?: "Timed out",
             body = "",

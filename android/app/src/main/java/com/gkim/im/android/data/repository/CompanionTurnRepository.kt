@@ -181,6 +181,7 @@ class DefaultCompanionTurnRepository : CompanionTurnRepository {
             val updatedMeta = existing.companionTurnMeta?.copy(
                 isEditable = false,
                 canRegenerate = true,
+                failedSubtypeKey = event.subtype,
             )
             val failed = existing.copy(
                 status = status,
@@ -252,6 +253,7 @@ class DefaultCompanionTurnRepository : CompanionTurnRepository {
                     status == MessageStatus.Failed ||
                     status == MessageStatus.Timeout,
                 blockReasonKey = record.blockReason,
+                failedSubtypeKey = record.failureSubtype,
             )
             val renderedBody = when (status) {
                 MessageStatus.Blocked -> record.blockReason ?: record.accumulatedBody
