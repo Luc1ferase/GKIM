@@ -1,6 +1,6 @@
 ## 1. Contract foundations
 
-- [ ] 1.1 Add `android/app/src/main/java/com/gkim/im/android/core/model/BlockReason.kt` with the enum (`SelfHarm`, `Illegal`, `NsfwDenied`, `MinorSafety`, `ProviderRefusal`, `Other`) and a `wireKey: String` property, plus `BlockReason.fromWireKey(key)` that falls back to `Other` on unknown. Verification: `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest` stays green; `BlockReasonTest` covers wire-key round-trip and unknown fallback.
+- [x] 1.1 Add `android/app/src/main/java/com/gkim/im/android/core/model/BlockReason.kt` with the enum (`SelfHarm`, `Illegal`, `NsfwDenied`, `MinorSafety`, `ProviderRefusal`, `Other`) and a `wireKey: String` property, plus `BlockReason.fromWireKey(key)` that falls back to `Other` on unknown. Verification: `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest` stays green; `BlockReasonTest` covers wire-key round-trip and unknown fallback.
 
 - [ ] 1.2 Add `android/app/src/main/java/com/gkim/im/android/core/designsystem/BlockReasonCopy.kt` exposing `localizedCopy(reason: BlockReason, language: AppLanguage): LocalizedText` (or direct `String` resolution given an `AppLanguage`) backed by a bilingual table. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.core.designsystem.BlockReasonCopyTest` covers every enum value + both languages and rejects blank copy.
 
