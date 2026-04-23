@@ -242,5 +242,20 @@ interface ImBackendClient {
     suspend fun getActivePreset(baseUrl: String, token: String): PresetDto {
         error("getActivePreset is not implemented for this backend client")
     }
+
+    suspend fun getContentPolicyAcknowledgment(
+        baseUrl: String,
+        token: String,
+    ): ContentPolicyAcknowledgmentDto {
+        error("getContentPolicyAcknowledgment is not implemented for this backend client")
+    }
+
+    suspend fun postContentPolicyAcknowledgment(
+        baseUrl: String,
+        token: String,
+        version: String,
+    ): ContentPolicyAcknowledgmentDto {
+        error("postContentPolicyAcknowledgment is not implemented for this backend client")
+    }
 }
 

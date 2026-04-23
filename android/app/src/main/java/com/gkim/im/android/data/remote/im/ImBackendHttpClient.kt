@@ -231,6 +231,17 @@ private interface ImBackendService {
 
     @GET("api/presets/active")
     suspend fun getActivePreset(@Header("Authorization") authorization: String): PresetDto
+
+    @GET("api/account/content-policy-acknowledgment")
+    suspend fun getContentPolicyAcknowledgment(
+        @Header("Authorization") authorization: String,
+    ): ContentPolicyAcknowledgmentDto
+
+    @POST("api/account/content-policy-acknowledgment")
+    suspend fun postContentPolicyAcknowledgment(
+        @Header("Authorization") authorization: String,
+        @Body request: ContentPolicyAcknowledgmentRequestDto,
+    ): ContentPolicyAcknowledgmentDto
 }
 
 class ImBackendHttpClient(
@@ -555,6 +566,20 @@ class ImBackendHttpClient(
 
     override suspend fun getActivePreset(baseUrl: String, token: String): PresetDto =
         serviceFor(baseUrl).getActivePreset(bearerToken(token))
+
+    override suspend fun getContentPolicyAcknowledgment(
+        baseUrl: String,
+        token: String,
+    ): ContentPolicyAcknowledgmentDto = serviceFor(baseUrl).getContentPolicyAcknowledgment(bearerToken(token))
+
+    override suspend fun postContentPolicyAcknowledgment(
+        baseUrl: String,
+        token: String,
+        version: String,
+    ): ContentPolicyAcknowledgmentDto = serviceFor(baseUrl).postContentPolicyAcknowledgment(
+        authorization = bearerToken(token),
+        request = ContentPolicyAcknowledgmentRequestDto(version = version),
+    )
 
     private fun serviceFor(baseUrl: String): ImBackendService =
         ServiceFactory.retrofit(normalizeBaseUrl(baseUrl), okHttpClient).create(ImBackendService::class.java)

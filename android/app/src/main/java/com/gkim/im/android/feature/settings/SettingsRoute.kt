@@ -843,7 +843,9 @@ private fun SettingsScreen(
                 onBack = { onNavigateToDestination(SettingsDestination.Menu) },
             )
 
-            SettingsDestination.ContentPolicy -> SettingsContentPolicyScreen(
+            SettingsDestination.ContentPolicy -> ContentPolicyAcknowledgmentRoute(
+                container = container,
+                onAccepted = { onNavigateToDestination(SettingsDestination.Menu) },
                 onBack = { onNavigateToDestination(SettingsDestination.Menu) },
             )
 
@@ -1596,39 +1598,6 @@ private fun SettingsContentSafetyScreen(
                     modifier = Modifier.testTag("settings-content-safety-verbosity-switch"),
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun SettingsContentPolicyScreen(
-    onBack: () -> Unit,
-) {
-    val appLanguage = LocalAppLanguage.current
-    PageHeader(
-        eyebrow = appLanguage.pick("Settings", "设置"),
-        title = appLanguage.pick("Content policy", "内容政策"),
-        description = appLanguage.pick(
-            "Review the content policy. The acceptance flow ships with the acknowledgment route.",
-            "阅读内容政策。完整的确认流程将随确认路由一同上线。",
-        ),
-        leadingLabel = appLanguage.pick("Back", "返回"),
-        onLeading = onBack,
-    )
-
-    Column(
-        modifier = Modifier.testTag("settings-detail-content-policy"),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
-    ) {
-        GlassCard(modifier = Modifier.testTag("settings-content-policy-placeholder")) {
-            Text(
-                text = appLanguage.pick(
-                    "Content policy details will be rendered by the acknowledgment route.",
-                    "内容政策详情将由确认路由渲染。",
-                ),
-                style = MaterialTheme.typography.bodyLarge,
-                color = AetherColors.OnSurface,
-            )
         }
     }
 }

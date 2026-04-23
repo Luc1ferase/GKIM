@@ -1203,3 +1203,15 @@ object ImGatewayEventParser {
         }
     }
 }
+
+@Serializable
+data class ContentPolicyAcknowledgmentDto(
+    val accepted: Boolean,
+    val version: String,
+    val acceptedAtMillis: Long?,
+)
+
+@Serializable
+data class ContentPolicyAcknowledgmentRequestDto(
+    val version: String,
+)
