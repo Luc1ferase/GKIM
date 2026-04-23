@@ -2141,7 +2141,7 @@ Upload
   - Score: `95/100`
   - Findings: `No findings — additive domain models, default values match spec invariants, equality covers every field, three reset scopes enumerated in declaration order.`
 - Upload:
-  - Commit: `<pending in this session>`
+  - Commit: `c930cbf`
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
