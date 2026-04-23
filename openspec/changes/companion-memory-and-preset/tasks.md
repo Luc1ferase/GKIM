@@ -30,7 +30,7 @@
 
 - [x] 4.2 Add `android/app/src/main/java/com/gkim/im/android/feature/settings/PresetEditorRoute.kt` backed by a `PresetEditorViewModel` that edits `displayName`, `description`, the four `PresetTemplate` sections, and the three `PresetParams` fields. Save posts through `CompanionPresetRepository.update`; cancel returns to the list; validation enforces non-blank display name. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.settings.PresetEditorPresentationTest` covers validation, save success, cancel-discards-changes.
 
-- [ ] 4.3 Add instrumentation `PresetLibraryInstrumentationTest` on `codex_api34` covering: open Settings → Presets, create a new preset (user-owned), edit it, duplicate a built-in, activate a different preset, observe active-badge moves, attempt to delete the active preset and see the delete action disabled, delete an inactive user preset. Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.settings.PresetLibraryInstrumentationTest` passes.
+- [x] 4.3 Add instrumentation `PresetLibraryInstrumentationTest` on `codex_api34` covering: open Settings → Presets, create a new preset (user-owned), edit it, duplicate a built-in, activate a different preset, observe active-badge moves, attempt to delete the active preset and see the delete action disabled, delete an inactive user preset. Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.settings.PresetLibraryInstrumentationTest` passes.
 
 ## 5. Android companion chat integration
 
