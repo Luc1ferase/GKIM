@@ -2206,7 +2206,7 @@ Upload
   - Score: `95/100`
   - Findings: `No findings — all 3 invariants called out in the task spec are asserted (pin updates preserve createdAt order; reset clears the right fields per scope; refresh is idempotent + observer-continuous). The "reset emits an empty state" invariant is observable via observePins returning an empty list immediately after reset(scope=Pins) without needing refresh to repopulate. The open class + protected hooks leave §2.2's live wrapper a clean seam to plug in HTTP calls and optimistic-rollback without duplicating state logic.`
 - Upload:
-  - Commit: `<pending>`
+  - Commit: `3013f9c`
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
