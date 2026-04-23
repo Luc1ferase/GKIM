@@ -39,6 +39,9 @@ internal class UiTestPreferencesStore(
     private val imDevUserExternalIdState = MutableStateFlow("nox-dev")
     private val appLanguageState = MutableStateFlow(AppLanguage.Chinese)
     private val appThemeModeState = MutableStateFlow(AppThemeMode.Light)
+    private val blockReasonVerbosityState = MutableStateFlow(true)
+    private val contentPolicyAcceptedAtState = MutableStateFlow<Long?>(null)
+    private val contentPolicyVersionState = MutableStateFlow("")
 
     override val contactSortMode: Flow<ContactSortMode> = contactSortModeState.asStateFlow()
     override val activeProviderId: Flow<String> = activeProviderIdState.asStateFlow()
@@ -51,6 +54,9 @@ internal class UiTestPreferencesStore(
     override val imDevUserExternalId: Flow<String> = imDevUserExternalIdState.asStateFlow()
     override val appLanguage: Flow<AppLanguage> = appLanguageState.asStateFlow()
     override val appThemeMode: Flow<AppThemeMode> = appThemeModeState.asStateFlow()
+    override val blockReasonVerbosity: Flow<Boolean> = blockReasonVerbosityState.asStateFlow()
+    override val contentPolicyAcknowledgedAtMillis: Flow<Long?> = contentPolicyAcceptedAtState.asStateFlow()
+    override val contentPolicyAcknowledgedVersion: Flow<String> = contentPolicyVersionState.asStateFlow()
 
     val currentLanguage: AppLanguage
         get() = appLanguageState.value
@@ -98,6 +104,20 @@ internal class UiTestPreferencesStore(
 
     override suspend fun setAppThemeMode(value: AppThemeMode) {
         appThemeModeState.value = value
+    }
+
+    override suspend fun setBlockReasonVerbosity(value: Boolean) {
+        blockReasonVerbosityState.value = value
+    }
+
+    override suspend fun setContentPolicyAcknowledgment(acceptedAtMillis: Long, version: String) {
+        contentPolicyAcceptedAtState.value = acceptedAtMillis
+        contentPolicyVersionState.value = version
+    }
+
+    override suspend fun clearContentPolicyAcknowledgment() {
+        contentPolicyAcceptedAtState.value = null
+        contentPolicyVersionState.value = ""
     }
 }
 

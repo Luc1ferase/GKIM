@@ -17,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -69,6 +70,9 @@ internal data class SettingsUiState(
     val messagingIntegrationState: MessagingIntegrationState = MessagingIntegrationState(),
     val appLanguage: AppLanguage = AppLanguage.English,
     val themeMode: AppThemeMode = AppThemeMode.Light,
+    val blockReasonVerbosity: Boolean = true,
+    val contentPolicyAcknowledgedAtMillis: Long? = null,
+    val contentPolicyAcknowledgedVersion: String = "",
 )
 
 internal enum class SettingsDestination {
@@ -85,6 +89,8 @@ internal enum class SettingsDestination {
     WorldInfoEntryEditor,
     CompanionMemoryChooser,
     CompanionMemoryPanel,
+    ContentSafety,
+    ContentPolicy,
     Account,
 }
 
@@ -162,6 +168,10 @@ internal fun buildSettingsMenuItems(
     val validationResolved = uiState.imResolvedBackendOrigin.removeSuffix("/")
     val validationEnglishSummary = uiState.imValidationError ?: "Backend $validationResolved"
     val validationChineseSummary = uiState.imValidationError ?: "后端 $validationResolved"
+    val verbosityEnglishSummary = if (uiState.blockReasonVerbosity) "On" else "Off"
+    val verbosityChineseSummary = if (uiState.blockReasonVerbosity) "开" else "关"
+    val ackEnglishSummary = formatAcknowledgmentEnglishSummary(uiState.contentPolicyAcknowledgedAtMillis)
+    val ackChineseSummary = formatAcknowledgmentChineseSummary(uiState.contentPolicyAcknowledgedAtMillis)
 
     return listOf(
         SettingsMenuItem(
@@ -221,6 +231,22 @@ internal fun buildSettingsMenuItems(
             chineseSummary = "为最近使用的伙伴打开记忆面板。",
         ),
         SettingsMenuItem(
+            destination = SettingsDestination.ContentPolicy,
+            testTag = "settings-menu-content-policy",
+            englishLabel = "Acknowledgment status",
+            chineseLabel = "内容政策确认",
+            englishSummary = ackEnglishSummary,
+            chineseSummary = ackChineseSummary,
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.ContentSafety,
+            testTag = "settings-menu-block-reason-verbosity",
+            englishLabel = "Block reason verbosity",
+            chineseLabel = "屏蔽原因详细度",
+            englishSummary = verbosityEnglishSummary,
+            chineseSummary = verbosityChineseSummary,
+        ),
+        SettingsMenuItem(
             destination = SettingsDestination.Account,
             testTag = "settings-menu-account",
             englishLabel = "Account",
@@ -230,6 +256,23 @@ internal fun buildSettingsMenuItems(
         ),
     )
 }
+
+internal fun formatAcknowledgmentEnglishSummary(acknowledgedAtMillis: Long?): String {
+    if (acknowledgedAtMillis == null) return "Not accepted — read policy"
+    val date = java.time.Instant.ofEpochMilli(acknowledgedAtMillis)
+        .atZone(java.time.ZoneId.systemDefault())
+        .toLocalDate()
+    return "Accepted on ${date.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)}"
+}
+
+internal fun formatAcknowledgmentChineseSummary(acknowledgedAtMillis: Long?): String {
+    if (acknowledgedAtMillis == null) return "未确认 — 请阅读政策"
+    val date = java.time.Instant.ofEpochMilli(acknowledgedAtMillis)
+        .atZone(java.time.ZoneId.systemDefault())
+        .toLocalDate()
+    return "${date.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)} 已确认"
+}
+
 
 internal fun buildSettingsMenuSections(
     uiState: SettingsUiState,
@@ -244,6 +287,10 @@ internal fun buildSettingsMenuSections(
         items[SettingsDestination.CompanionMemoryChooser],
     )
     val appearanceItems = listOfNotNull(items[SettingsDestination.Appearance])
+    val contentSafetyItems = listOfNotNull(
+        items[SettingsDestination.ContentPolicy],
+        items[SettingsDestination.ContentSafety],
+    )
     val aigcItems = listOfNotNull(items[SettingsDestination.AiProvider])
     val accountItems = listOfNotNull(items[SettingsDestination.Account])
     val developerItems = listOfNotNull(items[SettingsDestination.ImValidation])
@@ -272,7 +319,7 @@ internal fun buildSettingsMenuSections(
         chineseLabel = "内容与安全",
         englishCaption = "Content policy acknowledgment and block-reason verbosity.",
         chineseCaption = "内容政策确认与屏蔽原因详细度。",
-        items = emptyList(),
+        items = contentSafetyItems,
     )
     sections += SettingsMenuSection(
         id = SettingsSectionId.AigcImageProvider,
@@ -346,6 +393,12 @@ internal class SettingsViewModel(
         )
     }
 
+    private data class SafetySettingsState(
+        val blockReasonVerbosity: Boolean,
+        val contentPolicyAcknowledgedAtMillis: Long?,
+        val contentPolicyAcknowledgedVersion: String,
+    )
+
     private val providerSettings = combine(
         providerConfig,
         preferencesStore.appLanguage,
@@ -361,7 +414,19 @@ internal class SettingsViewModel(
         )
     }
 
-    val uiState = combine(providerSettings, imValidationConfig, messagingRepository.integrationState) { providerSettings, validationConfig, messagingIntegrationState ->
+    private val safetySettings = combine(
+        preferencesStore.blockReasonVerbosity,
+        preferencesStore.contentPolicyAcknowledgedAtMillis,
+        preferencesStore.contentPolicyAcknowledgedVersion,
+    ) { verbosity, acceptedAt, version ->
+        SafetySettingsState(
+            blockReasonVerbosity = verbosity,
+            contentPolicyAcknowledgedAtMillis = acceptedAt,
+            contentPolicyAcknowledgedVersion = version,
+        )
+    }
+
+    val uiState = combine(providerSettings, imValidationConfig, messagingRepository.integrationState, safetySettings) { providerSettings, validationConfig, messagingIntegrationState, safetySettings ->
         val (imDeveloperOverrideOrigin, imDevUserExternalId) = validationConfig
         val resolvedEndpoint = ImHttpEndpointResolver.resolve(
             sessionBaseUrl = null,
@@ -386,6 +451,9 @@ internal class SettingsViewModel(
             messagingIntegrationState = messagingIntegrationState,
             appLanguage = providerSettings.appLanguage,
             themeMode = providerSettings.themeMode,
+            blockReasonVerbosity = safetySettings.blockReasonVerbosity,
+            contentPolicyAcknowledgedAtMillis = safetySettings.contentPolicyAcknowledgedAtMillis,
+            contentPolicyAcknowledgedVersion = safetySettings.contentPolicyAcknowledgedVersion,
         )
     }.stateIn(
         viewModelScope,
@@ -434,6 +502,9 @@ internal class SettingsViewModel(
     }
     fun setThemeMode(value: AppThemeMode) {
         viewModelScope.launch { preferencesStore.setAppThemeMode(value) }
+    }
+    fun setBlockReasonVerbosity(value: Boolean) {
+        viewModelScope.launch { preferencesStore.setBlockReasonVerbosity(value) }
     }
 
     private fun validationErrorFor(
@@ -578,6 +649,7 @@ fun SettingsRoute(
         onSelectProvider = viewModel::setActiveProvider,
         onSelectLanguage = viewModel::setAppLanguage,
         onSelectThemeMode = viewModel::setThemeMode,
+        onSetBlockReasonVerbosity = viewModel::setBlockReasonVerbosity,
         onBack = { navController.popBackStack() },
     )
 }
@@ -619,6 +691,7 @@ private fun SettingsScreen(
     onSelectProvider: (String) -> Unit,
     onSelectLanguage: (AppLanguage) -> Unit,
     onSelectThemeMode: (AppThemeMode) -> Unit,
+    onSetBlockReasonVerbosity: (Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
     if (destination != SettingsDestination.Menu) {
@@ -762,6 +835,17 @@ private fun SettingsScreen(
                     androidx.compose.runtime.SideEffect { onCompanionMemoryPanelDone() }
                 }
             }
+
+            SettingsDestination.ContentSafety -> SettingsContentSafetyScreen(
+                uiState = uiState,
+                onSetBlockReasonVerbosity = onSetBlockReasonVerbosity,
+                onReadPolicy = { onNavigateToDestination(SettingsDestination.ContentPolicy) },
+                onBack = { onNavigateToDestination(SettingsDestination.Menu) },
+            )
+
+            SettingsDestination.ContentPolicy -> SettingsContentPolicyScreen(
+                onBack = { onNavigateToDestination(SettingsDestination.Menu) },
+            )
 
             SettingsDestination.Account -> SettingsAccountScreen(
                 onBack = { onNavigateToDestination(SettingsDestination.Menu) },
@@ -1427,6 +1511,124 @@ private fun SettingsCompanionMemoryChooserScreen(
                     color = AetherColors.OnSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsContentSafetyScreen(
+    uiState: SettingsUiState,
+    onSetBlockReasonVerbosity: (Boolean) -> Unit,
+    onReadPolicy: () -> Unit,
+    onBack: () -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    PageHeader(
+        eyebrow = appLanguage.pick("Settings", "设置"),
+        title = appLanguage.pick("Content & Safety", "内容与安全"),
+        description = appLanguage.pick(
+            "Review your content policy acknowledgment and tune the verbosity of block-reason copy.",
+            "查看内容政策的确认状态，并调整屏蔽原因的详细程度。",
+        ),
+        leadingLabel = appLanguage.pick("Back", "返回"),
+        onLeading = onBack,
+    )
+
+    Column(
+        modifier = Modifier.testTag("settings-detail-content-safety"),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        GlassCard(modifier = Modifier.testTag("settings-content-safety-ack-row")) {
+            Text(
+                text = appLanguage.pick("ACKNOWLEDGMENT STATUS", "内容政策确认"),
+                style = MaterialTheme.typography.labelLarge,
+                color = AetherColors.Primary,
+            )
+            Text(
+                text = appLanguage.pick(
+                    formatAcknowledgmentEnglishSummary(uiState.contentPolicyAcknowledgedAtMillis),
+                    formatAcknowledgmentChineseSummary(uiState.contentPolicyAcknowledgedAtMillis),
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+                color = AetherColors.OnSurface,
+                modifier = Modifier.testTag("settings-content-safety-ack-status"),
+            )
+            OutlinedButton(
+                onClick = onReadPolicy,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("settings-content-safety-read-policy"),
+            ) {
+                Text(appLanguage.pick("Read policy", "阅读政策"))
+            }
+        }
+
+        GlassCard(modifier = Modifier.testTag("settings-content-safety-verbosity-row")) {
+            Text(
+                text = appLanguage.pick("BLOCK REASON VERBOSITY", "屏蔽原因详细度"),
+                style = MaterialTheme.typography.labelLarge,
+                color = AetherColors.Primary,
+            )
+            Text(
+                text = appLanguage.pick(
+                    "Show detailed block reasons in chat bubbles.",
+                    "在对话气泡中显示详细的屏蔽原因。",
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+                color = AetherColors.OnSurfaceVariant,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = appLanguage.pick(
+                        if (uiState.blockReasonVerbosity) "On" else "Off",
+                        if (uiState.blockReasonVerbosity) "开" else "关",
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurface,
+                    modifier = Modifier.testTag("settings-content-safety-verbosity-state"),
+                )
+                Switch(
+                    checked = uiState.blockReasonVerbosity,
+                    onCheckedChange = onSetBlockReasonVerbosity,
+                    modifier = Modifier.testTag("settings-content-safety-verbosity-switch"),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsContentPolicyScreen(
+    onBack: () -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    PageHeader(
+        eyebrow = appLanguage.pick("Settings", "设置"),
+        title = appLanguage.pick("Content policy", "内容政策"),
+        description = appLanguage.pick(
+            "Review the content policy. The acceptance flow ships with the acknowledgment route.",
+            "阅读内容政策。完整的确认流程将随确认路由一同上线。",
+        ),
+        leadingLabel = appLanguage.pick("Back", "返回"),
+        onLeading = onBack,
+    )
+
+    Column(
+        modifier = Modifier.testTag("settings-detail-content-policy"),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        GlassCard(modifier = Modifier.testTag("settings-content-policy-placeholder")) {
+            Text(
+                text = appLanguage.pick(
+                    "Content policy details will be rendered by the acknowledgment route.",
+                    "内容政策详情将由确认路由渲染。",
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+                color = AetherColors.OnSurface,
+            )
         }
     }
 }

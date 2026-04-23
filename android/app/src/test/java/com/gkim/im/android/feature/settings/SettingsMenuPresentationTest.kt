@@ -189,10 +189,16 @@ class SettingsMenuPresentationTest {
     }
 
     @Test
-    fun `content and safety section is structurally present with zero items in this slice`() {
+    fun `content and safety section exposes ack status and verbosity rows`() {
         val sections = buildSettingsMenuSections(SettingsUiState(), isDebugBuild = true)
         val safety = sections.first { it.id == SettingsSectionId.ContentSafety }
-        assertEquals(0, safety.items.size)
+        assertEquals(
+            listOf(
+                SettingsDestination.ContentPolicy,
+                SettingsDestination.ContentSafety,
+            ),
+            safety.items.map { it.destination },
+        )
     }
 
     @Test
