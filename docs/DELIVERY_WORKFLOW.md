@@ -2145,3 +2145,16 @@ Upload
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
+
+### Task 1.2 (companion-memory-and-preset): Add `android/app/src/main/java/com/gkim/im/android/core/model/PresetModels.kt`.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon -p android :app:testDebugUnitTest --tests com.gkim.im.android.core.model.PresetModelsTest`` - pass (8 cases: `presetRequiresIdDisplayNameAndProvidesDefaultsForTheRest` (only `id` + `displayName` mandatory; `description=LocalizedText.Empty`, `template=PresetTemplate()`, `params=PresetParams()`, `isBuiltIn=false`, `isActive=false`, `createdAt=0L`, `updatedAt=0L`, `extensions=JsonObject(emptyMap())` all default); `presetEqualityConsidersEveryField` (copy equality + 9 single-field mutations); `presetTemplateDefaultsMatchLocalizedTextEmpty`; `presetTemplateEqualityConsidersEverySlot` (4 slot mutations); `presetParamsDefaultToNullForProviderDefault` (null-means-provider-default invariant); `presetParamsAcceptExplicitValues` (0.7 / 0.9 / 512 round-trip); `presetExtensionsBagSurvivesCopyAndExposesUnknownKeys` (forward-compat JsonObject preserved across `.copy()` + nested `st.*` payload traversable); `isDeletableRequiresUserOwnedAndInactive` (built-in + active both block deletion, only inactive-user-owned is deletable)). Delivered: `PresetModels.kt` with `Preset(id, displayName, description = LocalizedText.Empty, template = PresetTemplate(), params = PresetParams(), isBuiltIn = false, isActive = false, createdAt = 0L, updatedAt = 0L, extensions = JsonObject(emptyMap()))` + `PresetTemplate(systemPrefix, systemSuffix, formatInstructions, postHistoryInstructions : LocalizedText = Empty)` + `PresetParams(temperature, topP : Double? = null, maxReplyTokens : Int? = null)` — template slots match design.md § 2 decision "prompt sections + provider parameters, bundled" and params keep null = "use provider default"; `extensions: JsonObject` forward-compat bag parks ST preset fields outside the four modeled slots. Matches `UserPersonaModels.kt` convention: `isActive` + `isBuiltIn` flags with derived `isDeletable` extension (built-in + active both block deletion).
+- Review:
+  - Score: `95/100`
+  - Findings: `No findings — template + params defaults encode design.md invariants (empty LocalizedText slots, null params = provider default), and extensions bag is the ST-interop forward-compat slot.`
+- Upload:
+  - Commit: `<pending in this session>`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
