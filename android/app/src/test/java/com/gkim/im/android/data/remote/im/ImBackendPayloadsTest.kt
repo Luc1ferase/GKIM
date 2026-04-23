@@ -2,9 +2,11 @@ package com.gkim.im.android.data.remote.im
 
 import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AttachmentType
+import com.gkim.im.android.core.model.BlockReason
 import com.gkim.im.android.core.model.CompanionMemory
 import com.gkim.im.android.core.model.CompanionMemoryPin
 import com.gkim.im.android.core.model.CompanionMemoryResetScope
+import com.gkim.im.android.core.model.FailedSubtype
 import com.gkim.im.android.core.model.LocalizedText
 import com.gkim.im.android.core.model.Lorebook
 import com.gkim.im.android.core.model.LorebookBinding
@@ -432,6 +434,90 @@ class ImBackendPayloadsTest {
         assertTrue(blocked is ImGatewayEvent.CompanionTurnBlocked)
         blocked as ImGatewayEvent.CompanionTurnBlocked
         assertEquals("nsfw_denied", blocked.reason)
+    }
+
+    @Test
+    fun `companion turn blocked reasonAsBlockReason round trips every BlockReason wire key`() {
+        BlockReason.entries.forEach { expected ->
+            val event = ImGatewayEvent.CompanionTurnBlocked(
+                turnId = "turn-1",
+                conversationId = "conversation-1",
+                messageId = "message-1",
+                reason = expected.wireKey,
+            )
+            assertEquals("round trip for ${expected.wireKey}", expected, event.reasonAsBlockReason)
+        }
+    }
+
+    @Test
+    fun `companion turn blocked reasonAsBlockReason falls back to Other on unrecognized wire`() {
+        val event = ImGatewayEvent.CompanionTurnBlocked(
+            turnId = "turn-1",
+            conversationId = "conversation-1",
+            messageId = "message-1",
+            reason = "server_added_a_new_reason",
+        )
+        assertEquals(BlockReason.Other, event.reasonAsBlockReason)
+    }
+
+    @Test
+    fun `companion turn blocked reasonAsBlockReason survives json encode decode round trip`() {
+        BlockReason.entries.forEach { expected ->
+            val raw = """
+                {
+                  "type": "companion_turn.blocked",
+                  "turnId": "turn-x",
+                  "conversationId": "conversation-x",
+                  "messageId": "message-x",
+                  "reason": "${expected.wireKey}"
+                }
+            """.trimIndent()
+            val parsed = ImGatewayEventParser.parse(raw) as ImGatewayEvent.CompanionTurnBlocked
+            assertEquals(expected.wireKey, parsed.reason)
+            assertEquals(expected, parsed.reasonAsBlockReason)
+        }
+    }
+
+    @Test
+    fun `companion turn failed subtypeAsFailedSubtype round trips every FailedSubtype wire key`() {
+        FailedSubtype.entries.forEach { expected ->
+            val event = ImGatewayEvent.CompanionTurnFailed(
+                turnId = "turn-1",
+                conversationId = "conversation-1",
+                messageId = "message-1",
+                subtype = expected.wireKey,
+            )
+            assertEquals("round trip for ${expected.wireKey}", expected, event.subtypeAsFailedSubtype)
+        }
+    }
+
+    @Test
+    fun `companion turn failed subtypeAsFailedSubtype falls back to Unknown on unrecognized wire`() {
+        val event = ImGatewayEvent.CompanionTurnFailed(
+            turnId = "turn-1",
+            conversationId = "conversation-1",
+            messageId = "message-1",
+            subtype = "brand_new_subtype",
+        )
+        assertEquals(FailedSubtype.Unknown, event.subtypeAsFailedSubtype)
+    }
+
+    @Test
+    fun `companion turn failed subtypeAsFailedSubtype survives json encode decode round trip`() {
+        FailedSubtype.entries.forEach { expected ->
+            val raw = """
+                {
+                  "type": "companion_turn.failed",
+                  "turnId": "turn-x",
+                  "conversationId": "conversation-x",
+                  "messageId": "message-x",
+                  "subtype": "${expected.wireKey}"
+                }
+            """.trimIndent()
+            val parsed = ImGatewayEventParser.parse(raw) as ImGatewayEvent.CompanionTurnFailed
+            assertEquals(expected.wireKey, parsed.subtype)
+            assertEquals(expected, parsed.subtypeAsFailedSubtype)
+        }
     }
 
     @Test

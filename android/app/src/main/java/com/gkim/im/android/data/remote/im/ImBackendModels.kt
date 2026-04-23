@@ -12,6 +12,8 @@ import com.gkim.im.android.core.model.CompanionMemoryPin
 import com.gkim.im.android.core.model.CompanionMemoryResetScope
 import com.gkim.im.android.core.model.AttachmentType
 import com.gkim.im.android.core.model.AccentTone
+import com.gkim.im.android.core.model.BlockReason
+import com.gkim.im.android.core.model.FailedSubtype
 import com.gkim.im.android.core.model.LocalizedText
 import com.gkim.im.android.core.model.Lorebook
 import com.gkim.im.android.core.model.LorebookBinding
@@ -1159,7 +1161,10 @@ sealed interface ImGatewayEvent {
         val messageId: String,
         val subtype: String,
         val errorMessage: String? = null,
-    ) : ImGatewayEvent
+    ) : ImGatewayEvent {
+        val subtypeAsFailedSubtype: FailedSubtype
+            get() = FailedSubtype.fromWireKey(subtype)
+    }
 
     @Serializable
     data class CompanionTurnBlocked(
@@ -1167,7 +1172,10 @@ sealed interface ImGatewayEvent {
         val conversationId: String,
         val messageId: String,
         val reason: String,
-    ) : ImGatewayEvent
+    ) : ImGatewayEvent {
+        val reasonAsBlockReason: BlockReason
+            get() = BlockReason.fromWireKey(reason)
+    }
 }
 
 object ImGatewayEventParser {
