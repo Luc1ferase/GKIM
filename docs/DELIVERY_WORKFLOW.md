@@ -2154,7 +2154,7 @@ Upload
   - Score: `95/100`
   - Findings: `No findings — template + params defaults encode design.md invariants (empty LocalizedText slots, null params = provider default), and extensions bag is the ST-interop forward-compat slot.`
 - Upload:
-  - Commit: `<pending in this session>`
+  - Commit: `65313c6`
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
