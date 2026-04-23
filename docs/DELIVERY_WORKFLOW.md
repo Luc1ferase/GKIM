@@ -2193,7 +2193,7 @@ Upload
   - Score: `95/100`
   - Findings: `No findings — spec passes openspec validate --strict, every 1.5-bullet topic has a requirement with scenarios, and the prompt_budget_exceeded typed terminal reason is explicit (scenario 3 of requirement 6). The design.md already documents drop-order + token-budget allocator behavior; 6.1 will pull the seed table + allocator ladder into the spec + design cross-reference.`
 - Upload:
-  - Commit: `<pending>`
+  - Commit: `6eccfc5`
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
