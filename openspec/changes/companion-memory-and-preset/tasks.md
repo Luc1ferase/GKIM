@@ -44,7 +44,7 @@
 
 ## 6. Backend contract alignment
 
-- [ ] 6.1 Finalize `openspec/changes/companion-memory-and-preset/specs/im-backend/spec.md` to cover: HTTP endpoints for memory (get + reset + pin CRUD) and preset (library CRUD + activate + active getter), server-side persistence, deterministic summarization trigger (turns-since or budget-exceeds), summary durability on summarizer failure, priority-ordered token-budget allocator with fixed drop order, `prompt_budget_exceeded` typed terminal reason, and idempotent built-in preset seeding. Verification: `openspec validate companion-memory-and-preset --strict` passes.
+- [x] 6.1 Finalize `openspec/changes/companion-memory-and-preset/specs/im-backend/spec.md` to cover: HTTP endpoints for memory (get + reset + pin CRUD) and preset (library CRUD + activate + active getter), server-side persistence, deterministic summarization trigger (turns-since or budget-exceeds), summary durability on summarizer failure, priority-ordered token-budget allocator with fixed drop order, `prompt_budget_exceeded` typed terminal reason, and idempotent built-in preset seeding. Verification: `openspec validate companion-memory-and-preset --strict` passes.
 
 - [ ] 6.2 Document in design.md how the allocator integrates with the existing `llm-text-companion-chat` assembly step, specifying: which sections feed which slot, the fixed priority ordering, the drop order, and the user-turn preservation invariant. Also record the three seeded built-in presets' template content in design.md so the private backend's seed data has a canonical source. Verification: design.md § "Deterministic token-budget allocator" exists and is referenced from this slice's delivery record.
 
