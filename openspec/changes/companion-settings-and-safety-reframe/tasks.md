@@ -28,7 +28,7 @@
 
 - [x] 3.3 Add the `Content & Safety` section's two items: a read-only "Acknowledgment status" row (showing acceptance date or "Not accepted — read policy") and a "Block reason verbosity" toggle (default on). Tapping "Read policy" opens the content-policy route. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.settings.ContentAndSafetySectionTest` covers acknowledgment-state rendering, verbosity toggle persistence, and the policy-route navigation.
 
-- [ ] 3.4 Rewrite the `AIGC Image Provider` section caption so users understand this section is scoped to image generation and not companion chat. No functional change to provider selection logic. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.settings.AigcImageProviderSectionTest` covers the new caption and preserved provider selection behavior.
+- [x] 3.4 Rewrite the `AIGC Image Provider` section caption so users understand this section is scoped to image generation and not companion chat. No functional change to provider selection logic. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.settings.AigcImageProviderSectionTest` covers the new caption and preserved provider selection behavior.
 
 ## 4. Content-policy acknowledgment
 
