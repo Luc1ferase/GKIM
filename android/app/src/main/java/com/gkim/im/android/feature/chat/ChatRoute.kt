@@ -41,6 +41,7 @@ import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.gkim.im.android.core.designsystem.AetherColors
+import com.gkim.im.android.core.designsystem.BlockReasonCopy
 import com.gkim.im.android.core.designsystem.GlassCard
 import com.gkim.im.android.core.media.GeneratedImageSaveResult
 import com.gkim.im.android.core.media.GeneratedImageSaver
@@ -50,7 +51,9 @@ import com.gkim.im.android.core.media.rememberMediaPickerController
 import com.gkim.im.android.core.model.AigcMode
 import com.gkim.im.android.core.model.AigcProvider
 import com.gkim.im.android.core.model.AigcTask
+import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AttachmentType
+import com.gkim.im.android.core.model.BlockReason
 import com.gkim.im.android.core.model.ChatMessage
 import com.gkim.im.android.core.model.Conversation
 import com.gkim.im.android.core.model.DraftAigcRequest
@@ -642,8 +645,11 @@ private fun ChatMessageRow(
     onSelectNextVariant: () -> Unit = {},
     onRegenerate: () -> Unit = {},
     onRetrySubmission: () -> Unit = {},
+    onComposeNewMessage: () -> Unit = {},
+    onLearnMorePolicy: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val language = LocalAppLanguage.current
     val isOutgoing = message.direction == MessageDirection.Outgoing
     val companionPresentation = companionLifecyclePresentation(message, isMostRecentCompanionVariant)
     val hasAttachment = message.attachment != null
@@ -739,6 +745,14 @@ private fun ChatMessageRow(
                             modifier = Modifier.testTag("chat-message-body-${message.id}"),
                         )
                     }
+                    companionPresentation.blockReason?.let { reason ->
+                        Text(
+                            text = BlockReasonCopy.localizedCopy(reason, language),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AetherColors.OnSurface,
+                            modifier = Modifier.testTag("chat-companion-block-copy-${message.id}"),
+                        )
+                    }
                     if (variantNavigation != null) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -785,6 +799,26 @@ private fun ChatMessageRow(
                             style = MaterialTheme.typography.labelLarge,
                             color = AetherColors.Primary,
                             modifier = Modifier.testTag("chat-companion-retry-${message.id}"),
+                        )
+                    }
+                    if (companionPresentation.showComposeNew) {
+                        Text(
+                            text = if (language == AppLanguage.English) "Compose a new message" else "撰写新消息",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.Primary,
+                            modifier = Modifier
+                                .clickable(onClick = onComposeNewMessage)
+                                .testTag("chat-companion-compose-new-${message.id}"),
+                        )
+                    }
+                    if (companionPresentation.showLearnMorePolicy) {
+                        Text(
+                            text = if (language == AppLanguage.English) "Learn more" else "了解更多",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = AetherColors.OnSurfaceVariant,
+                            modifier = Modifier
+                                .clickable(onClick = onLearnMorePolicy)
+                                .testTag("chat-companion-learn-more-policy-${message.id}"),
                         )
                     }
                 } else if (hasBody) {
@@ -962,6 +996,9 @@ internal data class CompanionLifecyclePresentation(
     val showRetry: Boolean,
     val modelBadge: String?,
     val tone: CompanionLifecycleTone,
+    val blockReason: BlockReason? = null,
+    val showComposeNew: Boolean = false,
+    val showLearnMorePolicy: Boolean = false,
 )
 
 internal enum class CompanionLifecycleTone {
@@ -1028,6 +1065,9 @@ internal fun companionLifecyclePresentation(
             showRetry = false,
             modelBadge = modelBadge,
             tone = CompanionLifecycleTone.Blocked,
+            blockReason = BlockReason.fromWireKey(meta.blockReasonKey),
+            showComposeNew = true,
+            showLearnMorePolicy = true,
         )
         MessageStatus.Pending -> null
     }

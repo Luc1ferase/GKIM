@@ -12,7 +12,7 @@
 
 ## 2. Chat safety and failure bubbles
 
-- [ ] 2.1 Extend `feature/chat/ChatRoute.kt`'s `ChatMessageRow` so a `Blocked` terminal renders the `BlockReasonCopy.localizedCopy(reason, activeLanguage)` block and a "Compose a new message" CTA, with a small "Learn more" link to the content-policy surface. No retry affordance is rendered. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatBlockedBubbleTest` covers each reason rendering the correct copy, the absence of a retry affordance, and the "Compose new" action wiring.
+- [x] 2.1 Extend `feature/chat/ChatRoute.kt`'s `ChatMessageRow` so a `Blocked` terminal renders the `BlockReasonCopy.localizedCopy(reason, activeLanguage)` block and a "Compose a new message" CTA, with a small "Learn more" link to the content-policy surface. No retry affordance is rendered. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatBlockedBubbleTest` covers each reason rendering the correct copy, the absence of a retry affordance, and the "Compose new" action wiring.
 
 - [ ] 2.2 Extend `ChatMessageRow` so a `Failed` terminal renders per-subtype copy from `SafetyCopy`, with the correct action set per subtype: `Transient` → Retry; `PromptBudgetExceeded` / `AuthenticationFailed` → Edit user turn (no retry); `ProviderUnavailable` / `NetworkError` → Retry with a "check connection" hint; `Unknown` → generic Retry. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatFailedBubbleTest` covers each subtype's copy + action set.
 
