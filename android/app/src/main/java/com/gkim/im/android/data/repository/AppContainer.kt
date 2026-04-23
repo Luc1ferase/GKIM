@@ -83,9 +83,11 @@ class DefaultAppContainer(context: Context) : AppContainer {
         httpClient = okHttpClient,
     )
 
+    private val imWorldInfoClient = ImWorldInfoHttpClient(okHttpClient)
+
     override val worldInfoRepository: WorldInfoRepository = LiveWorldInfoRepository(
         default = DefaultWorldInfoRepository(),
-        client = ImWorldInfoHttpClient(okHttpClient),
+        client = imWorldInfoClient,
         baseUrlProvider = { sessionStore.baseUrl },
         tokenProvider = { sessionStore.token },
     )
@@ -122,6 +124,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
             backendClient = imBackendClient,
             baseUrlProvider = { sessionStore.baseUrl },
             tokenProvider = { sessionStore.token },
+            characterBookMaterializer = CharacterBookLorebookMaterializer(imWorldInfoClient),
         ),
     )
     override val userPersonaRepository: UserPersonaRepository = LiveUserPersonaRepository(

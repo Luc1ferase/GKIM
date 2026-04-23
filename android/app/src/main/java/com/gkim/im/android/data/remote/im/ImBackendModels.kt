@@ -250,6 +250,32 @@ data class LocalizedTextDto(
 }
 
 @Serializable
+data class CharacterBookEntryDto(
+    val keys: List<String> = emptyList(),
+    val content: String = "",
+    val enabled: Boolean = true,
+    val insertionOrder: Int = 0,
+    val caseSensitive: Boolean = false,
+    val constant: Boolean = false,
+    val name: String = "",
+    val comment: String = "",
+    val selective: Boolean = false,
+    val secondaryKeys: List<String> = emptyList(),
+    val extensions: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
+data class CharacterBookDto(
+    val name: String = "",
+    val description: String = "",
+    val scanDepth: Int? = null,
+    val tokenBudget: Int? = null,
+    val recursiveScanning: Boolean = false,
+    val entries: List<CharacterBookEntryDto> = emptyList(),
+    val extensions: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
 data class CompanionCharacterCardDto(
     val id: String,
     val displayName: LocalizedTextDto,
@@ -271,6 +297,7 @@ data class CompanionCharacterCardDto(
     val accent: String,
     val source: String,
     val extensions: JsonObject = JsonObject(emptyMap()),
+    val characterBook: CharacterBookDto? = null,
 ) {
     fun toCompanionCharacterCard(): CompanionCharacterCard {
         val resolvedFirstMes = firstMes?.toLocalizedText()

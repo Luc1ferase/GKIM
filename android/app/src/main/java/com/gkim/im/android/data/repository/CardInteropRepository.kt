@@ -2,10 +2,13 @@ package com.gkim.im.android.data.repository
 
 import com.gkim.im.android.core.interop.SillyTavernCardCodec
 import com.gkim.im.android.core.interop.SillyTavernCardFormat
+import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.CompanionCharacterCard
+import com.gkim.im.android.core.model.LocalizedText
 import com.gkim.im.android.data.remote.im.CardImportCommitRequestDto
 import com.gkim.im.android.data.remote.im.CardImportPreviewDto
 import com.gkim.im.android.data.remote.im.CardImportWarningDto
+import com.gkim.im.android.data.remote.im.CharacterBookDto
 import com.gkim.im.android.data.remote.im.CompanionCharacterCardDto
 import com.gkim.im.android.data.remote.im.ImBackendClient
 
@@ -130,6 +133,7 @@ class LiveCardInteropRepository(
     private val backendClient: ImBackendClient,
     private val baseUrlProvider: () -> String?,
     private val tokenProvider: () -> String?,
+    private val characterBookMaterializer: CharacterBookLorebookMaterializer? = null,
 ) : CardInteropRepository {
     override suspend fun previewImport(bytes: ByteArray, filename: String): Result<CardImportPreview> {
         val baseUrl = baseUrlProvider() ?: return Result.failure(IllegalStateException("missing_base_url"))
@@ -154,7 +158,7 @@ class LiveCardInteropRepository(
             languageOverride = languageOverride,
         )
         return runCatching {
-            backendClient.importCardCommit(
+            val committedDto = backendClient.importCardCommit(
                 baseUrl = baseUrl,
                 token = token,
                 preview = CardImportPreviewDto(
@@ -175,8 +179,49 @@ class LiveCardInteropRepository(
                 ),
                 overrides = overrideDto,
                 languageOverride = languageOverride,
-            ).toCompanionCharacterCard()
+            )
+            val committed = committedDto.toCompanionCharacterCard()
+            val characterBook = committedDto.characterBook
+                ?: overrideDto?.characterBook
+                ?: preview.rawCardDto.characterBook
+            materializeCharacterBook(
+                baseUrl = baseUrl,
+                token = token,
+                characterId = committed.id,
+                characterDisplayName = committed.displayName,
+                characterBook = characterBook,
+                languageOverride = languageOverride,
+                detectedLanguage = preview.detectedLanguage,
+            )
+            committed
         }
+    }
+
+    private suspend fun materializeCharacterBook(
+        baseUrl: String,
+        token: String,
+        characterId: String,
+        characterDisplayName: LocalizedText,
+        characterBook: CharacterBookDto?,
+        languageOverride: String?,
+        detectedLanguage: String,
+    ) {
+        val materializer = characterBookMaterializer ?: return
+        if (characterBook == null) return
+        val importLanguage = resolveImportLanguage(languageOverride ?: detectedLanguage)
+        materializer.materialize(
+            baseUrl = baseUrl,
+            token = token,
+            characterId = characterId,
+            characterBook = characterBook,
+            characterDisplayName = characterDisplayName,
+            importLanguage = importLanguage,
+        ).getOrThrow()
+    }
+
+    private fun resolveImportLanguage(language: String): AppLanguage = when (language.lowercase()) {
+        "zh", "zh-cn", "zh_cn", "chinese" -> AppLanguage.Chinese
+        else -> AppLanguage.English
     }
 
     override suspend fun exportCard(
