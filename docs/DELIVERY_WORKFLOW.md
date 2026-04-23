@@ -2130,3 +2130,18 @@ Upload
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
+
+## companion-memory-and-preset delivery evidence
+
+### Task 1.1 (companion-memory-and-preset): Add `android/app/src/main/java/com/gkim/im/android/core/model/CompanionMemoryModels.kt`.
+
+- Verification:
+  - ``JAVA_HOME='/c/Program Files/Java/jdk-17' ./android/gradlew.bat --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest`` - pass (BUILD SUCCESSFUL in 36s; full `:app:testDebugUnitTest` stayed green after the additive model + test landing). Task-scoped re-run: ``./android/gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.core.model.CompanionMemoryModelsTest`` - pass (8 cases: `companionMemoryDefaultsMatchSpec` (`summary = LocalizedText.Empty`, `summaryUpdatedAt = 0L`, `summaryTurnCursor = 0`, `tokenBudgetHint = null`); `companionMemoryEqualityConsidersEveryField` (copy equality holds + 7 single-field mutations including `tokenBudgetHint = null` distinct from `= 8_000`); `companionMemoryTokenBudgetHintAcceptsNull` (nullable `Int?` invariant); `companionMemoryPinDefaultsMatchSpec` (`sourceMessageId = null`, `createdAt = 0L`, `pinnedByUser = true`); `companionMemoryPinEqualityConsidersEveryField` (6 single-field mutations); `companionMemoryPinSourceMessageIdIsOptional` (manual-pin `null` + bubble-pin `"msg-7"` both accepted); `companionMemoryResetScopeEnumeratesExactlyThreeValues` (`Pins`, `Summary`, `All` in declaration order); `companionMemoryResetScopeValueOfRoundTripsEveryVariant`). Delivered: `CompanionMemoryModels.kt` carries `CompanionMemory(userId, companionCardId, summary: LocalizedText = LocalizedText.Empty, summaryUpdatedAt: Long = 0L, summaryTurnCursor: Int = 0, tokenBudgetHint: Int? = null)`, `CompanionMemoryPin(id, sourceMessageId: String? = null, text: LocalizedText, createdAt: Long = 0L, pinnedByUser: Boolean = true)`, and the `CompanionMemoryResetScope` enum (`Pins`, `Summary`, `All`) — matching design.md § 1 memory shape + § 7 three reset granularities. Pure-domain layer, no kotlinx-serialization annotations (DTO + wire shapes land in 1.3 against `ImBackendModels.kt`), matching the `UserPersonaModels.kt` / `Lorebook.kt` convention.
+- Review:
+  - Score: `95/100`
+  - Findings: `No findings — additive domain models, default values match spec invariants, equality covers every field, three reset scopes enumerated in declaration order.`
+- Upload:
+  - Commit: `<pending in this session>`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
