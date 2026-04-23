@@ -18,7 +18,7 @@
 
 - [x] 2.3 Extend `ChatMessageRow` so a `Timeout` terminal renders dedicated copy, a primary Retry-with-longer-wait affordance, and a secondary "Switch preset" hint when the active preset has `maxReplyTokens` above a heuristic cap. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatTimeoutBubbleTest` covers copy rendering, retry invocation pathway, and the conditional preset-hint visibility.
 
-- [ ] 2.4 Add instrumentation `ChatFailureAndSafetyBubbleInstrumentationTest` on `codex_api34` that injects a sequence of mocked `companion_turn.failed`, `companion_turn.blocked`, and `companion_turn.timeout` events through the realtime parser fake, and asserts each bubble renders the correct copy + correct actions. Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.chat.ChatFailureAndSafetyBubbleInstrumentationTest` passes.
+- [x] 2.4 Add instrumentation `ChatFailureAndSafetyBubbleInstrumentationTest` on `codex_api34` that injects a sequence of mocked `companion_turn.failed`, `companion_turn.blocked`, and `companion_turn.timeout` events through the realtime parser fake, and asserts each bubble renders the correct copy + correct actions. Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.chat.ChatFailureAndSafetyBubbleInstrumentationTest` passes.
 
 ## 3. Settings reorganization
 

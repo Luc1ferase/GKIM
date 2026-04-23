@@ -638,7 +638,7 @@ private fun ChatTopBar(
 }
 
 @Composable
-private fun ChatMessageRow(
+internal fun ChatMessageRow(
     conversation: Conversation?,
     message: ChatMessage,
     isMostRecentCompanionVariant: Boolean = false,
