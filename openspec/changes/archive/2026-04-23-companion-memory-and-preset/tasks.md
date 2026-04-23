@@ -54,4 +54,4 @@
 
 - [x] 7.2 Add instrumentation coverage on `codex_api34`: `PresetLibraryInstrumentationTest` and `MemoryAndPresetIntegrationTest` (defined in §4.3 and §5.4). Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest` runs both suites green.
 
-- [ ] 7.3 Record verification, review, score (≥95), and GitHub upload evidence in `docs/DELIVERY_WORKFLOW.md` for this slice, following the template used by `llm-text-companion-chat`. Include explicit pointers to the new spec delta files and the built-in preset seed table in design.md. Verification: the delivery workflow entry exists with task rows 1.1 through 7.2 plus this recording task, and lists the `openspec archive` command + output.
+- [x] 7.3 Record verification, review, score (≥95), and GitHub upload evidence in `docs/DELIVERY_WORKFLOW.md` for this slice, following the template used by `llm-text-companion-chat`. Include explicit pointers to the new spec delta files and the built-in preset seed table in design.md. Verification: the delivery workflow entry exists with task rows 1.1 through 7.2 plus this recording task, and lists the `openspec archive` command + output.
