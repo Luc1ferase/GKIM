@@ -1,5 +1,7 @@
 package com.gkim.im.android.data.remote.im
 
+import com.gkim.im.android.core.model.CompanionMemoryResetScope
+
 interface ImBackendClient {
     suspend fun issueDevSession(baseUrl: String, externalId: String): DevSessionResponseDto
     suspend fun register(baseUrl: String, username: String, password: String, displayName: String): AuthResponseDto
@@ -151,6 +153,94 @@ interface ImBackendClient {
 
     suspend fun getActivePersona(baseUrl: String, token: String): UserPersonaDto {
         error("getActivePersona is not implemented for this backend client")
+    }
+
+    suspend fun getCompanionMemory(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+    ): CompanionMemoryDto {
+        error("getCompanionMemory is not implemented for this backend client")
+    }
+
+    suspend fun resetCompanionMemory(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+        scope: CompanionMemoryResetScope,
+    ) {
+        error("resetCompanionMemory is not implemented for this backend client")
+    }
+
+    suspend fun listCompanionMemoryPins(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+    ): CompanionMemoryPinListDto {
+        error("listCompanionMemoryPins is not implemented for this backend client")
+    }
+
+    suspend fun createCompanionMemoryPin(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+        pin: CompanionMemoryPinDto,
+    ): CompanionMemoryPinDto {
+        error("createCompanionMemoryPin is not implemented for this backend client")
+    }
+
+    suspend fun updateCompanionMemoryPin(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+        pin: CompanionMemoryPinDto,
+    ): CompanionMemoryPinDto {
+        error("updateCompanionMemoryPin is not implemented for this backend client")
+    }
+
+    suspend fun deleteCompanionMemoryPin(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+        pinId: String,
+    ) {
+        error("deleteCompanionMemoryPin is not implemented for this backend client")
+    }
+
+    suspend fun listPresets(baseUrl: String, token: String): PresetListDto {
+        error("listPresets is not implemented for this backend client")
+    }
+
+    suspend fun createPreset(
+        baseUrl: String,
+        token: String,
+        preset: PresetDto,
+    ): PresetDto {
+        error("createPreset is not implemented for this backend client")
+    }
+
+    suspend fun updatePreset(
+        baseUrl: String,
+        token: String,
+        preset: PresetDto,
+    ): PresetDto {
+        error("updatePreset is not implemented for this backend client")
+    }
+
+    suspend fun deletePreset(baseUrl: String, token: String, presetId: String) {
+        error("deletePreset is not implemented for this backend client")
+    }
+
+    suspend fun activatePreset(
+        baseUrl: String,
+        token: String,
+        presetId: String,
+    ): PresetDto {
+        error("activatePreset is not implemented for this backend client")
+    }
+
+    suspend fun getActivePreset(baseUrl: String, token: String): PresetDto {
+        error("getActivePreset is not implemented for this backend client")
     }
 }
 

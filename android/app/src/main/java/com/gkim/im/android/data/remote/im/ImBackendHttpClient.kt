@@ -2,6 +2,7 @@ package com.gkim.im.android.data.remote.im
 
 import com.gkim.im.android.core.interop.SillyTavernCardCodec
 import com.gkim.im.android.core.interop.SillyTavernCardFormat
+import com.gkim.im.android.core.model.CompanionMemoryResetScope
 import com.gkim.im.android.data.remote.api.ServiceFactory
 import kotlinx.serialization.Serializable
 import okhttp3.OkHttpClient
@@ -158,6 +159,78 @@ private interface ImBackendService {
 
     @GET("api/personas/active")
     suspend fun getActivePersona(@Header("Authorization") authorization: String): UserPersonaDto
+
+    @GET("api/companions/{cardId}/memory")
+    suspend fun getCompanionMemory(
+        @Header("Authorization") authorization: String,
+        @Path("cardId") cardId: String,
+    ): CompanionMemoryDto
+
+    @POST("api/companions/{cardId}/memory/reset")
+    suspend fun resetCompanionMemory(
+        @Header("Authorization") authorization: String,
+        @Path("cardId") cardId: String,
+        @Body request: CompanionMemoryResetRequestDto,
+    )
+
+    @GET("api/companions/{cardId}/memory/pins")
+    suspend fun listCompanionMemoryPins(
+        @Header("Authorization") authorization: String,
+        @Path("cardId") cardId: String,
+    ): CompanionMemoryPinListDto
+
+    @POST("api/companions/{cardId}/memory/pins")
+    suspend fun createCompanionMemoryPin(
+        @Header("Authorization") authorization: String,
+        @Path("cardId") cardId: String,
+        @Body request: CompanionMemoryPinDto,
+    ): CompanionMemoryPinDto
+
+    @POST("api/companions/{cardId}/memory/pins/{pinId}")
+    suspend fun updateCompanionMemoryPin(
+        @Header("Authorization") authorization: String,
+        @Path("cardId") cardId: String,
+        @Path("pinId") pinId: String,
+        @Body request: CompanionMemoryPinDto,
+    ): CompanionMemoryPinDto
+
+    @POST("api/companions/{cardId}/memory/pins/{pinId}/delete")
+    suspend fun deleteCompanionMemoryPin(
+        @Header("Authorization") authorization: String,
+        @Path("cardId") cardId: String,
+        @Path("pinId") pinId: String,
+    )
+
+    @GET("api/presets")
+    suspend fun listPresets(@Header("Authorization") authorization: String): PresetListDto
+
+    @POST("api/presets")
+    suspend fun createPreset(
+        @Header("Authorization") authorization: String,
+        @Body preset: PresetDto,
+    ): PresetDto
+
+    @POST("api/presets/{presetId}")
+    suspend fun updatePreset(
+        @Header("Authorization") authorization: String,
+        @Path("presetId") presetId: String,
+        @Body preset: PresetDto,
+    ): PresetDto
+
+    @POST("api/presets/{presetId}/delete")
+    suspend fun deletePreset(
+        @Header("Authorization") authorization: String,
+        @Path("presetId") presetId: String,
+    )
+
+    @POST("api/presets/{presetId}/activate")
+    suspend fun activatePreset(
+        @Header("Authorization") authorization: String,
+        @Path("presetId") presetId: String,
+    ): PresetDto
+
+    @GET("api/presets/active")
+    suspend fun getActivePreset(@Header("Authorization") authorization: String): PresetDto
 }
 
 class ImBackendHttpClient(
@@ -374,6 +447,114 @@ class ImBackendHttpClient(
 
     override suspend fun getActivePersona(baseUrl: String, token: String): UserPersonaDto =
         serviceFor(baseUrl).getActivePersona(bearerToken(token))
+
+    override suspend fun getCompanionMemory(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+    ): CompanionMemoryDto = serviceFor(baseUrl).getCompanionMemory(
+        authorization = bearerToken(token),
+        cardId = cardId,
+    )
+
+    override suspend fun resetCompanionMemory(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+        scope: CompanionMemoryResetScope,
+    ) {
+        serviceFor(baseUrl).resetCompanionMemory(
+            authorization = bearerToken(token),
+            cardId = cardId,
+            request = CompanionMemoryResetRequestDto.fromCompanionMemoryResetScope(scope),
+        )
+    }
+
+    override suspend fun listCompanionMemoryPins(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+    ): CompanionMemoryPinListDto = serviceFor(baseUrl).listCompanionMemoryPins(
+        authorization = bearerToken(token),
+        cardId = cardId,
+    )
+
+    override suspend fun createCompanionMemoryPin(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+        pin: CompanionMemoryPinDto,
+    ): CompanionMemoryPinDto = serviceFor(baseUrl).createCompanionMemoryPin(
+        authorization = bearerToken(token),
+        cardId = cardId,
+        request = pin,
+    )
+
+    override suspend fun updateCompanionMemoryPin(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+        pin: CompanionMemoryPinDto,
+    ): CompanionMemoryPinDto = serviceFor(baseUrl).updateCompanionMemoryPin(
+        authorization = bearerToken(token),
+        cardId = cardId,
+        pinId = pin.id,
+        request = pin,
+    )
+
+    override suspend fun deleteCompanionMemoryPin(
+        baseUrl: String,
+        token: String,
+        cardId: String,
+        pinId: String,
+    ) {
+        serviceFor(baseUrl).deleteCompanionMemoryPin(
+            authorization = bearerToken(token),
+            cardId = cardId,
+            pinId = pinId,
+        )
+    }
+
+    override suspend fun listPresets(baseUrl: String, token: String): PresetListDto =
+        serviceFor(baseUrl).listPresets(bearerToken(token))
+
+    override suspend fun createPreset(
+        baseUrl: String,
+        token: String,
+        preset: PresetDto,
+    ): PresetDto = serviceFor(baseUrl).createPreset(
+        authorization = bearerToken(token),
+        preset = preset,
+    )
+
+    override suspend fun updatePreset(
+        baseUrl: String,
+        token: String,
+        preset: PresetDto,
+    ): PresetDto = serviceFor(baseUrl).updatePreset(
+        authorization = bearerToken(token),
+        presetId = preset.id,
+        preset = preset,
+    )
+
+    override suspend fun deletePreset(baseUrl: String, token: String, presetId: String) {
+        serviceFor(baseUrl).deletePreset(
+            authorization = bearerToken(token),
+            presetId = presetId,
+        )
+    }
+
+    override suspend fun activatePreset(
+        baseUrl: String,
+        token: String,
+        presetId: String,
+    ): PresetDto = serviceFor(baseUrl).activatePreset(
+        authorization = bearerToken(token),
+        presetId = presetId,
+    )
+
+    override suspend fun getActivePreset(baseUrl: String, token: String): PresetDto =
+        serviceFor(baseUrl).getActivePreset(bearerToken(token))
 
     private fun serviceFor(baseUrl: String): ImBackendService =
         ServiceFactory.retrofit(normalizeBaseUrl(baseUrl), okHttpClient).create(ImBackendService::class.java)
