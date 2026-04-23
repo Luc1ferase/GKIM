@@ -95,6 +95,25 @@ internal data class SettingsMenuItem(
     val chineseSummary: String,
 )
 
+internal enum class SettingsSectionId {
+    Companion,
+    Appearance,
+    ContentSafety,
+    AigcImageProvider,
+    DeveloperConnection,
+    Account,
+}
+
+internal data class SettingsMenuSection(
+    val id: SettingsSectionId,
+    val testTag: String,
+    val englishLabel: String,
+    val chineseLabel: String,
+    val englishCaption: String? = null,
+    val chineseCaption: String? = null,
+    val items: List<SettingsMenuItem>,
+)
+
 internal fun buildSettingsMenuItems(
     uiState: SettingsUiState,
 ): List<SettingsMenuItem> {
@@ -119,32 +138,32 @@ internal fun buildSettingsMenuItems(
         SettingsMenuItem(
             destination = SettingsDestination.AiProvider,
             testTag = "settings-menu-ai-provider",
-            englishLabel = "AI Provider",
-            chineseLabel = "AI 提供商",
+            englishLabel = "AIGC Image Provider",
+            chineseLabel = "AIGC 图像提供商",
             englishSummary = providerEnglishSummary,
             chineseSummary = providerChineseSummary,
         ),
         SettingsMenuItem(
             destination = SettingsDestination.ImValidation,
             testTag = "settings-menu-im-validation",
-            englishLabel = "Connection",
-            chineseLabel = "连接信息",
+            englishLabel = "Connection & Developer Tools",
+            chineseLabel = "连接与开发者工具",
             englishSummary = validationEnglishSummary,
             chineseSummary = validationChineseSummary,
         ),
         SettingsMenuItem(
             destination = SettingsDestination.Personas,
             testTag = "settings-menu-personas",
-            englishLabel = "Personas",
-            chineseLabel = "用户角色",
+            englishLabel = "Persona library",
+            chineseLabel = "用户角色库",
             englishSummary = "Manage the {{user}} personas used across companion chats.",
             chineseSummary = "管理陪伴对话中的 {{user}} 角色资料。",
         ),
         SettingsMenuItem(
             destination = SettingsDestination.Presets,
             testTag = "settings-menu-presets",
-            englishLabel = "Presets",
-            chineseLabel = "预设",
+            englishLabel = "Preset library",
+            chineseLabel = "预设库",
             englishSummary = "Manage the prompt presets that shape companion replies.",
             chineseSummary = "管理用于塑造伙伴回复的提示预设。",
         ),
@@ -165,6 +184,78 @@ internal fun buildSettingsMenuItems(
             chineseSummary = "管理登录与会话信息。",
         ),
     )
+}
+
+internal fun buildSettingsMenuSections(
+    uiState: SettingsUiState,
+    isDebugBuild: Boolean = BuildConfig.DEBUG,
+): List<SettingsMenuSection> {
+    val items = buildSettingsMenuItems(uiState).associateBy { it.destination }
+
+    val companionItems = listOfNotNull(
+        items[SettingsDestination.Personas],
+        items[SettingsDestination.Presets],
+        items[SettingsDestination.WorldInfo],
+    )
+    val appearanceItems = listOfNotNull(items[SettingsDestination.Appearance])
+    val aigcItems = listOfNotNull(items[SettingsDestination.AiProvider])
+    val accountItems = listOfNotNull(items[SettingsDestination.Account])
+    val developerItems = listOfNotNull(items[SettingsDestination.ImValidation])
+
+    val sections = mutableListOf<SettingsMenuSection>()
+    sections += SettingsMenuSection(
+        id = SettingsSectionId.Companion,
+        testTag = "settings-section-companion",
+        englishLabel = "Companion",
+        chineseLabel = "陪伴",
+        englishCaption = "Personas, presets, and lorebooks that shape the companion.",
+        chineseCaption = "塑造伙伴的用户角色、预设和世界书。",
+        items = companionItems,
+    )
+    sections += SettingsMenuSection(
+        id = SettingsSectionId.Appearance,
+        testTag = "settings-section-appearance",
+        englishLabel = "Appearance",
+        chineseLabel = "外观",
+        items = appearanceItems,
+    )
+    sections += SettingsMenuSection(
+        id = SettingsSectionId.ContentSafety,
+        testTag = "settings-section-content-safety",
+        englishLabel = "Content & Safety",
+        chineseLabel = "内容与安全",
+        englishCaption = "Content policy acknowledgment and block-reason verbosity.",
+        chineseCaption = "内容政策确认与屏蔽原因详细度。",
+        items = emptyList(),
+    )
+    sections += SettingsMenuSection(
+        id = SettingsSectionId.AigcImageProvider,
+        testTag = "settings-section-aigc-image-provider",
+        englishLabel = "AIGC Image Provider",
+        chineseLabel = "AIGC 图像提供商",
+        englishCaption = "Provider for AI image generation only — does not affect companion chat.",
+        chineseCaption = "仅用于 AI 图像生成的提供商,不影响陪伴聊天。",
+        items = aigcItems,
+    )
+    if (isDebugBuild) {
+        sections += SettingsMenuSection(
+            id = SettingsSectionId.DeveloperConnection,
+            testTag = "settings-section-developer-connection",
+            englishLabel = "Developer & Connection",
+            chineseLabel = "开发者与连接",
+            englishCaption = "Backend connection details and developer overrides.",
+            chineseCaption = "后端连接信息与开发者选项。",
+            items = developerItems,
+        )
+    }
+    sections += SettingsMenuSection(
+        id = SettingsSectionId.Account,
+        testTag = "settings-section-account",
+        englishLabel = "Account",
+        chineseLabel = "账号",
+        items = accountItems,
+    )
+    return sections
 }
 
 internal class SettingsViewModel(
@@ -622,14 +713,39 @@ private fun SettingsMenuScreen(
 
     Column(
         modifier = Modifier.testTag("settings-menu-screen"),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        buildSettingsMenuItems(uiState).forEach { item ->
-            SettingsMenuEntry(
-                testTag = item.testTag,
-                label = appLanguage.pick(item.englishLabel, item.chineseLabel),
-                summary = appLanguage.pick(item.englishSummary, item.chineseSummary),
-            ) { onNavigateToDestination(item.destination) }
+        buildSettingsMenuSections(uiState).forEach { section ->
+            Column(
+                modifier = Modifier.testTag(section.testTag),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = appLanguage.pick(section.englishLabel, section.chineseLabel),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = AetherColors.Primary,
+                    modifier = Modifier.testTag("${section.testTag}-label"),
+                )
+                val caption = appLanguage.pick(
+                    section.englishCaption.orEmpty(),
+                    section.chineseCaption.orEmpty(),
+                )
+                if (caption.isNotBlank()) {
+                    Text(
+                        text = caption,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AetherColors.OnSurfaceVariant,
+                        modifier = Modifier.testTag("${section.testTag}-caption"),
+                    )
+                }
+                section.items.forEach { item ->
+                    SettingsMenuEntry(
+                        testTag = item.testTag,
+                        label = appLanguage.pick(item.englishLabel, item.chineseLabel),
+                        summary = appLanguage.pick(item.englishSummary, item.chineseSummary),
+                    ) { onNavigateToDestination(item.destination) }
+                }
+            }
         }
     }
 }
@@ -706,10 +822,10 @@ private fun SettingsAiProviderScreen(
     val appLanguage = LocalAppLanguage.current
     PageHeader(
         eyebrow = appLanguage.pick("Settings", "设置"),
-        title = appLanguage.pick("AI Provider", "AI 提供商"),
+        title = appLanguage.pick("AIGC Image Provider", "AIGC 图像提供商"),
         description = appLanguage.pick(
-            "Switch between presets or wire a custom OpenAI-compatible gateway for generation requests.",
-            "切换预设模型提供商，或接入兼容 OpenAI 的自定义生成网关。",
+            "Configure the provider used for AI image generation. This does not affect companion chat.",
+            "配置用于 AI 图像生成的提供商。不会影响陪伴聊天。",
         ),
         leadingLabel = appLanguage.pick("Back", "返回"),
         onLeading = onBack,
@@ -798,10 +914,10 @@ private fun SettingsImValidationScreen(
     val appLanguage = LocalAppLanguage.current
     PageHeader(
         eyebrow = appLanguage.pick("Settings", "设置"),
-        title = appLanguage.pick("Connection", "连接信息"),
+        title = appLanguage.pick("Connection & Developer Tools", "连接与开发者工具"),
         description = appLanguage.pick(
-            "Review the current server address and connection status for messaging.",
-            "查看消息服务当前使用的地址和连接状态。",
+            "Review the current server address and messaging status, with developer overrides available in debug builds.",
+            "查看消息服务当前使用的地址和连接状态,调试构建中可使用开发者覆盖项。",
         ),
         leadingLabel = appLanguage.pick("Back", "返回"),
         onLeading = onBack,
@@ -915,7 +1031,7 @@ private fun SettingsPersonasScreen(
 
     PageHeader(
         eyebrow = appLanguage.pick("Settings", "设置"),
-        title = appLanguage.pick("Personas", "用户角色"),
+        title = appLanguage.pick("Persona library", "用户角色库"),
         description = appLanguage.pick(
             "Choose how companions address you. The active persona powers the {{user}} macro in chats.",
             "选择陪伴对象称呼你的方式。当前启用的角色资料会驱动对话中的 {{user}} 占位。",
@@ -1044,7 +1160,7 @@ private fun SettingsPresetsScreen(
 
     PageHeader(
         eyebrow = appLanguage.pick("Settings", "设置"),
-        title = appLanguage.pick("Presets", "预设"),
+        title = appLanguage.pick("Preset library", "预设库"),
         description = appLanguage.pick(
             "Presets shape the system prompt and reply parameters. Built-ins are locked; duplicate to customise.",
             "预设用于控制系统提示与回复参数。内置预设无法修改，可复制后自定义。",
