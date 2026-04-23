@@ -30,8 +30,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gkim.im.android.BuildConfig
 import com.gkim.im.android.GkimApplication
 import com.gkim.im.android.core.designsystem.AetherColors
+import com.gkim.im.android.core.designsystem.ContentPolicyCopy
 import com.gkim.im.android.core.designsystem.GkimTheme
 import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.core.designsystem.pick
@@ -41,9 +43,14 @@ import com.gkim.im.android.data.remote.im.resolveImHttpEndpoint
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.feature.auth.LoginRoute
 import com.gkim.im.android.feature.auth.RegisterRoute
+import com.gkim.im.android.feature.bootstrap.BootstrapAcknowledgmentDecision
+import com.gkim.im.android.feature.bootstrap.BootstrapAcknowledgmentGate
+import com.gkim.im.android.feature.bootstrap.BootstrapAcknowledgmentSnapshot
 import com.gkim.im.android.feature.chat.ChatRoute
 import com.gkim.im.android.feature.contacts.ContactsRoute
 import com.gkim.im.android.feature.messages.MessagesRoute
+import com.gkim.im.android.feature.settings.ContentPolicyAcknowledgmentRoute
+import kotlinx.coroutines.flow.first
 import com.gkim.im.android.feature.qr.QrResultRoutePattern
 import com.gkim.im.android.feature.qr.QrScanResultRoute
 import com.gkim.im.android.feature.qr.QrScanRoute
@@ -67,6 +74,7 @@ private enum class RootAuthState {
     Loading,
     Authenticated,
     Unauthenticated,
+    RequiresAcknowledgment,
 }
 
 @Composable
@@ -105,6 +113,34 @@ fun GkimRootApp(
         }
     }
 
+    LaunchedEffect(authState) {
+        if (authState != RootAuthState.Authenticated) return@LaunchedEffect
+        val backendSnapshot = try {
+            val baseUrl = resolvedContainer.sessionStore.baseUrl.orEmpty()
+            val token = resolvedContainer.sessionStore.token.orEmpty()
+            if (baseUrl.isBlank() || token.isBlank()) {
+                BootstrapAcknowledgmentSnapshot.Unknown
+            } else {
+                val dto = resolvedContainer.imBackendClient.getContentPolicyAcknowledgment(baseUrl, token)
+                BootstrapAcknowledgmentSnapshot.Known(accepted = dto.accepted, version = dto.version)
+            }
+        } catch (_: Exception) {
+            BootstrapAcknowledgmentSnapshot.Unknown
+        }
+        val localMillis = resolvedContainer.preferencesStore.contentPolicyAcknowledgedAtMillis.first()
+        val localVersion = resolvedContainer.preferencesStore.contentPolicyAcknowledgedVersion.first()
+        val decision = BootstrapAcknowledgmentGate.decide(
+            isDebugBuild = BuildConfig.DEBUG,
+            backendSnapshot = backendSnapshot,
+            localAcceptedAtMillis = localMillis,
+            localAcceptedVersion = localVersion,
+            currentVersion = ContentPolicyCopy.currentVersion,
+        )
+        if (decision == BootstrapAcknowledgmentDecision.RequireAcknowledgment) {
+            authState = RootAuthState.RequiresAcknowledgment
+        }
+    }
+
     GkimTheme(darkTheme = appThemeMode != AppThemeMode.Light) {
         CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
             when (authState) {
@@ -113,6 +149,14 @@ fun GkimRootApp(
                         .fillMaxSize()
                         .testTag("root-auth-loading"),
                 )
+
+                RootAuthState.RequiresAcknowledgment -> {
+                    ContentPolicyAcknowledgmentRoute(
+                        container = resolvedContainer,
+                        onAccepted = { authState = RootAuthState.Authenticated },
+                        onBack = { authState = RootAuthState.Authenticated },
+                    )
+                }
 
                 RootAuthState.Unauthenticated -> {
                     val authNavController = rememberNavController()
