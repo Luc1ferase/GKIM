@@ -549,8 +549,11 @@ private fun SettingsScreen(
             SettingsDestination.PresetEditor -> {
                 val id = editingPresetId
                 if (id != null) {
-                    // TODO(task 4.2): wire PresetEditorRoute(container, presetId = id, onDone = onPresetEditorDone).
-                    androidx.compose.runtime.SideEffect { onPresetEditorDone() }
+                    PresetEditorRoute(
+                        container = container,
+                        presetId = id,
+                        onDone = onPresetEditorDone,
+                    )
                 } else {
                     androidx.compose.runtime.SideEffect { onPresetEditorDone() }
                 }

@@ -47,3 +47,35 @@ fun Preset.resolve(language: AppLanguage): ResolvedPreset =
         isBuiltIn = isBuiltIn,
         isActive = isActive,
     )
+
+enum class PresetValidationError {
+    DisplayNameEnglishBlank,
+    DisplayNameChineseBlank,
+    TemperatureOutOfRange,
+    TopPOutOfRange,
+    MaxReplyTokensOutOfRange,
+}
+
+sealed class PresetValidationResult {
+    object Valid : PresetValidationResult()
+    data class Invalid(val errors: List<PresetValidationError>) : PresetValidationResult()
+}
+
+object PresetValidation {
+    fun validate(preset: Preset): PresetValidationResult {
+        val errors = mutableListOf<PresetValidationError>()
+        if (preset.displayName.english.isBlank()) errors += PresetValidationError.DisplayNameEnglishBlank
+        if (preset.displayName.chinese.isBlank()) errors += PresetValidationError.DisplayNameChineseBlank
+        preset.params.temperature?.let {
+            if (it < 0.0 || it > 2.0) errors += PresetValidationError.TemperatureOutOfRange
+        }
+        preset.params.topP?.let {
+            if (it < 0.0 || it > 1.0) errors += PresetValidationError.TopPOutOfRange
+        }
+        preset.params.maxReplyTokens?.let {
+            if (it < 1 || it > 32_768) errors += PresetValidationError.MaxReplyTokensOutOfRange
+        }
+        return if (errors.isEmpty()) PresetValidationResult.Valid
+        else PresetValidationResult.Invalid(errors)
+    }
+}
