@@ -1,6 +1,7 @@
 package com.gkim.im.android.feature.tavern
 
 import com.gkim.im.android.core.model.CompanionCharacterCard
+import com.gkim.im.android.core.model.CompanionDrawResult
 
 /**
  * §7.1 / §7.2 — presentation-layer helpers for the gacha surface.
@@ -83,4 +84,43 @@ internal fun formatProbabilityPercent(probability: Float): String {
         else -> "0%"
     }
 }
+
+// -------------------------------------------------------------------------
+// §7.2 — Draw-result variant + bonus event
+// -------------------------------------------------------------------------
+
+/**
+ * Which post-draw animation the surface should render. [NewCard] is the standard "added to
+ * roster" flow from the existing gacha; [AlreadyOwned] is the §7.2-added duplicate variant
+ * whose rendering includes a "Keep as bonus" CTA.
+ */
+sealed interface GachaResultVariant {
+    data object NewCard : GachaResultVariant
+    data object AlreadyOwned : GachaResultVariant
+}
+
+internal fun gachaResultVariant(result: CompanionDrawResult): GachaResultVariant =
+    if (result.wasNew) GachaResultVariant.NewCard else GachaResultVariant.AlreadyOwned
+
+/**
+ * Event payload recorded when a user taps "Keep as bonus" on an already-owned duplicate
+ * draw result. Carries the card id (for attribution) plus an epoch-ms timestamp so downstream
+ * analytics / compensation flows can order events.
+ */
+data class BonusAwardedEvent(
+    val cardId: String,
+    val timestampEpochMs: Long,
+)
+
+/**
+ * Build a [BonusAwardedEvent] for a draw result. Factored into a pure function so the test
+ * can assert the exact payload shape without touching the composable's callback-invocation.
+ */
+internal fun bonusAwardedEvent(
+    result: CompanionDrawResult,
+    timestampEpochMs: Long,
+): BonusAwardedEvent = BonusAwardedEvent(
+    cardId = result.card.id,
+    timestampEpochMs = timestampEpochMs,
+)
 

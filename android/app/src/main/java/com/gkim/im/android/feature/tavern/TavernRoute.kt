@@ -132,6 +132,11 @@ fun TavernRoute(navController: NavHostController, container: AppContainer) {
         onOpenPortrait = { characterId ->
             navController.navigate(portraitTapRouteForTavernCard(characterId))
         },
+        onBonusAwarded = { _ ->
+            // Bonus-awarded event recording wiring is deferred to a follow-up analytics slice;
+            // the composable callback fires with the right payload shape (verified by
+            // GachaDuplicateAnimationTest) and future code can route it to a bus.
+        },
         onActivateCharacter = { characterId ->
             val selected = viewModel.activateCharacter(characterId) ?: return@TavernScreen
             val conversation = container.messagingRepository.ensureConversation(
@@ -154,6 +159,7 @@ private fun TavernScreen(
     onDraw: () -> Unit,
     onOpenCharacter: (String) -> Unit,
     onOpenPortrait: (String) -> Unit,
+    onBonusAwarded: (BonusAwardedEvent) -> Unit,
     onActivateCharacter: (String) -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
@@ -213,6 +219,7 @@ private fun TavernScreen(
                 breakdown = drawBreakdown,
                 onDraw = onDraw,
                 onOpenCharacter = { result -> onOpenCharacter(result.card.id) },
+                onBonusAwarded = onBonusAwarded,
             )
         }
         item {
@@ -320,6 +327,7 @@ private fun DrawEntryCard(
     breakdown: GachaProbabilityBreakdown,
     onDraw: () -> Unit,
     onOpenCharacter: (CompanionDrawResult) -> Unit,
+    onBonusAwarded: (BonusAwardedEvent) -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
     GlassCard(modifier = Modifier.testTag("tavern-draw-entry")) {
@@ -351,34 +359,105 @@ private fun DrawEntryCard(
                     .testTag("tavern-draw-trigger"),
             )
             lastDrawResult?.let { result ->
-                val resolvedCard = result.card.resolve(appLanguage)
-                GlassCard(
-                    modifier = Modifier
-                        .testTag("tavern-draw-result")
-                        .clickable { onOpenCharacter(result) },
-                ) {
-                    Text(
-                        text = appLanguage.pick("Latest draw", "本次抽卡"),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = AetherColors.Tertiary,
-                    )
-                    Text(
-                        text = resolvedCard.displayName,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = AetherColors.OnSurface,
-                    )
-                    Text(
-                        text = if (result.wasNew) {
-                            appLanguage.pick("New card added to roster", "新角色已加入持有列表")
-                        } else {
-                            appLanguage.pick("Already owned, still available to activate", "已持有，可直接激活")
-                        },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = AetherColors.OnSurfaceVariant,
+                when (gachaResultVariant(result)) {
+                    GachaResultVariant.NewCard -> DrawResultNewCard(result = result, onOpenCharacter = onOpenCharacter)
+                    GachaResultVariant.AlreadyOwned -> DrawResultAlreadyOwned(
+                        result = result,
+                        onOpenCharacter = onOpenCharacter,
+                        onBonusAwarded = onBonusAwarded,
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DrawResultNewCard(
+    result: CompanionDrawResult,
+    onOpenCharacter: (CompanionDrawResult) -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    val resolvedCard = result.card.resolve(appLanguage)
+    GlassCard(
+        modifier = Modifier
+            .testTag("tavern-draw-result")
+            .clickable { onOpenCharacter(result) },
+    ) {
+        Text(
+            text = appLanguage.pick("Latest draw", "本次抽卡"),
+            style = MaterialTheme.typography.labelLarge,
+            color = AetherColors.Tertiary,
+        )
+        Text(
+            text = resolvedCard.displayName,
+            style = MaterialTheme.typography.headlineMedium,
+            color = AetherColors.OnSurface,
+        )
+        Text(
+            text = appLanguage.pick("New card added to roster", "新角色已加入持有列表"),
+            style = MaterialTheme.typography.bodyLarge,
+            color = AetherColors.OnSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun DrawResultAlreadyOwned(
+    result: CompanionDrawResult,
+    onOpenCharacter: (CompanionDrawResult) -> Unit,
+    onBonusAwarded: (BonusAwardedEvent) -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    val resolvedCard = result.card.resolve(appLanguage)
+    var bonusClaimed by androidx.compose.runtime.remember(result.card.id) {
+        androidx.compose.runtime.mutableStateOf(false)
+    }
+    GlassCard(
+        modifier = Modifier
+            .testTag("tavern-draw-result-already-owned")
+            .clickable { onOpenCharacter(result) },
+    ) {
+        Text(
+            text = appLanguage.pick("Duplicate draw", "重复抽到"),
+            style = MaterialTheme.typography.labelLarge,
+            color = AetherColors.Tertiary,
+        )
+        Text(
+            text = resolvedCard.displayName,
+            style = MaterialTheme.typography.headlineMedium,
+            color = AetherColors.OnSurface,
+        )
+        Text(
+            text = appLanguage.pick(
+                "Already owned — convert this draw into a consolation bonus.",
+                "已持有，可换取安慰奖励。",
+            ),
+            style = MaterialTheme.typography.bodyLarge,
+            color = AetherColors.OnSurfaceVariant,
+        )
+        Text(
+            text = if (bonusClaimed) {
+                appLanguage.pick("Bonus claimed", "奖励已领取")
+            } else {
+                appLanguage.pick("Keep as bonus", "转为奖励")
+            },
+            style = MaterialTheme.typography.labelLarge,
+            color = if (bonusClaimed) AetherColors.OnSurfaceVariant else AetherColors.OnSurface,
+            modifier = Modifier
+                .background(
+                    if (bonusClaimed) AetherColors.SurfaceContainerLow else AetherColors.Primary.copy(alpha = 0.22f),
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                )
+                .then(
+                    if (bonusClaimed) Modifier else Modifier.clickable {
+                        onBonusAwarded(bonusAwardedEvent(result, System.currentTimeMillis()))
+                        bonusClaimed = true
+                    }
+                )
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .testTag("tavern-draw-keep-as-bonus"),
+        )
     }
 }
 
