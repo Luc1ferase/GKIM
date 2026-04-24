@@ -32,18 +32,9 @@ class LiveCompanionTurnRepository(
     override val activePathByConversation: StateFlow<Map<String, List<ChatMessage>>> =
         default.activePathByConversation
 
-    data class FailedSubmission(
-        val userMessageId: String,
-        val conversationId: String,
-        val activeCompanionId: String,
-        val userTurnBody: String,
-        val activeLanguage: String,
-        val parentMessageId: String?,
-    )
-
     private val failedSubmissionsState =
-        MutableStateFlow<Map<String, FailedSubmission>>(emptyMap())
-    val failedSubmissions: StateFlow<Map<String, FailedSubmission>> =
+        MutableStateFlow<Map<String, FailedCompanionSubmission>>(emptyMap())
+    override val failedSubmissions: StateFlow<Map<String, FailedCompanionSubmission>> =
         failedSubmissionsState.asStateFlow()
 
     init {
@@ -59,12 +50,12 @@ class LiveCompanionTurnRepository(
         }
     }
 
-    suspend fun submitUserTurn(
+    override suspend fun submitUserTurn(
         conversationId: String,
         activeCompanionId: String,
         userTurnBody: String,
         activeLanguage: String,
-        parentMessageId: String? = null,
+        parentMessageId: String?,
     ): Result<CompanionTurnRecordDto> {
         val clientTurnId = clientTurnIdGenerator()
         val userMessageId = "user-$clientTurnId"
@@ -83,7 +74,7 @@ class LiveCompanionTurnRepository(
         if (baseUrl == null || token == null) {
             return handleSubmissionFailure(
                 userMessageId = userMessageId,
-                submission = FailedSubmission(
+                submission = FailedCompanionSubmission(
                     userMessageId = userMessageId,
                     conversationId = conversationId,
                     activeCompanionId = activeCompanionId,
@@ -121,7 +112,7 @@ class LiveCompanionTurnRepository(
         } catch (t: Throwable) {
             handleSubmissionFailure(
                 userMessageId = userMessageId,
-                submission = FailedSubmission(
+                submission = FailedCompanionSubmission(
                     userMessageId = userMessageId,
                     conversationId = conversationId,
                     activeCompanionId = activeCompanionId,
@@ -134,7 +125,7 @@ class LiveCompanionTurnRepository(
         }
     }
 
-    suspend fun retrySubmitUserTurn(userMessageId: String): Result<CompanionTurnRecordDto> {
+    override suspend fun retrySubmitUserTurn(userMessageId: String): Result<CompanionTurnRecordDto> {
         val submission = failedSubmissionsState.value[userMessageId]
             ?: return Result.failure(IllegalStateException("no failed submission for $userMessageId"))
 
@@ -189,7 +180,7 @@ class LiveCompanionTurnRepository(
 
     private fun handleSubmissionFailure(
         userMessageId: String,
-        submission: FailedSubmission,
+        submission: FailedCompanionSubmission,
         error: Throwable,
     ): Result<CompanionTurnRecordDto> {
         default.updateUserMessageStatus(
@@ -208,7 +199,7 @@ class LiveCompanionTurnRepository(
         }
     }
 
-    suspend fun regenerateTurn(turnId: String): Result<CompanionTurnRecordDto> {
+    override suspend fun regenerateTurn(turnId: String): Result<CompanionTurnRecordDto> {
         val baseUrl = baseUrlProvider() ?: return Result.failure(IllegalStateException("no base url"))
         val token = tokenProvider() ?: return Result.failure(IllegalStateException("no token"))
         return try {

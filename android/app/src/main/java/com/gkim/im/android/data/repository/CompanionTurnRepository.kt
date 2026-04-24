@@ -26,9 +26,19 @@ data class ConversationTurnTree(
     val lastDeltaSeqByTurn: Map<String, Int> = emptyMap(),
 )
 
+data class FailedCompanionSubmission(
+    val userMessageId: String,
+    val conversationId: String,
+    val activeCompanionId: String,
+    val userTurnBody: String,
+    val activeLanguage: String,
+    val parentMessageId: String?,
+)
+
 interface CompanionTurnRepository {
     val treeByConversation: StateFlow<Map<String, ConversationTurnTree>>
     val activePathByConversation: StateFlow<Map<String, List<ChatMessage>>>
+    val failedSubmissions: StateFlow<Map<String, FailedCompanionSubmission>>
 
     fun recordUserTurn(userMessage: ChatMessage, conversationId: String)
     fun updateUserMessageStatus(conversationId: String, messageId: String, status: MessageStatus)
@@ -43,14 +53,33 @@ interface CompanionTurnRepository {
 
     fun applyRecord(record: CompanionTurnRecordDto)
     fun applySnapshot(record: CompanionTurnRecordDto) = applyRecord(record)
+
+    suspend fun submitUserTurn(
+        conversationId: String,
+        activeCompanionId: String,
+        userTurnBody: String,
+        activeLanguage: String,
+        parentMessageId: String? = null,
+    ): Result<CompanionTurnRecordDto> =
+        throw NotImplementedError("submit path requires a live repository")
+
+    suspend fun retrySubmitUserTurn(userMessageId: String): Result<CompanionTurnRecordDto> =
+        throw NotImplementedError("submit path requires a live repository")
+
+    suspend fun regenerateTurn(turnId: String): Result<CompanionTurnRecordDto> =
+        throw NotImplementedError("submit path requires a live repository")
 }
 
 class DefaultCompanionTurnRepository : CompanionTurnRepository {
     private val treeState = MutableStateFlow<Map<String, ConversationTurnTree>>(emptyMap())
     private val activePathState = MutableStateFlow<Map<String, List<ChatMessage>>>(emptyMap())
+    private val failedSubmissionsState =
+        MutableStateFlow<Map<String, FailedCompanionSubmission>>(emptyMap())
 
     override val treeByConversation: StateFlow<Map<String, ConversationTurnTree>> = treeState
     override val activePathByConversation: StateFlow<Map<String, List<ChatMessage>>> = activePathState
+    override val failedSubmissions: StateFlow<Map<String, FailedCompanionSubmission>> =
+        failedSubmissionsState
 
     override fun recordUserTurn(userMessage: ChatMessage, conversationId: String) {
         require(userMessage.direction == MessageDirection.Outgoing) {

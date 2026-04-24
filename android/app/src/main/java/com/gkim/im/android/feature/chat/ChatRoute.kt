@@ -68,6 +68,7 @@ import com.gkim.im.android.core.model.UserPersona
 import com.gkim.im.android.core.util.formatChatTimestamp
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.repository.CompanionTurnRepository
 import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.data.repository.UserPersonaRepository
 import com.gkim.im.android.core.designsystem.LocalAppLanguage
@@ -78,7 +79,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-private data class ChatUiState(
+internal fun appLanguageWireKey(language: AppLanguage): String = when (language) {
+    AppLanguage.English -> "en"
+    AppLanguage.Chinese -> "zh"
+}
+
+internal data class ChatUiState(
     val conversation: Conversation? = null,
     val activeProvider: AigcProvider? = null,
     val activePersona: UserPersona? = null,
@@ -100,9 +106,10 @@ internal data class GenerationFeedback(
     val showPreview: Boolean,
 )
 
-private class ChatViewModel(
+internal class ChatViewModel(
     conversationId: String,
     private val messagingRepository: MessagingRepository,
+    private val companionTurnRepository: CompanionTurnRepository,
     private val aigcRepository: AigcRepository,
     private val generatedImageSaver: GeneratedImageSaver,
     userPersonaRepository: UserPersonaRepository,
@@ -141,8 +148,26 @@ private class ChatViewModel(
         baseState.copy(generationActionFeedback = actionFeedback)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())
 
-    fun sendMessage(body: String, attachmentInput: MediaInput? = null) {
+    fun sendMessage(
+        body: String,
+        attachmentInput: MediaInput? = null,
+        activeLanguage: AppLanguage = AppLanguage.English,
+    ) {
         if (body.isBlank() && attachmentInput == null) return
+        val companionCardId = currentConversationSnapshot()?.companionCardId
+        if (companionCardId != null && attachmentInput == null) {
+            viewModelScope.launch {
+                companionTurnRepository.submitUserTurn(
+                    conversationId = resolvedConversationId,
+                    activeCompanionId = companionCardId,
+                    userTurnBody = body,
+                    activeLanguage = appLanguageWireKey(activeLanguage),
+                    parentMessageId = null,
+                )
+            }
+            generationActionFeedback.value = null
+            return
+        }
         messagingRepository.sendMessage(
             conversationId = resolvedConversationId,
             body = body,
@@ -150,6 +175,11 @@ private class ChatViewModel(
         )
         generationActionFeedback.value = null
     }
+
+    private fun currentConversationSnapshot(): Conversation? =
+        messagingRepository.conversations.value.firstOrNull {
+            it.id == resolvedConversationId || it.contactId == resolvedConversationId
+        }
 
     fun runAigc(mode: AigcMode, prompt: String, mediaInput: MediaInput?) {
         if (prompt.isBlank()) return
@@ -203,6 +233,7 @@ fun ChatRoute(
             ChatViewModel(
                 conversationId = conversationId,
                 messagingRepository = container.messagingRepository,
+                companionTurnRepository = container.companionTurnRepository,
                 aigcRepository = container.aigcRepository,
                 generatedImageSaver = container.generatedImageSaver,
                 userPersonaRepository = container.userPersonaRepository,
@@ -210,6 +241,7 @@ fun ChatRoute(
         },
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val appLanguage = LocalAppLanguage.current
     var prompt by remember { mutableStateOf("") }
     var chatAttachmentMedia by remember { mutableStateOf<MediaInput?>(null) }
     var generationSourceMedia by remember { mutableStateOf<MediaInput?>(null) }
@@ -245,7 +277,7 @@ fun ChatRoute(
         onPickGenerationVideo = generationSourcePicker.pickVideo,
         onSendMessage = {
             if (prompt.isBlank() && chatAttachmentMedia == null) return@ChatScreen
-            viewModel.sendMessage(prompt, chatAttachmentMedia)
+            viewModel.sendMessage(prompt, chatAttachmentMedia, appLanguage)
             prompt = ""
             chatAttachmentMedia = null
             isSecondaryMenuOpen = false
