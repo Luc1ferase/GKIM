@@ -117,9 +117,13 @@ fun TavernRoute(navController: NavHostController, container: AppContainer) {
         }
     }
 
+    val drawBreakdown = remember(container) {
+        computeProbabilityBreakdown(container.companionRosterRepository.drawPool)
+    }
     TavernScreen(
         uiState = uiState,
         importEntryState = importEntryState,
+        drawBreakdown = drawBreakdown,
         onOpenSettings = { navController.navigate("settings") },
         onCreateCharacter = { navController.navigate("tavern/editor?mode=create") },
         onImportCard = { importLauncher.launch(arrayOf("image/png", "application/json")) },
@@ -143,6 +147,7 @@ fun TavernRoute(navController: NavHostController, container: AppContainer) {
 private fun TavernScreen(
     uiState: TavernUiState,
     importEntryState: TavernImportEntryState,
+    drawBreakdown: GachaProbabilityBreakdown,
     onOpenSettings: () -> Unit,
     onCreateCharacter: () -> Unit,
     onImportCard: () -> Unit,
@@ -205,6 +210,7 @@ private fun TavernScreen(
         item {
             DrawEntryCard(
                 lastDrawResult = uiState.lastDrawResult,
+                breakdown = drawBreakdown,
                 onDraw = onDraw,
                 onOpenCharacter = { result -> onOpenCharacter(result.card.id) },
             )
@@ -311,6 +317,7 @@ private fun HeaderPill(label: String, onClick: () -> Unit) {
 @Composable
 private fun DrawEntryCard(
     lastDrawResult: CompanionDrawResult?,
+    breakdown: GachaProbabilityBreakdown,
     onDraw: () -> Unit,
     onOpenCharacter: (CompanionDrawResult) -> Unit,
 ) {
@@ -330,6 +337,9 @@ private fun DrawEntryCard(
                 style = MaterialTheme.typography.bodyLarge,
                 color = AetherColors.OnSurfaceVariant,
             )
+            if (!breakdown.isEmpty) {
+                GachaProbabilityBreakdownSection(breakdown = breakdown, appLanguage = appLanguage)
+            }
             Text(
                 text = appLanguage.pick("Draw a card", "抽一张"),
                 style = MaterialTheme.typography.labelLarge,
@@ -368,6 +378,36 @@ private fun DrawEntryCard(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun GachaProbabilityBreakdownSection(
+    breakdown: GachaProbabilityBreakdown,
+    appLanguage: AppLanguage,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(AetherColors.SurfaceContainerLow, shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .testTag("tavern-draw-probability-breakdown"),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = appLanguage.pick("Drop rates", "掉落概率"),
+            style = MaterialTheme.typography.labelLarge,
+            color = AetherColors.OnSurface,
+        )
+        breakdown.entries.forEach { entry ->
+            val label = appLanguage.pick(entry.rarity.englishLabel, entry.rarity.chineseLabel)
+            Text(
+                text = "$label · ${entry.count} · ${formatProbabilityPercent(entry.probability)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = AetherColors.OnSurfaceVariant,
+                modifier = Modifier.testTag("tavern-draw-probability-row-${entry.rarity.name}"),
+            )
         }
     }
 }

@@ -37,6 +37,7 @@ class BackendAwareCompanionRosterRepository(
     override val userCharacters: StateFlow<List<CompanionCharacterCard>> = userCharactersState
     override val activeCharacterId: StateFlow<String> = activeCharacterIdState
     override val lastDrawResult: StateFlow<CompanionDrawResult?> = lastDrawResultState
+    override val drawPool: List<CompanionCharacterCard> get() = fallbackRepository.drawPool
 
     init {
         syncFromFallback()
