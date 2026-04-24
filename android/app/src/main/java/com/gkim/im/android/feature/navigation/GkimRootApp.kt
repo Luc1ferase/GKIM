@@ -205,6 +205,13 @@ fun GkimRootApp(
                                         characterId = backStackEntry.arguments?.getString("characterId").orEmpty(),
                                     )
                                 }
+                                composable("tavern/portrait/{characterId}") { backStackEntry ->
+                                    com.gkim.im.android.feature.tavern.PortraitLargeViewRoute(
+                                        navController = resolvedNavController,
+                                        container = resolvedContainer,
+                                        characterId = backStackEntry.arguments?.getString("characterId").orEmpty(),
+                                    )
+                                }
                                 composable("tavern/editor?mode={mode}&id={id}") { backStackEntry ->
                                     CharacterEditorRoute(
                                         navController = resolvedNavController,
