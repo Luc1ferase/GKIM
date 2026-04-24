@@ -36,7 +36,7 @@
 
 - [x] 4.2 Wire the bootstrap flow so the first successful post-login session fetches the acknowledgment state via `GET /api/account/content-policy-acknowledgment`; if the state is missing or the policy version has bumped, the app routes to `ContentPolicyAcknowledgmentRoute` before entering the tavern. Skippable on `BuildConfig.DEBUG`. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.bootstrap.BootstrapAcknowledgmentGatingTest` covers first-launch routing, subsequent-launch bypass, and debug-build skip.
 
-- [ ] 4.3 Add instrumentation `ContentPolicyAcknowledgmentInstrumentationTest` on `codex_api34` covering: fresh install → bootstrap prompts acknowledgment → tap accept → app enters tavern; subsequent launch → bootstrap skips acknowledgment. Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.settings.ContentPolicyAcknowledgmentInstrumentationTest` passes.
+- [x] 4.3 Add instrumentation `ContentPolicyAcknowledgmentInstrumentationTest` on `codex_api34` covering: fresh install → bootstrap prompts acknowledgment → tap accept → app enters tavern; subsequent launch → bootstrap skips acknowledgment. Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.settings.ContentPolicyAcknowledgmentInstrumentationTest` passes.
 
 ## 5. Backend contract alignment
 
