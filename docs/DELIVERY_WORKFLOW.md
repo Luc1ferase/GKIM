@@ -2981,3 +2981,31 @@ Upload
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
+
+### Task 7.2 (wire-companion-turn-runtime): Close the slice — tick §7.2, keep all §1.1 → §7.1 upload rows with real SHAs, and archive via `openspec archive wire-companion-turn-runtime --yes`. (commit `<pending>`)
+
+- Verification:
+  - All eight prior-task upload rows in this section (§1.1, §2.1, §3.1, §3.2, §4.1, §5.1, §5.2, §6.1, §7.1) carry their real commit SHAs and the `origin/feature/ai-companion-im` push remote — see the per-task blocks above.
+  - `CompanionChatEndToEndInstrumentationTest` connected-debug run on `codex_api34(AVD) - 14` quoted verbatim at §5.1 and §5.2: `Starting 1 tests on codex_api34(AVD) - 14 / Finished 1 tests on codex_api34(AVD) - 14 / BUILD SUCCESSFUL in 40s` (§5.1 run) and `Starting 2 tests on codex_api34(AVD) - 14 / Finished 2 tests on codex_api34(AVD) - 14 / BUILD SUCCESSFUL in 44s` (§5.2 extended run).
+  - Pre-archive validation: `openspec validate wire-companion-turn-runtime --strict` → `Change 'wire-companion-turn-runtime' is valid`.
+  - Archive command: `openspec archive wire-companion-turn-runtime --yes` → stdout:
+    ```
+    ⚠ Why section should not exceed 1000 characters
+    Task status: ✓ Complete
+
+    Specs to update:
+      llm-text-companion-chat: update
+    Applying changes to openspec/specs/llm-text-companion-chat/spec.md:
+      + 1 added
+    Totals: + 1, ~ 0, - 0, → 0
+    Specs updated successfully.
+    Change 'wire-companion-turn-runtime' archived as '2026-04-24-wire-companion-turn-runtime'.
+    ```
+- Review:
+  - Score: `95/100`
+  - Findings: `§7.2 closes a slice whose scope was deliberately tightened twice — once when §5.1 / §5.2 instrumentation was narrowed to match the llm-text-companion-chat §5.2 Compose-rendered precedent, and once when §7.1 was honestly scoped to report all 13 full-connected failures as pre-existing / env-dependent rather than fold into scope. Both narrowing decisions are recorded in-line in their respective evidence rows, so a future reader can trace why the slice did not attempt a full-route GkimRootApp navigation test AND why the full 132-test connected invocation ended with BUILD FAILED. The 5-point deduction reflects that the slice leaves the pre-existing connected-suite breakages unresolved — a follow-up task is recommended to drain the 7 stale-testTag / old-UI-concept regressions (4 settings-detail + 1 space→酒馆 primary-tabs + 1 contacts-layout + 1 tavern-activation ComposeTimeout) so a future slice's §7 can re-establish a clean green full-connected baseline. This slice intentionally keeps the fix scope tight on companion Send wiring; the follow-up is explicit rather than silent.`
+- Upload:
+  - Commit: `<pending>`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
