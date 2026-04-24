@@ -2963,7 +2963,7 @@ Upload
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
 
-### Task 7.1 (wire-companion-turn-runtime): Run unit + instrumentation suites and categorize any failures against the slice boundary. (commit `<pending>`)
+### Task 7.1 (wire-companion-turn-runtime): Run unit + instrumentation suites and categorize any failures against the slice boundary. (commit `6ca2166`)
 
 - Verification:
   - **Unit suite** (`:app:testDebugUnitTest`): `BUILD SUCCESSFUL in 32s` (31 actionable tasks, 2 executed, 29 up-to-date). Full unit suite green.
@@ -2977,7 +2977,7 @@ Upload
   - Score: `95/100`
   - Findings: `§7.1 preserves the BUILD SUCCESSFUL signal for the path this slice actually delivers (unit suite + this slice's own instrumentation class) while being transparent about the broader connected-suite state of the codebase. The 13 broader failures all fall outside this slice's change boundary: 5 are environment-dependent (no local backend / missing runner arg) and would fail on any commit in the current env; 7 are pre-existing regressions from prior slice restructuring that were not caught because those prior slices did not run the full 132-test connected suite in their own §7 evidence (companion-settings-and-safety-reframe §7.2 ran 17/17 on a subset, not the full 132); 1 is an encoding/seed-layout duplicate-text issue unrelated to companion-turn dispatch or rendering. The suspicious "tavern activation opens companion conversation" failure was explicitly verified as pre-existing by checking out parent commit 6346eef and reproducing the same ComposeTimeoutException there in isolation. The 5-point deduction reflects that this slice's §7.1 ends with a BUILD FAILED on the full connected invocation rather than fixing the pre-existing failures in-slice — the decision to leave them as follow-up (rather than scope-creep into fixing settings-detail testTags + stale space-tab test + contacts-layout gap) keeps the slice boundary tight, but does mean the follow-up work is now visible in the task list rather than absorbed silently. The mitigation is that the full 132-test run is now recorded as a baseline, so future slices can measure their own delta against this categorization rather than re-discovering these pre-existing breakages.`
 - Upload:
-  - Commit: `<pending>`
+  - Commit: `6ca2166`
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
