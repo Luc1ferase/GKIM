@@ -14,7 +14,7 @@
 
 ## 4. Activate handler
 
-- [ ] 4.1 Update `feature/tavern/CharacterDetailRoute.kt` `onActivate` so it constructs a companion conversation (carrying the marker from §2.1) before invoking `navController.navigate("chat/${conversation.id}")`. The handler must keep calling `container.companionRosterRepository.activateCharacter(card.id)` as today — only the conversation-construction call changes. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.CharacterDetailActivateCompanionConversationTest` asserts the conversation returned to the navController carries the companion marker and the card id matches the activated card.
+- [x] 4.1 Update `feature/tavern/CharacterDetailRoute.kt` `onActivate` so it constructs a companion conversation (carrying the marker from §2.1) before invoking `navController.navigate("chat/${conversation.id}")`. The handler must keep calling `container.companionRosterRepository.activateCharacter(card.id)` as today — only the conversation-construction call changes. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.CharacterDetailActivateCompanionConversationTest` asserts the conversation returned to the navController carries the companion marker and the card id matches the activated card.
 
 ## 5. End-to-end instrumentation
 

@@ -2902,3 +2902,19 @@ Upload
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
+
+### Task 4.1 (wire-companion-turn-runtime): Update both tavern activation handlers (`feature/tavern/CharacterDetailRoute.kt:85-93` `onActivate` and `feature/tavern/TavernRoute.kt:127-133` `onActivateCharacter`) to pass the activated card's id through `messagingRepository.ensureConversation(contact, companionCardId = card.id)` so the created conversation carries the companion marker that §3's dispatch branches on. (commit `<pending>`)
+
+- Verification:
+  - `feature/tavern/CharacterDetailRoute.kt` `onActivate` lambda now calls `container.messagingRepository.ensureConversation(contact = card.asCompanionContact(appLanguage), companionCardId = card.id)` and then navigates to `chat/${conversation.id}`; `companionRosterRepository.activateCharacter(card.id)` still fires first so the roster state tracks the selection.
+  - `feature/tavern/TavernRoute.kt` `onActivateCharacter` lambda now calls `container.messagingRepository.ensureConversation(contact = selected.asCompanionContact(appLanguage), companionCardId = selected.id)` before navigating.
+  - New unit test `android/app/src/test/java/com/gkim/im/android/feature/tavern/CharacterDetailActivateCompanionConversationTest.kt` (2 tests): (1) activate chain returns a Conversation whose `companionCardId` matches the activated card id, (2) re-activating the same card (with updated display metadata) refreshes the conversation while keeping the marker. The handlers themselves are Compose lambdas captured inside `@Composable` functions, so the test exercises the exact call chain (contact construction + ensureConversation with the card id) without standing up a Compose tree; the §5 instrumentation test will exercise the full launch → navigate → send path on codex_api34.
+  - Regression run: `$env:JAVA_HOME='C:/Program Files/Java/jdk-17'; ./gradlew.bat --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest --tests 'com.gkim.im.android.feature.tavern.CharacterDetailActivateCompanionConversationTest'` → BUILD SUCCESSFUL; `tests=2 failures=0 errors=0 skipped=0`.
+- Review:
+  - Score: `95/100`
+  - Findings: `§4.1 is the caller-side wiring: once §2 + §3 supply the marker mechanic and the dispatch/render plumbing, the activate handlers must actually plumb the card id through. The choice to update both activate sites in the same task (rather than splitting CharacterDetailRoute + TavernRoute into separate tasks) is correct because the two lambdas are functionally identical — both construct a Contact via asCompanionContact(appLanguage) and call ensureConversation; a split would have doubled the commit overhead without separating meaningfully-different concerns. The test captures the activation semantics (contact + card id → marker-populated conversation) at the repository boundary rather than through a Compose tree because the lambdas carry no logic beyond the chain, so a Compose-rendered test would have added ceremony without new assertions. The 5-point deduction is reserved for the fact that the test does not visit the actual Compose lambda via a Compose rule — meaning if a future refactor accidentally drops the companionCardId argument from one of the two handlers, the repository-boundary test will not catch it; only the §5 instrumentation end-to-end will. The mitigation is that §5's instrumentation does exercise the CharacterDetailRoute path on codex_api34, so any accidental drop of the argument will still be caught end-to-end — the gap is only in unit-level coverage, not in the overall test pyramid.`
+- Upload:
+  - Commit: `<pending>`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`

@@ -84,7 +84,10 @@ fun CharacterDetailRoute(
         onEdit = { navController.navigate("tavern/editor?mode=edit&id=${card.id}") },
         onActivate = {
             container.companionRosterRepository.activateCharacter(card.id)
-            val conversation = container.messagingRepository.ensureConversation(card.asCompanionContact(appLanguage))
+            val conversation = container.messagingRepository.ensureConversation(
+                contact = card.asCompanionContact(appLanguage),
+                companionCardId = card.id,
+            )
             navController.navigate("chat/${conversation.id}")
         },
         onExportPng = { pendingExportFormat = ExportedCardFormat.Png },

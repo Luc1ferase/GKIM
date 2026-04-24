@@ -127,7 +127,8 @@ fun TavernRoute(navController: NavHostController, container: AppContainer) {
         onActivateCharacter = { characterId ->
             val selected = viewModel.activateCharacter(characterId) ?: return@TavernScreen
             val conversation = container.messagingRepository.ensureConversation(
-                selected.asCompanionContact(appLanguage)
+                contact = selected.asCompanionContact(appLanguage),
+                companionCardId = selected.id,
             )
             navController.navigate("chat/${conversation.id}")
         },
