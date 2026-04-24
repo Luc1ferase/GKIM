@@ -2682,7 +2682,7 @@ Upload
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
 
-### Task 6.1 (companion-settings-and-safety-reframe): Rewrite the `companion-character-card-depth` Purpose stub to the design.md § 5 text as part of the archival commit. (commit `<pending>`)
+### Task 6.1 (companion-settings-and-safety-reframe): Rewrite the `companion-character-card-depth` Purpose stub to the design.md § 5 text as part of the archival commit. (commit `4deea6d`)
 
 - Verification:
   - Pre-rewrite: `grep -n "TBD" openspec/specs/companion-character-card-depth/spec.md` returned `4:TBD - created by archiving change deepen-companion-character-card. Update Purpose after archive.` (the stub the earlier `deepen-companion-character-card` archive left behind).
@@ -2691,12 +2691,12 @@ Upload
   - Score: `95/100`
   - Findings: `§6.1 is a micro-task: one file, one paragraph replaced, verified by a single grep. The rewrite text is drawn verbatim from design.md § 5 which this slice authored specifically for the Purpose rewrite, so the text is already calibrated to the requirements shape. The "as part of the archival commit" clause is a commit-discipline requirement — the Purpose rewrite should not land as an orphan commit on feature/ai-companion-im ahead of the archival, because the archival commit is what moves the change into archive and lands the new parent spec. Bundling them together makes the archival commit the atomic "slice closes" commit, consistent with how earlier slices archived. The 5-point deduction is reserved for the fact that §6.1 does not clean up Purpose stubs for other capabilities left behind by earlier archive operations (companion-memory-and-preset, companion-character-roster, etc. all still have TBD Purpose stubs), but that's outside §6.1's scope — §6.1 is a targeted cleanup for a single stub that a past slice deliberately deferred with the note "Update Purpose after archive", and this slice fulfills that deferred promise.`
 - Upload:
-  - Commit: `<pending>`
+  - Commit: `4deea6d`
   - Branch: `feature/ai-companion-im`
-  - Push: `<pending>`
+  - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
 
-### Task 7.3 (companion-settings-and-safety-reframe): Slice-level umbrella evidence — all 22 subtasks green, archived via `openspec archive`, block-reason + failure-subtype tables + Purpose-stub cleanup cross-referenced. (commit `<pending>`)
+### Task 7.3 (companion-settings-and-safety-reframe): Slice-level umbrella evidence — all 22 subtasks green, archived via `openspec archive`, block-reason + failure-subtype tables + Purpose-stub cleanup cross-referenced. (commit `4deea6d`)
 
 - Verification:
   - **Archival command + output**: `openspec archive companion-settings-and-safety-reframe --yes` → `Proposal warnings in proposal.md (non-blocking): ⚠ Why section should not exceed 1000 characters`; `Task status: ✓ Complete`; `Specs to update: companion-settings-and-safety-reframe: create / im-backend: update`; `Applying changes to openspec/specs/companion-settings-and-safety-reframe/spec.md: + 5 added`; `Applying changes to openspec/specs/im-backend/spec.md: + 4 added`; `Totals: + 9, ~ 0, - 0, → 0`; `Specs updated successfully.`; `Change 'companion-settings-and-safety-reframe' archived as '2026-04-24-companion-settings-and-safety-reframe'.` The 5 new `companion-settings-and-safety-reframe` spec Requirements cover: block-reason closed taxonomy + bilingual copy (Req 1), failure-subtype closed taxonomy + per-subtype actions (Req 2), timeout bubble with Retry-with-longer-wait + preset hint (Req 3), Settings reorganization into six sections including bilingual labels (Req 4), content-policy acknowledgment route with version gating and bootstrap routing (Req 5). The 4 new `im-backend` spec Requirements cover the four backend contracts authored in §1.5 / §5.1 / §5.2: block-reason wire-key closed set, failure-subtype wire-key closed set, timeout retry hint (1.5× idle bound), acknowledgment endpoints with version gating. All 16 items (10 specs + 2 remaining changes) validate strict post-archive: `openspec validate --all --strict` → `Totals: 16 passed, 0 failed (16 items)`.
@@ -2708,7 +2708,7 @@ Upload
   - Score: `97/100`
   - Findings: `This is the umbrella evidence that closes the 22-task slice. Every one of the 22 task rows has landed per-task evidence on DELIVERY_WORKFLOW.md with strict score ≥95/100 and verified GitHub upload (each impl commit paired with its SHA fix-up commit per the two-commit dance). The slice's deliverables — block-reason closed taxonomy, failure-subtype closed taxonomy, timeout bubble affordance, six-section settings reorganization, content-policy acknowledgment flow with bootstrap gating — are all provably green at the unit layer (857 tests) and on-device at the codex_api34 emulator (17 instrumentation tests across 2 classes). The archival operation cleanly merges the spec delta into two parent specs (companion-settings-and-safety-reframe created, im-backend updated) and moves the change to openspec/changes/archive/2026-04-24-companion-settings-and-safety-reframe/. The §6.1 Purpose-stub cleanup fulfills a promise left by the earlier deepen-companion-character-card archive, so one "TBD" has been removed from the repo. Cross-references between the spec delta and design.md § 3 are now bidirectional in effect, closing the contract ambiguity gap flagged in §5.2. The task row map above provides a commit-by-commit index of the slice. Score: 97/100 — the 3-point deduction is reserved for (a) the proposal.md "Why section > 1000 chars" non-blocking warning surfaced by openspec archive (the Why section was authored with full context per the proposal template convention this repo uses, but the OpenSpec validator caps it; this is a convention mismatch the repo has accepted across multiple prior archives); (b) the new companion-settings-and-safety-reframe parent spec's Purpose is itself a TBD stub inherited from the openspec archive template, which a future slice will replace with a rewrite like §6.1 did for companion-character-card-depth (the cleanup discipline is established; the mechanical invocation remains). Neither deduction reflects a correctness issue — both are convention-level observations that future proposals can address incrementally.`
 - Upload:
-  - Commit: `<pending>`
+  - Commit: `4deea6d`
   - Branch: `feature/ai-companion-im`
-  - Push: `<pending>`
+  - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
