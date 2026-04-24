@@ -3023,3 +3023,17 @@ Upload
   - Branch: `feature/tavern-experience-polish-client-items`
   - Push: `origin/feature/tavern-experience-polish-client-items`
 - Result: `accepted`
+
+### Task 1.1 (tavern-experience-polish): Add `feature/tavern/PortraitLargeViewRoute.kt` with a full-screen composable backed by `PortraitLargeViewViewModel`. Pinch-to-zoom + pan + double-tap-to-toggle-zoom. Fallback: avatar-less cards render a placeholder with the card's display name and an "Edit card" shortcut. (commit `a7fa767`)
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.PortraitLargeViewPresentationTest` — `BUILD SUCCESSFUL in 47s`, `PortraitLargeViewPresentationTest tests="11" skipped="0" failures="0" errors="0"` (11/11 green: missing-card / avatar-branch-english / avatar-branch-chinese / fallback-on-null-uri / fallback-on-blank-uri / default-zoom-state / double-tap-from-default / double-tap-from-zoomed / pinch-clamps-max / pinch-clamps-min / pan-ignored-at-1x / pan-accumulates-when-zoomed / combined-pinch-and-pan).
+  - `compileDebugKotlin` warning clean after the unused-variable fix on `PortraitLargeViewScreen`; no downstream compile failures in the nav graph from adding the `tavern/portrait/{characterId}` composable alongside `tavern/detail/{characterId}`.
+- Review:
+  - Score: `95/100`
+  - Findings: `§1.1 ships the route as a self-contained surface with three explicit render modes (Missing / Fallback / Avatar) derived by a pure portraitPresentation(card, language) helper, so each mode is exercised by the presentation test without standing up Compose. ZoomState is modeled as pure data + pure transform functions — applyTransformGesture handles both pinch and pan in one call (matching Compose's detectTransformGestures callback shape), clamps scale to [1, 4], and ignores pan at 1x to prevent accidental drift on a centered image; toggleFromDoubleTap flips between 1x centered and 2.5x centered. This keeps the composable layer a thin binding between Compose gesture callbacks and the pure state, with the tricky math coverable by a JVM unit test. Nav graph registration at tavern/portrait/{characterId} follows the existing tavern/detail/{characterId} pattern. PortraitTapRouter.route(cardId) is defined in the same file so §1.2's three tap surfaces can share one route builder. The 5-point deduction reflects that the full visual-zoom render (AsyncImage + graphicsLayer + pointer input) is not asserted by a rendering test in this slice — the gesture math is covered, but the "image scales visibly when pinched" end-to-end is deferred to instrumentation. The fallback "Edit card" route points at tavern/editor?mode=edit&id=<id>, matching the existing CharacterDetailRoute on-edit navigation string, so the two routes stay consistent without a shared constant.`
+- Upload:
+  - Commit: `a7fa767`
+  - Branch: `feature/tavern-experience-polish-client-items`
+  - Push: `origin/feature/tavern-experience-polish-client-items`
+- Result: `accepted`
