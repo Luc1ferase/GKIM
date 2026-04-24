@@ -29,6 +29,12 @@ interface CompanionRosterRepository {
     val activeCharacterId: StateFlow<String>
     val lastDrawResult: StateFlow<CompanionDrawResult?>
 
+    /**
+     * Read-only view of the current gacha draw pool, used by the pre-draw UI to surface the
+     * rarity / probability breakdown (§7.1). Empty when the repository has no pool.
+     */
+    val drawPool: List<CompanionCharacterCard>
+
     fun characterById(characterId: String): CompanionCharacterCard?
     fun activateCharacter(characterId: String)
     suspend fun drawCharacter(): CompanionDrawResult
@@ -53,7 +59,7 @@ interface CompanionRosterRepository {
 
 class DefaultCompanionRosterRepository(
     presetCharacters: List<CompanionCharacterCard>,
-    private val drawPool: List<CompanionCharacterCard>,
+    override val drawPool: List<CompanionCharacterCard>,
     initialUserCharacters: List<CompanionCharacterCard> = emptyList(),
     private val idGenerator: () -> String = { "user-${UUID.randomUUID()}" },
 ) : CompanionRosterRepository {

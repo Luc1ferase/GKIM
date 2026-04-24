@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -116,14 +117,26 @@ fun TavernRoute(navController: NavHostController, container: AppContainer) {
         }
     }
 
+    val drawBreakdown = remember(container) {
+        computeProbabilityBreakdown(container.companionRosterRepository.drawPool)
+    }
     TavernScreen(
         uiState = uiState,
         importEntryState = importEntryState,
+        drawBreakdown = drawBreakdown,
         onOpenSettings = { navController.navigate("settings") },
         onCreateCharacter = { navController.navigate("tavern/editor?mode=create") },
         onImportCard = { importLauncher.launch(arrayOf("image/png", "application/json")) },
         onDraw = viewModel::drawCharacter,
         onOpenCharacter = { characterId -> navController.navigate("tavern/detail/$characterId") },
+        onOpenPortrait = { characterId ->
+            navController.navigate(portraitTapRouteForTavernCard(characterId))
+        },
+        onBonusAwarded = { _ ->
+            // Bonus-awarded event recording wiring is deferred to a follow-up analytics slice;
+            // the composable callback fires with the right payload shape (verified by
+            // GachaDuplicateAnimationTest) and future code can route it to a bus.
+        },
         onActivateCharacter = { characterId ->
             val selected = viewModel.activateCharacter(characterId) ?: return@TavernScreen
             val conversation = container.messagingRepository.ensureConversation(
@@ -139,11 +152,14 @@ fun TavernRoute(navController: NavHostController, container: AppContainer) {
 private fun TavernScreen(
     uiState: TavernUiState,
     importEntryState: TavernImportEntryState,
+    drawBreakdown: GachaProbabilityBreakdown,
     onOpenSettings: () -> Unit,
     onCreateCharacter: () -> Unit,
     onImportCard: () -> Unit,
     onDraw: () -> Unit,
     onOpenCharacter: (String) -> Unit,
+    onOpenPortrait: (String) -> Unit,
+    onBonusAwarded: (BonusAwardedEvent) -> Unit,
     onActivateCharacter: (String) -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
@@ -200,8 +216,10 @@ private fun TavernScreen(
         item {
             DrawEntryCard(
                 lastDrawResult = uiState.lastDrawResult,
+                breakdown = drawBreakdown,
                 onDraw = onDraw,
                 onOpenCharacter = { result -> onOpenCharacter(result.card.id) },
+                onBonusAwarded = onBonusAwarded,
             )
         }
         item {
@@ -217,6 +235,7 @@ private fun TavernScreen(
                 testTag = "tavern-preset-card-${character.id}",
                 ownershipLabel = appLanguage.pick("Preset", "预设"),
                 onClick = { onOpenCharacter(character.id) },
+                onAvatarTap = { onOpenPortrait(character.id) },
                 onActivate = { onActivateCharacter(character.id) },
             )
         }
@@ -262,6 +281,7 @@ private fun TavernScreen(
                     testTag = "tavern-owned-card-${character.id}",
                     ownershipLabel = appLanguage.pick("Drawn", "抽得"),
                     onClick = { onOpenCharacter(character.id) },
+                    onAvatarTap = { onOpenPortrait(character.id) },
                     onActivate = { onActivateCharacter(character.id) },
                 )
             }
@@ -280,6 +300,7 @@ private fun TavernScreen(
                     testTag = "tavern-user-card-${character.id}",
                     ownershipLabel = appLanguage.pick("Custom", "自建"),
                     onClick = { onOpenCharacter(character.id) },
+                    onAvatarTap = { onOpenPortrait(character.id) },
                     onActivate = { onActivateCharacter(character.id) },
                 )
             }
@@ -303,8 +324,10 @@ private fun HeaderPill(label: String, onClick: () -> Unit) {
 @Composable
 private fun DrawEntryCard(
     lastDrawResult: CompanionDrawResult?,
+    breakdown: GachaProbabilityBreakdown,
     onDraw: () -> Unit,
     onOpenCharacter: (CompanionDrawResult) -> Unit,
+    onBonusAwarded: (BonusAwardedEvent) -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
     GlassCard(modifier = Modifier.testTag("tavern-draw-entry")) {
@@ -322,6 +345,9 @@ private fun DrawEntryCard(
                 style = MaterialTheme.typography.bodyLarge,
                 color = AetherColors.OnSurfaceVariant,
             )
+            if (!breakdown.isEmpty) {
+                GachaProbabilityBreakdownSection(breakdown = breakdown, appLanguage = appLanguage)
+            }
             Text(
                 text = appLanguage.pick("Draw a card", "抽一张"),
                 style = MaterialTheme.typography.labelLarge,
@@ -333,33 +359,134 @@ private fun DrawEntryCard(
                     .testTag("tavern-draw-trigger"),
             )
             lastDrawResult?.let { result ->
-                val resolvedCard = result.card.resolve(appLanguage)
-                GlassCard(
-                    modifier = Modifier
-                        .testTag("tavern-draw-result")
-                        .clickable { onOpenCharacter(result) },
-                ) {
-                    Text(
-                        text = appLanguage.pick("Latest draw", "本次抽卡"),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = AetherColors.Tertiary,
-                    )
-                    Text(
-                        text = resolvedCard.displayName,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = AetherColors.OnSurface,
-                    )
-                    Text(
-                        text = if (result.wasNew) {
-                            appLanguage.pick("New card added to roster", "新角色已加入持有列表")
-                        } else {
-                            appLanguage.pick("Already owned, still available to activate", "已持有，可直接激活")
-                        },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = AetherColors.OnSurfaceVariant,
+                when (gachaResultVariant(result)) {
+                    GachaResultVariant.NewCard -> DrawResultNewCard(result = result, onOpenCharacter = onOpenCharacter)
+                    GachaResultVariant.AlreadyOwned -> DrawResultAlreadyOwned(
+                        result = result,
+                        onOpenCharacter = onOpenCharacter,
+                        onBonusAwarded = onBonusAwarded,
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DrawResultNewCard(
+    result: CompanionDrawResult,
+    onOpenCharacter: (CompanionDrawResult) -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    val resolvedCard = result.card.resolve(appLanguage)
+    GlassCard(
+        modifier = Modifier
+            .testTag("tavern-draw-result")
+            .clickable { onOpenCharacter(result) },
+    ) {
+        Text(
+            text = appLanguage.pick("Latest draw", "本次抽卡"),
+            style = MaterialTheme.typography.labelLarge,
+            color = AetherColors.Tertiary,
+        )
+        Text(
+            text = resolvedCard.displayName,
+            style = MaterialTheme.typography.headlineMedium,
+            color = AetherColors.OnSurface,
+        )
+        Text(
+            text = appLanguage.pick("New card added to roster", "新角色已加入持有列表"),
+            style = MaterialTheme.typography.bodyLarge,
+            color = AetherColors.OnSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun DrawResultAlreadyOwned(
+    result: CompanionDrawResult,
+    onOpenCharacter: (CompanionDrawResult) -> Unit,
+    onBonusAwarded: (BonusAwardedEvent) -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    val resolvedCard = result.card.resolve(appLanguage)
+    var bonusClaimed by androidx.compose.runtime.remember(result.card.id) {
+        androidx.compose.runtime.mutableStateOf(false)
+    }
+    GlassCard(
+        modifier = Modifier
+            .testTag("tavern-draw-result-already-owned")
+            .clickable { onOpenCharacter(result) },
+    ) {
+        Text(
+            text = appLanguage.pick("Duplicate draw", "重复抽到"),
+            style = MaterialTheme.typography.labelLarge,
+            color = AetherColors.Tertiary,
+        )
+        Text(
+            text = resolvedCard.displayName,
+            style = MaterialTheme.typography.headlineMedium,
+            color = AetherColors.OnSurface,
+        )
+        Text(
+            text = appLanguage.pick(
+                "Already owned — convert this draw into a consolation bonus.",
+                "已持有，可换取安慰奖励。",
+            ),
+            style = MaterialTheme.typography.bodyLarge,
+            color = AetherColors.OnSurfaceVariant,
+        )
+        Text(
+            text = if (bonusClaimed) {
+                appLanguage.pick("Bonus claimed", "奖励已领取")
+            } else {
+                appLanguage.pick("Keep as bonus", "转为奖励")
+            },
+            style = MaterialTheme.typography.labelLarge,
+            color = if (bonusClaimed) AetherColors.OnSurfaceVariant else AetherColors.OnSurface,
+            modifier = Modifier
+                .background(
+                    if (bonusClaimed) AetherColors.SurfaceContainerLow else AetherColors.Primary.copy(alpha = 0.22f),
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                )
+                .then(
+                    if (bonusClaimed) Modifier else Modifier.clickable {
+                        onBonusAwarded(bonusAwardedEvent(result, System.currentTimeMillis()))
+                        bonusClaimed = true
+                    }
+                )
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .testTag("tavern-draw-keep-as-bonus"),
+        )
+    }
+}
+
+@Composable
+private fun GachaProbabilityBreakdownSection(
+    breakdown: GachaProbabilityBreakdown,
+    appLanguage: AppLanguage,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(AetherColors.SurfaceContainerLow, shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .testTag("tavern-draw-probability-breakdown"),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = appLanguage.pick("Drop rates", "掉落概率"),
+            style = MaterialTheme.typography.labelLarge,
+            color = AetherColors.OnSurface,
+        )
+        breakdown.entries.forEach { entry ->
+            val label = appLanguage.pick(entry.rarity.englishLabel, entry.rarity.chineseLabel)
+            Text(
+                text = "$label · ${entry.count} · ${formatProbabilityPercent(entry.probability)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = AetherColors.OnSurfaceVariant,
+                modifier = Modifier.testTag("tavern-draw-probability-row-${entry.rarity.name}"),
+            )
         }
     }
 }
@@ -371,6 +498,7 @@ private fun CharacterCard(
     testTag: String,
     ownershipLabel: String,
     onClick: () -> Unit,
+    onAvatarTap: () -> Unit,
     onActivate: () -> Unit,
 ) {
     GlassCard(modifier = Modifier.testTag(testTag)) {
@@ -382,6 +510,21 @@ private fun CharacterCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
+                Box(
+                    modifier = Modifier
+                        .padding(end = 14.dp)
+                        .size(44.dp)
+                        .background(AetherColors.Primary.copy(alpha = 0.18f), androidx.compose.foundation.shape.CircleShape)
+                        .clickable(onClick = onAvatarTap)
+                        .testTag("$testTag-avatar"),
+                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                ) {
+                    Text(
+                        text = character.avatarText,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = AetherColors.Primary,
+                    )
+                }
                 Column(
                     modifier = Modifier.weight(1f).clickable(onClick = onClick),
                     verticalArrangement = Arrangement.spacedBy(4.dp),

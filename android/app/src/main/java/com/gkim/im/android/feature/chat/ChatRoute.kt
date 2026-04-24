@@ -278,6 +278,7 @@ fun ChatRoute(
         isSecondaryMenuOpen = isSecondaryMenuOpen,
         onPromptChanged = { prompt = it },
         onBack = { navController.popBackStack() },
+        onOpenPortrait = { route -> navController.navigate(route) },
         onPersonaPillTap = {
             navController.navigate(ChatChromePersonaPillDefaults.DestinationRoute)
         },
@@ -317,6 +318,7 @@ private fun ChatScreen(
     isSecondaryMenuOpen: Boolean,
     onPromptChanged: (String) -> Unit,
     onBack: () -> Unit,
+    onOpenPortrait: (String) -> Unit,
     onPersonaPillTap: () -> Unit,
     onToggleSecondaryMenu: () -> Unit,
     onPickChatImage: () -> Unit,
@@ -346,11 +348,14 @@ private fun ChatScreen(
             .padding(horizontal = 24.dp, vertical = 20.dp)
             .testTag("chat-screen"),
     ) {
+        val headerPortraitRoute = com.gkim.im.android.feature.tavern.portraitTapRouteForChatHeader(uiState.conversation)
+        val bubblePortraitRoute = com.gkim.im.android.feature.tavern.portraitTapRouteForChatBubble(uiState.conversation)
         ChatTopBar(
             conversation = uiState.conversation,
             activePersona = uiState.activePersona,
             onBack = onBack,
             onPersonaPillTap = onPersonaPillTap,
+            onHeaderAvatarTap = headerPortraitRoute?.let { route -> { onOpenPortrait(route) } },
         )
         chatChromePersonaFooter(uiState.activePersona, LocalAppLanguage.current)?.let { footer ->
             Text(
@@ -386,6 +391,7 @@ private fun ChatScreen(
                         conversation = uiState.conversation,
                         message = message,
                         isMostRecentCompanionVariant = isMostRecentCompanion,
+                        onBubbleAvatarTap = bubblePortraitRoute?.let { route -> { onOpenPortrait(route) } },
                     )
                 }
                 uiState.latestTask?.let { task ->
@@ -631,6 +637,7 @@ private fun ChatTopBar(
     activePersona: UserPersona?,
     onBack: () -> Unit,
     onPersonaPillTap: () -> Unit,
+    onHeaderAvatarTap: (() -> Unit)? = null,
 ) {
     val language = LocalAppLanguage.current
     val personaPill = chatChromePersonaPill(activePersona, language)
@@ -655,6 +662,20 @@ private fun ChatTopBar(
                 contentAlignment = androidx.compose.ui.Alignment.Center,
             ) {
                 Text(text = "<", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
+            }
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(AetherColors.Primary.copy(alpha = 0.18f), CircleShape)
+                    .let { if (onHeaderAvatarTap != null) it.clickable(onClick = onHeaderAvatarTap) else it }
+                    .testTag("chat-header-avatar"),
+                contentAlignment = androidx.compose.ui.Alignment.Center,
+            ) {
+                Text(
+                    text = conversation?.avatarText ?: "",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = AetherColors.Primary,
+                )
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
                 Text(
@@ -684,6 +705,7 @@ internal fun ChatMessageRow(
     conversation: Conversation?,
     message: ChatMessage,
     isMostRecentCompanionVariant: Boolean = false,
+    onBubbleAvatarTap: (() -> Unit)? = null,
     variantNavigation: VariantNavigationState? = null,
     onSelectPreviousVariant: () -> Unit = {},
     onSelectNextVariant: () -> Unit = {},
@@ -743,6 +765,7 @@ internal fun ChatMessageRow(
                 modifier = Modifier
                     .size(40.dp)
                     .background(avatarBackground, CircleShape)
+                    .let { if (onBubbleAvatarTap != null && message.direction == MessageDirection.Incoming) it.clickable(onClick = onBubbleAvatarTap) else it }
                     .testTag("chat-message-avatar-${message.id}"),
                 contentAlignment = Alignment.Center,
             ) {
