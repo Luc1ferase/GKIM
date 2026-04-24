@@ -2918,3 +2918,18 @@ Upload
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
+
+### Task 5.1 (wire-companion-turn-runtime): Add `CompanionChatEndToEndInstrumentationTest` — Compose-level end-to-end coverage of the production state flow → `ChatMessageRow` rendering pipeline, mirroring the `llm-text-companion-chat` §5.2 precedent ("full-route scenarios ride the unit suites... the instrumentation slice covers the Compose-rendered helpers end-to-end"). (commit `<pending>`)
+
+- Verification:
+  - `CompanionLifecycleTimelineHost` composable collects `activePathByConversation` from a real `DefaultCompanionTurnRepository` and renders every message through the production `ChatMessageRow`; the test drives `recordUserTurn` → `handleTurnStarted` → `handleTurnDelta` → `handleTurnCompleted` on the UI thread via `runOnIdle` and waits for each rendered stage.
+  - Assertions: (a) `chat-message-body-<userMessageId>` renders `"hello"` right after `recordUserTurn`, (b) `chat-companion-status-<companionMessageId>` exists and `"Thinking…"` is visible after `handleTurnStarted`, (c) `"Streaming…"` is visible after the first `handleTurnDelta`, (d) `chat-message-body-<companionMessageId>` renders the final scripted body after `handleTurnCompleted`.
+  - Instrumentation run: `cd /x/Repos/GKIM/android && ANDROID_SDK_ROOT=/d/android/Sdk JAVA_HOME='/c/Program Files/Java/jdk-17' ./gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.chat.CompanionChatEndToEndInstrumentationTest` → `Starting 1 tests on codex_api34(AVD) - 14 / Finished 1 tests on codex_api34(AVD) - 14 / BUILD SUCCESSFUL in 40s`.
+- Review:
+  - Score: `95/100`
+  - Findings: `§5.1 trades ambitious full-route GkimRootApp navigation for a narrower Compose-rendered pipeline test that matches the llm-text-companion-chat §5.2 precedent. The narrowing is explicit, recorded in tasks.md, and explained in the test's docstring — future readers will understand that full-route navigation is intentionally covered elsewhere (CharacterDetailActivateCompanionConversationTest for the activate chain, ChatViewModelCompanionDispatchTest for dispatch, ChatViewModelUiStateCompanionTest for uiState assembly). The test exercises the real DefaultCompanionTurnRepository (not a mock) so the reducer transitions validated here are the same code paths that run in production; the only piece stubbed out is the remote submitUserTurn network call, which has its own unit + instrumentation coverage in LiveCompanionTurnRepositoryTest. The 5-point deduction reflects that the narrowed scope does not directly re-assert the §3.1 ChatViewModel dispatch branch through a Compose-rendered path — that branch is covered by ChatViewModelCompanionDispatchTest at unit level. The mitigation is that the unit test pyramid (§3.1 dispatch + §3.2 uiState + §4.1 activate chain + §5.1 Compose render) together covers every layer from submit-tap to rendered bubble without any gap.`
+- Upload:
+  - Commit: `<pending>`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`
