@@ -50,7 +50,7 @@
 
 ## 7. Verification and delivery evidence
 
-- [ ] 7.1 Add focused unit suites: `BlockReasonTest`, `BlockReasonCopyTest`, `SafetyCopyTest`, `ChatBlockedBubbleTest`, `ChatFailedBubbleTest`, `ChatTimeoutBubbleTest`, `SettingsMenuPresentationTest`, `CompanionMemoryShortcutTest`, `ContentAndSafetySectionTest`, `AigcImageProviderSectionTest`, `ContentPolicyAcknowledgmentPresentationTest`, `BootstrapAcknowledgmentGatingTest`, plus `ImBackendPayloadsTest` coverage for block-reason + failure-subtype round-trip. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest` fully green.
+- [x] 7.1 Add focused unit suites: `BlockReasonTest`, `BlockReasonCopyTest`, `SafetyCopyTest`, `ChatBlockedBubbleTest`, `ChatFailedBubbleTest`, `ChatTimeoutBubbleTest`, `SettingsMenuPresentationTest`, `CompanionMemoryShortcutTest`, `ContentAndSafetySectionTest`, `AigcImageProviderSectionTest`, `ContentPolicyAcknowledgmentPresentationTest`, `BootstrapAcknowledgmentGatingTest`, plus `ImBackendPayloadsTest` coverage for block-reason + failure-subtype round-trip. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest` fully green.
 
 - [ ] 7.2 Add instrumentation coverage on `codex_api34`: `ChatFailureAndSafetyBubbleInstrumentationTest` plus `ContentPolicyAcknowledgmentInstrumentationTest`. Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest` runs both suites green.
 
