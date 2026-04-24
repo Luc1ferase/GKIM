@@ -1,6 +1,7 @@
 package com.gkim.im.android.feature.chat
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -105,15 +106,39 @@ internal fun truncatePreview(body: String, limit: Int = 120): String {
     }
 }
 
+/**
+ * §2.2 — pick the default-highlighted greeting for the opener picker.
+ *
+ * Returns:
+ * - `null` when no options are available.
+ * - `lastSelected` when it falls within `options.indices` (and options is non-empty).
+ * - `0` otherwise (first option is the default when there is no recorded selection or the
+ *   recorded selection is stale / out-of-range).
+ *
+ * The caller renders a "Remembered from last time" caption next to the default row when
+ * `lastSelected != null && lastSelected == defaultSelectionIndex(options, lastSelected)`.
+ */
+internal fun defaultSelectionIndex(
+    options: List<CompanionGreetingOption>,
+    lastSelected: Int?,
+): Int? {
+    if (options.isEmpty()) return null
+    if (lastSelected != null && lastSelected in options.indices) return lastSelected
+    return 0
+}
+
 @Composable
 fun CompanionGreetingPicker(
     options: List<CompanionGreetingOption>,
     onSelect: (CompanionGreetingOption) -> Unit,
+    rememberedIndex: Int? = null,
     previewLimit: Int = 120,
 ) {
     if (options.isEmpty()) return
     val appLanguage = LocalAppLanguage.current
     var previewing by remember { mutableStateOf<CompanionGreetingOption?>(null) }
+    val defaultIdx = defaultSelectionIndex(options, rememberedIndex)
+    val rememberedMatches = rememberedIndex != null && defaultIdx == rememberedIndex
 
     GlassCard(modifier = Modifier.testTag("chat-companion-greeting-picker")) {
         Text(
@@ -123,10 +148,19 @@ fun CompanionGreetingPicker(
         )
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             options.forEach { option ->
+                val isDefault = defaultIdx == option.index
+                val showRemembered = rememberedMatches && isDefault
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(18.dp))
+                        .then(
+                            if (isDefault) {
+                                Modifier.border(1.dp, AetherColors.Primary, RoundedCornerShape(18.dp))
+                            } else {
+                                Modifier
+                            }
+                        )
                         .clickable { previewing = option }
                         .padding(horizontal = 14.dp, vertical = 12.dp)
                         .testTag("chat-companion-greeting-option-${option.index}"),
@@ -137,6 +171,14 @@ fun CompanionGreetingPicker(
                         style = MaterialTheme.typography.labelMedium,
                         color = AetherColors.OnSurfaceVariant,
                     )
+                    if (showRemembered) {
+                        Text(
+                            text = appLanguage.pick("Remembered from last time", "沿用上次选择"),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = AetherColors.Primary,
+                            modifier = Modifier.testTag("chat-companion-greeting-remembered-${option.index}"),
+                        )
+                    }
                     Text(
                         text = truncatePreview(option.body, previewLimit),
                         style = MaterialTheme.typography.bodyLarge,
