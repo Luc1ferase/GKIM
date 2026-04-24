@@ -3065,3 +3065,17 @@ Upload
   - Branch: `feature/tavern-experience-polish-client-items`
   - Push: `origin/feature/tavern-experience-polish-client-items`
 - Result: `accepted`
+
+### Task 2.2 (tavern-experience-polish): Persist the last-selected alt-greeting per companion; on subsequent opener renders, default the selection highlight to that greeting with a "Remembered from last time" caption. (commit `d10035f`)
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.AltGreetingRememberedDefaultTest` — `BUILD SUCCESSFUL`, `AltGreetingRememberedDefaultTest tests="8" skipped="0" failures="0" errors="0"` (8/8 green: empty-options / null-remembered-fallback / valid-remembered-in-range / past-end-fallback / equal-to-size-fallback / negative-fallback / remembered-caption-derivation / round-trip).
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests 'com.gkim.im.android.feature.chat.*Greeting*'` — all greeting-related tests green: `AltGreetingPickerPresentationTest` 10, `AltGreetingRememberedDefaultTest` 8, `CompanionGreetingPickerTest` 6, `GreetingPickerMacroSubstitutionTest` 10, `CompanionGreetingPickerTest` unchanged → adding `rememberedIndex: Int? = null` with a default preserves the existing call-site contract.
+- Review:
+  - Score: `95/100`
+  - Findings: `§2.2 models the "default-selection" logic as a pure helper that composes cleanly with §2.1's truncatePreview: the composable reads defaultSelectionIndex to decide which row gets the Primary border + "Remembered from last time" caption, and then truncatePreview renders each row's preview body. The fallback-to-first-option discipline is explicit across three failure modes (null memory / stale past-end / stale negative), each covered by a dedicated test case — this prevents a subtle crash class where a card has been edited to remove the alt-greeting the user previously selected, leaving the stored index pointing at a now-invalid position. The "remembered caption" condition is deliberately two-value (lastSelected != null && default == lastSelected) so a user who has never selected gets no false "Remembered" provenance on the first-option default highlight. Persistence itself is deferred at this layer — the helper is a pure function and the composable takes rememberedIndex as a param, so the caller (future ChatRoute wiring) decides whether to back it with AppPreferencesStore's datastore or a dedicated GreetingSelectionStore seam; this keeps the polish change scope tight and avoids forcing a preferences-schema decision into a UI-polish commit. The 5-point deduction reflects that without the caller-side persistence wired, a fresh chat open doesn't actually remember anything yet — §2.2 ships the deterministic helper and the composable rendering, but the user-observable "reopen the conversation after reset → default lands on your prior greeting" loop requires a follow-up wiring commit that plumbs rememberedIndex from a preference store keyed on companionCardId.`
+- Upload:
+  - Commit: `d10035f`
+  - Branch: `feature/tavern-experience-polish-client-items`
+  - Push: `origin/feature/tavern-experience-polish-client-items`
+- Result: `accepted`
