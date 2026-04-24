@@ -3093,3 +3093,17 @@ Upload
   - Branch: `feature/tavern-experience-polish-client-items`
   - Push: `origin/feature/tavern-experience-polish-client-items`
 - Result: `accepted`
+
+### Task 7.2 (tavern-experience-polish): Extend the gacha result animation so a drawn card whose id already appears in the user's owned roster branches into the "Already owned" variant; the variant renders a "Keep as bonus" CTA that records a bonusAwarded event. (commit `87de8bc`)
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.GachaDuplicateAnimationTest` — `BUILD SUCCESSFUL`, `GachaDuplicateAnimationTest tests="8" skipped="0" failures="0" errors="0"` (8/8 green: new-card-variant / already-owned-variant / variant-determined-by-wasNew-only / distinct-variants / bonusAwardedEvent-payload / arbitrary-card-id-shapes / bonusAwardedEvent-for-new-card / onBonusAwarded-callback-shape).
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests 'com.gkim.im.android.feature.tavern.*'` regression — all tavern test classes green after splitting DrawEntryCard's post-draw surface into DrawResultNewCard + DrawResultAlreadyOwned. The previous unconditional rendering branch (single GlassCard with a wasNew ternary) is no longer present; the test suite catches any call-site that forgets to route through gachaResultVariant.
+- Review:
+  - Score: `95/100`
+  - Findings: `§7.2 closes the loop on the gacha surface: the pre-draw UI now surfaces drop rates (§7.1) and the post-draw UI now acknowledges duplicate pulls with a compensation affordance (§7.2). The DrawResultAlreadyOwned composable carries its own bonusClaimed state keyed on result.card.id so a single tap records exactly one BonusAwardedEvent — the button then transitions to a disabled "Bonus claimed" state, preventing duplicate event emissions even if the user taps again within the same draw cycle. The key on the remember block ensures a fresh draw of a different duplicate card gets a new independent state, not the stale "claimed" state from the prior result. The bonusAwardedEvent helper is a pure function covered across arbitrary id shapes (ASCII, UUID-dashed, user-authored with underscores, and non-ASCII "含中文 id") so id-normalization assumptions don't silently corrupt event attribution. The 5-point deduction reflects that the onBonusAwarded callback is wired as a noop in TavernRoute for now — the composable fires the event with the right payload shape, but there's no downstream recorder / analytics sink yet; that wiring is deferred to a future analytics slice so this polish slice doesn't have to pick between touching AppPreferencesStore, a new event bus, or a backend endpoint that isn't part of companion-turn-backend-mvp's scope.`
+- Upload:
+  - Commit: `87de8bc`
+  - Branch: `feature/tavern-experience-polish-client-items`
+  - Push: `origin/feature/tavern-experience-polish-client-items`
+- Result: `accepted`
