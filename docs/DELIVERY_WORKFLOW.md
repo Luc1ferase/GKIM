@@ -3079,3 +3079,17 @@ Upload
   - Branch: `feature/tavern-experience-polish-client-items`
   - Push: `origin/feature/tavern-experience-polish-client-items`
 - Result: `accepted`
+
+### Task 7.1 (tavern-experience-polish): Extend the gacha pre-draw UI to surface the rarity / probability breakdown, drawn from the existing backend catalog response. (commit `517e398`)
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.GachaProbabilitySurfacingTest` — `BUILD SUCCESSFUL`, `GachaProbabilitySurfacingTest tests="11" skipped="0" failures="0" errors="0"` (11/11 green: empty-pool / untagged-only / mixed-rarities-in-canonical-order / zero-count-rarities-omitted / probability-sums-to-1 / substring-tags-do-not-match / integer-percent-format / decimal-percent-format / zero-percent-format / out-of-range-clamp / priority-tie-break).
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests 'com.gkim.im.android.feature.tavern.*'` regression — all tavern test classes green, no regression from adding `drawPool` to CompanionRosterRepository interface + implementations (BackendAwareCompanionRosterRepository delegates to its fallback's drawPool via a getter).
+- Review:
+  - Score: `95/100`
+  - Findings: `§7.1 introduces rarity inference from the existing per-card tags field without adding a new rarity model column — cards carrying one of four exact lowercased tags (legendary / epic / rare / common) classify into GachaRarity; otherwise default to Common. This keeps the slice's scope tight: no migration, no backend schema change, just a UI-layer inference over data that already flows through the catalog response. The exact-equality match on the lowercased tag prevents substring false-positives like "common-room-background" misclassifying a card. Probability is computed as count/total and rendered in three format branches (≥10% as integer, <10% with one decimal, 0% as literal 0%) so the UI stays readable across common drop-rate magnitudes. Probabilities are coerced into [0, 1] before formatting so a rounding-induced overage like 1.0001f still renders as "100%". The drawPool property is exposed on the interface (not just the implementation) so the pre-draw composable does not need to downcast to DefaultCompanionRosterRepository. The 5-point deduction reflects that §7.1 doesn't yet have instrumentation coverage for the actual rendered rows (the testTag "tavern-draw-probability-breakdown" is asserted only at the code level, not in a running app); the test drives the pure helpers that fully determine the row content, so the visual output is deterministic given those helpers.`
+- Upload:
+  - Commit: `517e398`
+  - Branch: `feature/tavern-experience-polish-client-items`
+  - Push: `origin/feature/tavern-experience-polish-client-items`
+- Result: `accepted`
