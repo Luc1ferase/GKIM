@@ -6,15 +6,24 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.GlassCard
+import com.gkim.im.android.core.designsystem.LocalAppLanguage
+import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.CompanionCharacterCard
 import com.gkim.im.android.core.model.MacroSubstitution
@@ -71,15 +80,44 @@ internal fun applyPersonaMacros(
     )
 }
 
+/**
+ * §2.1 — shorten a greeting body to a ~120-character preview. The returned preview is
+ * suitable for in-line rendering; tapping an option opens a modal that shows the full body.
+ *
+ * Behavior:
+ * - `body.length <= limit`: returned unchanged (including trailing whitespace — tests assert
+ *   exact equality).
+ * - `body.length > limit`: returned as the first `limit` characters with trailing whitespace
+ *   trimmed and a single ellipsis character "…" appended. The ellipsis is one codepoint so
+ *   the visible length is `<= limit + 1`.
+ *
+ * Character count is `String.length` (UTF-16 code units). For the common content we expect —
+ * companion greetings in English and Chinese — every displayed character is a single UTF-16
+ * code unit, so the count matches visual perception. Emoji + surrogate pairs are counted by
+ * code unit, which can cut a pair; that is accepted for a preview.
+ */
+internal fun truncatePreview(body: String, limit: Int = 120): String {
+    if (limit <= 0) return ""
+    return if (body.length <= limit) {
+        body
+    } else {
+        body.substring(0, limit).trimEnd() + "…"
+    }
+}
+
 @Composable
 fun CompanionGreetingPicker(
     options: List<CompanionGreetingOption>,
     onSelect: (CompanionGreetingOption) -> Unit,
+    previewLimit: Int = 120,
 ) {
     if (options.isEmpty()) return
+    val appLanguage = LocalAppLanguage.current
+    var previewing by remember { mutableStateOf<CompanionGreetingOption?>(null) }
+
     GlassCard(modifier = Modifier.testTag("chat-companion-greeting-picker")) {
         Text(
-            text = "Pick an opening line",
+            text = appLanguage.pick("Pick an opening line", "选一句开场"),
             style = MaterialTheme.typography.labelLarge,
             color = AetherColors.Primary,
         )
@@ -89,7 +127,7 @@ fun CompanionGreetingPicker(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(18.dp))
-                        .clickable { onSelect(option) }
+                        .clickable { previewing = option }
                         .padding(horizontal = 14.dp, vertical = 12.dp)
                         .testTag("chat-companion-greeting-option-${option.index}"),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -100,11 +138,80 @@ fun CompanionGreetingPicker(
                         color = AetherColors.OnSurfaceVariant,
                     )
                     Text(
-                        text = option.body,
+                        text = truncatePreview(option.body, previewLimit),
                         style = MaterialTheme.typography.bodyLarge,
                         color = AetherColors.OnSurface,
+                        modifier = Modifier.testTag("chat-companion-greeting-preview-${option.index}"),
                     )
                 }
+            }
+        }
+    }
+
+    previewing?.let { option ->
+        AltGreetingPreviewModal(
+            option = option,
+            onDismiss = { previewing = null },
+            onCommit = {
+                previewing = null
+                onSelect(option)
+            },
+        )
+    }
+}
+
+@Composable
+private fun AltGreetingPreviewModal(
+    option: CompanionGreetingOption,
+    onDismiss: () -> Unit,
+    onCommit: () -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(AetherColors.Surface, RoundedCornerShape(24.dp))
+                .padding(24.dp)
+                .testTag("chat-companion-greeting-preview-modal"),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = option.label,
+                style = MaterialTheme.typography.labelLarge,
+                color = AetherColors.OnSurfaceVariant,
+            )
+            Text(
+                text = option.body,
+                style = MaterialTheme.typography.bodyLarge,
+                color = AetherColors.OnSurface,
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .testTag("chat-companion-greeting-preview-modal-body"),
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = appLanguage.pick("Use this greeting", "使用此开场"),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = AetherColors.OnSurface,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(AetherColors.Primary.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+                        .clickable(onClick = onCommit)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .testTag("chat-companion-greeting-preview-modal-commit"),
+                )
+                Text(
+                    text = appLanguage.pick("Cancel", "取消"),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = AetherColors.OnSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(14.dp))
+                        .clickable(onClick = onDismiss)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .testTag("chat-companion-greeting-preview-modal-dismiss"),
+                )
             }
         }
     }
