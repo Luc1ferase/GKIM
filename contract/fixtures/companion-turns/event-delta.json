@@ -1,0 +1,8 @@
+{
+  "type": "companion_turn.delta",
+  "turnId": "turn-scripted-smoke-01",
+  "conversationId": "conversation-daylight-listener-smoke",
+  "messageId": "companion-turn-scripted-smoke-01",
+  "deltaSeq": 1,
+  "textDelta": "Scripted companion reply "
+}

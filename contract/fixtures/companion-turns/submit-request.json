@@ -1,0 +1,8 @@
+{
+  "conversationId": "conversation-daylight-listener-smoke",
+  "activeCompanionId": "daylight-listener",
+  "userTurnBody": "hello",
+  "activeLanguage": "en",
+  "clientTurnId": "client-turn-submit-smoke-01",
+  "parentMessageId": null
+}
