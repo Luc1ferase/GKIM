@@ -79,6 +79,7 @@ fun CharacterDetailRoute(
 
     CharacterDetailScreen(
         character = resolved,
+        card = card,
         editable = card.isEditable,
         onBack = { navController.popBackStack() },
         onEdit = { navController.navigate("tavern/editor?mode=edit&id=${card.id}") },
@@ -118,6 +119,7 @@ fun CharacterDetailRoute(
 @Composable
 private fun CharacterDetailScreen(
     character: ResolvedCompanionCharacterCard,
+    card: CompanionCharacterCard,
     editable: Boolean,
     onBack: () -> Unit,
     onEdit: () -> Unit,
@@ -175,14 +177,7 @@ private fun CharacterDetailScreen(
                 }
             }
         }
-        item {
-            GlassCard(modifier = Modifier.testTag("character-detail-metadata")) {
-                Text(text = appLanguage.pick("Metadata", "元数据"), style = MaterialTheme.typography.titleMedium, color = AetherColors.OnSurface)
-                Text(text = appLanguage.pick("Creator", "作者") + ": " + character.creator, style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
-                Text(text = appLanguage.pick("Version", "版本") + ": " + character.characterVersion, style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
-                Text(text = appLanguage.pick("Notes", "备注") + ": " + character.creatorNotes, style = MaterialTheme.typography.bodyMedium, color = AetherColors.OnSurfaceVariant)
-            }
-        }
+        item { AboutCardSection(card) }
         item { lorebookTab() }
         if (character.tags.isNotEmpty()) {
             item {
