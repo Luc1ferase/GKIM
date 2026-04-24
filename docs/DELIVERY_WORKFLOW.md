@@ -2933,3 +2933,17 @@ Upload
   - Branch: `feature/ai-companion-im`
   - Push: `origin/feature/ai-companion-im`
 - Result: `accepted`
+
+### Task 5.2 (wire-companion-turn-runtime): Extend `CompanionChatEndToEndInstrumentationTest` with a Failed-terminal scenario driving `handleTurnFailed(subtype="transient")` on the companion message and `updateUserMessageStatus(Failed)` on the user message; asserts the companion-bubble failed copy + the outgoing-user Retry affordance both render. (commit `<pending>`)
+
+- Verification:
+  - New @Test `scriptedFailedTransientRendersCompanionFailedCopyAndUserSubmissionRetry` drives the reducer: `recordUserTurn` → `handleTurnStarted` → `handleTurnFailed(subtype="transient", errorMessage="scripted transient failure")` → `updateUserMessageStatus(userMessageId, Failed)`. Assertions: `chat-companion-failed-copy-<companionMessageId>` is displayed (copy sourced from `SafetyCopy.localizedFailedCopy(FailedSubtype.Transient, English)` via `companionLifecyclePresentation` for `status=Failed` with `failedSubtypeKey="transient"`), `chat-user-submission-retry-<userMessageId>` is displayed (outgoing-user Retry affordance from `ChatRoute.kt:922-937`, distinct from the companion-bubble `chat-companion-retry-*` affordance), and the `"Failed to send"` copy from `outgoingSubmissionFailureLine` is visible.
+  - Instrumentation run: `cd /x/Repos/GKIM/android && ANDROID_SDK_ROOT=/d/android/Sdk JAVA_HOME='/c/Program Files/Java/jdk-17' ./gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.chat.CompanionChatEndToEndInstrumentationTest` → `Starting 2 tests on codex_api34(AVD) - 14 / Finished 2 tests on codex_api34(AVD) - 14 / BUILD SUCCESSFUL in 44s`.
+- Review:
+  - Score: `95/100`
+  - Findings: `§5.2 closes the Failed-terminal half of the companion lifecycle by covering two distinct render surfaces that live on different code paths: the companion bubble's failed copy (rendered via companionLifecyclePresentation when status=Failed + companionTurnMeta.failedSubtypeKey is set) and the user bubble's Retry affordance (rendered via outgoingSubmissionFailureLine when direction=Outgoing + status=Failed, without requiring companionTurnMeta). During the task I discovered my original §5.2 wording conflated the two Retry testTags (chat-companion-retry-* is the companion-bubble one; chat-user-submission-retry-* is the outgoing-user one); the wording is now corrected to call out the distinction explicitly so future readers don't misread which affordance lives where. The 5-point deduction reflects that the test does not assert the failed companion bubble's Retry affordance (chat-companion-retry-<companionMessageId>) simultaneously with the user bubble's Retry — it asserts the user bubble's Retry only. The rationale is that for FailedSubtype.Transient the companion-bubble Retry is also rendered, but covering both Retry affordances in one test risks widening the scope beyond the §5.2 claim (which is "Failed companion copy + user Retry"). The companion-bubble Retry rendering for Transient is already covered by ChatPresentationTest at unit level.`
+- Upload:
+  - Commit: `<pending>`
+  - Branch: `feature/ai-companion-im`
+  - Push: `origin/feature/ai-companion-im`
+- Result: `accepted`

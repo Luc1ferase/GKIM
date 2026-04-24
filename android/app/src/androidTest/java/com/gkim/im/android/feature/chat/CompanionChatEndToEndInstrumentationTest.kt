@@ -141,6 +141,81 @@ class CompanionChatEndToEndInstrumentationTest {
         composeRule.onNodeWithTag("chat-message-body-$companionMessageId")
             .assertTextContains(finalBody)
     }
+
+    @Test
+    fun scriptedFailedTransientRendersCompanionFailedCopyAndUserSubmissionRetry() {
+        val repo = DefaultCompanionTurnRepository()
+        val conversationId = "conversation-e2e-failed"
+        val userMessageId = "scripted-user-failed"
+        val companionMessageId = "scripted-companion-failed"
+        val turnId = "scripted-turn-failed"
+        val variantGroupId = "scripted-variant-group-failed"
+
+        composeRule.setContent {
+            CompositionLocalProvider(LocalAppLanguage provides AppLanguage.English) {
+                CompanionLifecycleTimelineHost(repo = repo, conversationId = conversationId)
+            }
+        }
+
+        composeRule.runOnIdle {
+            repo.recordUserTurn(
+                ChatMessage(
+                    id = userMessageId,
+                    direction = MessageDirection.Outgoing,
+                    kind = MessageKind.Text,
+                    body = "hello",
+                    createdAt = "2026-04-24T00:00:00Z",
+                    status = MessageStatus.Pending,
+                ),
+                conversationId,
+            )
+            repo.handleTurnStarted(
+                ImGatewayEvent.CompanionTurnStarted(
+                    turnId = turnId,
+                    conversationId = conversationId,
+                    messageId = companionMessageId,
+                    variantGroupId = variantGroupId,
+                    variantIndex = 0,
+                ),
+            )
+        }
+        composeRule.waitUntil(3_000) {
+            composeRule.onAllNodesWithTag("chat-companion-status-$companionMessageId")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.runOnIdle {
+            repo.handleTurnFailed(
+                ImGatewayEvent.CompanionTurnFailed(
+                    turnId = turnId,
+                    conversationId = conversationId,
+                    messageId = companionMessageId,
+                    subtype = "transient",
+                    errorMessage = "scripted transient failure",
+                ),
+            )
+            repo.updateUserMessageStatus(
+                conversationId = conversationId,
+                messageId = userMessageId,
+                status = MessageStatus.Failed,
+            )
+        }
+
+        composeRule.waitUntil(3_000) {
+            composeRule.onAllNodesWithTag("chat-companion-failed-copy-$companionMessageId")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("chat-companion-failed-copy-$companionMessageId")
+            .assertIsDisplayed()
+
+        composeRule.waitUntil(3_000) {
+            composeRule.onAllNodesWithTag("chat-user-submission-retry-$userMessageId")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("chat-user-submission-retry-$userMessageId")
+            .assertIsDisplayed()
+        composeRule.onNodeWithText("Failed to send").assertIsDisplayed()
+    }
 }
 
 @Composable
