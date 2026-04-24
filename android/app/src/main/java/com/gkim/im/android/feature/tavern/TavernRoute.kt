@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -124,6 +125,9 @@ fun TavernRoute(navController: NavHostController, container: AppContainer) {
         onImportCard = { importLauncher.launch(arrayOf("image/png", "application/json")) },
         onDraw = viewModel::drawCharacter,
         onOpenCharacter = { characterId -> navController.navigate("tavern/detail/$characterId") },
+        onOpenPortrait = { characterId ->
+            navController.navigate(portraitTapRouteForTavernCard(characterId))
+        },
         onActivateCharacter = { characterId ->
             val selected = viewModel.activateCharacter(characterId) ?: return@TavernScreen
             val conversation = container.messagingRepository.ensureConversation(
@@ -144,6 +148,7 @@ private fun TavernScreen(
     onImportCard: () -> Unit,
     onDraw: () -> Unit,
     onOpenCharacter: (String) -> Unit,
+    onOpenPortrait: (String) -> Unit,
     onActivateCharacter: (String) -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
@@ -217,6 +222,7 @@ private fun TavernScreen(
                 testTag = "tavern-preset-card-${character.id}",
                 ownershipLabel = appLanguage.pick("Preset", "预设"),
                 onClick = { onOpenCharacter(character.id) },
+                onAvatarTap = { onOpenPortrait(character.id) },
                 onActivate = { onActivateCharacter(character.id) },
             )
         }
@@ -262,6 +268,7 @@ private fun TavernScreen(
                     testTag = "tavern-owned-card-${character.id}",
                     ownershipLabel = appLanguage.pick("Drawn", "抽得"),
                     onClick = { onOpenCharacter(character.id) },
+                    onAvatarTap = { onOpenPortrait(character.id) },
                     onActivate = { onActivateCharacter(character.id) },
                 )
             }
@@ -280,6 +287,7 @@ private fun TavernScreen(
                     testTag = "tavern-user-card-${character.id}",
                     ownershipLabel = appLanguage.pick("Custom", "自建"),
                     onClick = { onOpenCharacter(character.id) },
+                    onAvatarTap = { onOpenPortrait(character.id) },
                     onActivate = { onActivateCharacter(character.id) },
                 )
             }
@@ -371,6 +379,7 @@ private fun CharacterCard(
     testTag: String,
     ownershipLabel: String,
     onClick: () -> Unit,
+    onAvatarTap: () -> Unit,
     onActivate: () -> Unit,
 ) {
     GlassCard(modifier = Modifier.testTag(testTag)) {
@@ -382,6 +391,21 @@ private fun CharacterCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
+                Box(
+                    modifier = Modifier
+                        .padding(end = 14.dp)
+                        .size(44.dp)
+                        .background(AetherColors.Primary.copy(alpha = 0.18f), androidx.compose.foundation.shape.CircleShape)
+                        .clickable(onClick = onAvatarTap)
+                        .testTag("$testTag-avatar"),
+                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                ) {
+                    Text(
+                        text = character.avatarText,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = AetherColors.Primary,
+                    )
+                }
                 Column(
                     modifier = Modifier.weight(1f).clickable(onClick = onClick),
                     verticalArrangement = Arrangement.spacedBy(4.dp),

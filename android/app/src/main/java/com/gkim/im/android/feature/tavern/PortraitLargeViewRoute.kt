@@ -35,6 +35,7 @@ import com.gkim.im.android.core.designsystem.PageHeader
 import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.CompanionCharacterCard
+import com.gkim.im.android.core.model.Conversation
 import com.gkim.im.android.core.model.resolve
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
@@ -52,6 +53,22 @@ internal object PortraitTapRouter {
     const val ROUTE_PATTERN: String = "tavern/portrait/{characterId}"
     fun route(cardId: String): String = "tavern/portrait/$cardId"
 }
+
+/**
+ * Per-surface tap-route resolvers for the three avatar tap sources (§1.2).
+ *
+ * Each resolver takes only what that surface has locally in scope (a card id, a conversation)
+ * and returns either a concrete portrait route or null when navigation should be suppressed.
+ * PortraitTapRoutingTest exercises each resolver directly so the three surfaces share a single
+ * contract without any composable being stood up.
+ */
+internal fun portraitTapRouteForTavernCard(cardId: String): String = PortraitTapRouter.route(cardId)
+
+internal fun portraitTapRouteForChatHeader(conversation: Conversation?): String? =
+    conversation?.companionCardId?.let { PortraitTapRouter.route(it) }
+
+internal fun portraitTapRouteForChatBubble(conversation: Conversation?): String? =
+    conversation?.companionCardId?.let { PortraitTapRouter.route(it) }
 
 internal data class PortraitLargeViewUiState(
     val card: CompanionCharacterCard? = null,
