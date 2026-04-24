@@ -3051,3 +3051,17 @@ Upload
   - Branch: `feature/tavern-experience-polish-client-items`
   - Push: `origin/feature/tavern-experience-polish-client-items`
 - Result: `accepted`
+
+### Task 2.1 (tavern-experience-polish): Extend the existing opener picker so each option renders a ~120-character localized preview and supports tap-to-preview the full greeting in a modal. (commit `d5bc51a`)
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.AltGreetingPickerPresentationTest` — `BUILD SUCCESSFUL`, `AltGreetingPickerPresentationTest tests="10" skipped="0" failures="0" errors="0"` (10/10 green: short-body-passthrough / at-limit-no-ellipsis / just-over-limit / trailing-whitespace-trim / Chinese-BMP-counting / custom-limit / zero-limit / negative-limit / empty-body / max-length-guarantee).
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests 'com.gkim.im.android.feature.chat.*Greeting*'` regression — existing `CompanionGreetingPickerTest` (6 tests) still green after replacing the one-tap-commit affordance with tap-opens-preview-modal; the modal's "Use this greeting" CTA calls `onSelect(option)` with the same option shape the prior direct-tap flow committed, so callers that pass `onSelect = ...` see no contract change.
+- Review:
+  - Score: `95/100`
+  - Findings: `§2.1 follows the established tavern-polish presentation pattern: a pure helper (truncatePreview) covers the test contract in JVM-only isolation while the composable delegates to it at render time. The helper is deliberately defensive — custom limits can be zero or negative (both collapse to empty preview), body shorter or equal to the limit passes through unchanged (test asserts exact equality, catching accidental whitespace drift), and limits that cut across UTF-16 surrogate pairs are accepted with the documented tradeoff (rare for companion greetings). Chinese content in the BMP (standard CJK range) is counted one-to-one with characters, matching visual perception. The tap-to-preview modal uses androidx.compose.ui.window.Dialog with an explicit dismiss+commit pair instead of auto-commit on tap, preventing accidental selection when the user just wants to read the full text; the body inside the modal is wrapped in verticalScroll so long alt-greetings don't overflow. The 5-point deduction reflects that the modal's rendering (Dialog invocation + the two CTAs' clickable wiring) is not asserted by a rendering test — the data-layer guarantee that the body seen in the modal matches option.body is covered by the same option instance being passed to both the preview row and the modal, but the actual Dialog composition is deferred to future instrumentation if a regression demands it.`
+- Upload:
+  - Commit: `d5bc51a`
+  - Branch: `feature/tavern-experience-polish-client-items`
+  - Push: `origin/feature/tavern-experience-polish-client-items`
+- Result: `accepted`
