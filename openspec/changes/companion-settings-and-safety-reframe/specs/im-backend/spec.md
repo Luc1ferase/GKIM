@@ -2,7 +2,7 @@
 
 ### Requirement: Backend emits companion-turn block events with a closed set of typed wire-key reasons
 
-The system SHALL tag every `companion_turn.blocked` event with a `reason` field whose value is drawn from the closed set `{"self_harm", "illegal", "nsfw_denied", "minor_safety", "provider_refusal", "other"}`. The backend MUST map every upstream provider safety signal, refusal, or policy-determined block into one of those six keys; it MUST NOT emit any other wire key for block reasons. Clients MAY expect the set to grow in future versions, but any new key MUST be added additively with a corresponding Android enum update, never introduced silently.
+The system SHALL tag every `companion_turn.blocked` event with a `reason` field whose value is drawn from the closed set `{"self_harm", "illegal", "nsfw_denied", "minor_safety", "provider_refusal", "other"}`. The backend MUST map every upstream provider safety signal, refusal, or policy-determined block into one of those six keys; it MUST NOT emit any other wire key for block reasons. Clients MAY expect the set to grow in future versions, but any new key MUST be added additively with a corresponding Android enum update, never introduced silently. The Android client maps each key to a bilingual localized copy and the "Compose a new message" action (no retry) per the matrix in `openspec/changes/companion-settings-and-safety-reframe/design.md` § 3 "Per-terminal bubble copy + actions"; that document is the authoritative cross-reference for UI-side interpretation of these wire keys.
 
 #### Scenario: Provider refusal maps to `provider_refusal`
 
@@ -21,7 +21,7 @@ The system SHALL tag every `companion_turn.blocked` event with a `reason` field 
 
 ### Requirement: Backend emits companion-turn failure events with a closed set of typed subtype wire keys
 
-The system SHALL tag every `companion_turn.failed` event with a `subtype` field whose value is drawn from the closed set `{"transient", "prompt_budget_exceeded", "authentication_failed", "provider_unavailable", "network_error", "unknown"}`. The backend MUST choose the most specific subtype that applies to the failure cause and MUST NOT emit any other wire key; unclassifiable failures MUST emit `"unknown"`.
+The system SHALL tag every `companion_turn.failed` event with a `subtype` field whose value is drawn from the closed set `{"transient", "prompt_budget_exceeded", "authentication_failed", "provider_unavailable", "network_error", "unknown"}`. The backend MUST choose the most specific subtype that applies to the failure cause and MUST NOT emit any other wire key; unclassifiable failures MUST emit `"unknown"`. The Android client maps each subtype to per-subtype bilingual copy and a typed action set — `transient`/`unknown` → Retry, `prompt_budget_exceeded`/`authentication_failed` → Edit user turn (no retry), `provider_unavailable`/`network_error` → Retry-with-connection-hint — as captured in `openspec/changes/companion-settings-and-safety-reframe/design.md` § 3 "Per-terminal bubble copy + actions", which is the authoritative cross-reference for the UI behavior driven by these wire keys.
 
 #### Scenario: Prompt budget exhaustion maps to `prompt_budget_exceeded`
 

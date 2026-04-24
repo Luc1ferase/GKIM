@@ -42,7 +42,7 @@
 
 - [x] 5.1 Finalize `openspec/changes/companion-settings-and-safety-reframe/specs/im-backend/spec.md` to cover: block-reason closed set (wire keys `self_harm`, `illegal`, `nsfw_denied`, `minor_safety`, `provider_refusal`, `other`); failure-subtype closed set (`transient`, `prompt_budget_exceeded`, `authentication_failed`, `provider_unavailable`, `network_error`, `unknown`); acknowledgment endpoints (`POST /api/account/content-policy-acknowledgment`, `GET /api/account/content-policy-acknowledgment`) with version gating and per-account persistence. Verification: `openspec validate companion-settings-and-safety-reframe --strict` passes.
 
-- [ ] 5.2 Document the failure-subtype conventions in design.md § "Per-terminal bubble copy + actions" — already present — and cross-reference them from the spec delta so the contract between backend and client is unambiguous. Verification: design.md references the subtype list and the spec delta cites the same keys.
+- [x] 5.2 Document the failure-subtype conventions in design.md § "Per-terminal bubble copy + actions" — already present — and cross-reference them from the spec delta so the contract between backend and client is unambiguous. Verification: design.md references the subtype list and the spec delta cites the same keys.
 
 ## 6. Purpose stub cleanup (archive-time step)
 
