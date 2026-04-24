@@ -4,7 +4,7 @@
 
 ## 2. Conversation companion marker
 
-- [ ] 2.1 Add a companion-conversation marker to `core/model/Conversation.kt` (prefer `companionCardId: String?` so it is non-breaking for peer-IM call sites; fall back to a `kind: ConversationKind` enum only if the string-ID path collides with existing fields). Thread the marker through `data/repository/MessagingRepository.ensureConversation(...)` so `CharacterDetailRoute.onActivate` can construct a companion conversation. Verification: `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest` passes; the pre-existing `MessagingRepositoryTest`, `ChatPresentationTest`, and `MessagesViewModelTest` stay green; a new unit test `MessagingRepositoryCompanionConversationTest` confirms `ensureConversation(companionContact)` returns a `Conversation` whose marker is populated.
+- [x] 2.1 Add a companion-conversation marker to `core/model/Conversation.kt` (prefer `companionCardId: String?` so it is non-breaking for peer-IM call sites; fall back to a `kind: ConversationKind` enum only if the string-ID path collides with existing fields). Thread the marker through `data/repository/MessagingRepository.ensureConversation(...)` so `CharacterDetailRoute.onActivate` can construct a companion conversation. Verification: `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest` passes; the pre-existing `MessagingRepositoryTest`, `ChatPresentationTest`, and `MessagesViewModelTest` stay green; a new unit test `MessagingRepositoryCompanionConversationTest` confirms `ensureConversation(companionContact)` returns a `Conversation` whose marker is populated.
 
 ## 3. ViewModel wiring
 

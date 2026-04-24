@@ -77,7 +77,7 @@ interface MessagingRepository {
     val conversations: StateFlow<List<Conversation>>
     val integrationState: StateFlow<MessagingIntegrationState>
     fun conversation(conversationId: String): Flow<Conversation?>
-    fun ensureConversation(contact: Contact): Conversation
+    fun ensureConversation(contact: Contact, companionCardId: String? = null): Conversation
     fun ensureStudioRoom(): Conversation
     fun sendMessage(conversationId: String, body: String, attachment: MessageAttachment? = null)
     fun appendAigcResult(conversationId: String, task: AigcTask)
@@ -102,7 +102,7 @@ class InMemoryMessagingRepository(
         items.firstOrNull { it.id == conversationId }
     }
 
-    override fun ensureConversation(contact: Contact): Conversation {
+    override fun ensureConversation(contact: Contact, companionCardId: String?): Conversation {
         val existing = conversationState.value.firstOrNull { it.contactId == contact.id }
         if (existing != null) {
             val refreshed = existing.copy(
@@ -110,6 +110,7 @@ class InMemoryMessagingRepository(
                 contactTitle = contact.title,
                 avatarText = contact.avatarText,
                 isOnline = contact.isOnline,
+                companionCardId = companionCardId ?: existing.companionCardId,
             )
             conversationState.value = conversationState.value.map { conversation ->
                 if (conversation.id == existing.id) refreshed else conversation
@@ -136,6 +137,7 @@ class InMemoryMessagingRepository(
                     createdAt = timestamp,
                 )
             ),
+            companionCardId = companionCardId,
         )
         conversationState.value = listOf(created) + conversationState.value
         return created
@@ -692,7 +694,7 @@ class LiveMessagingRepository(
         conversations.firstOrNull { it.id == conversationId || it.contactId == conversationId }
     }
 
-    override fun ensureConversation(contact: Contact): Conversation {
+    override fun ensureConversation(contact: Contact, companionCardId: String?): Conversation {
         val existing = conversationState.value.firstOrNull { it.contactId == contact.id }
         if (existing != null) {
             val refreshed = existing.copy(
@@ -700,6 +702,7 @@ class LiveMessagingRepository(
                 contactTitle = contact.title,
                 avatarText = contact.avatarText,
                 isOnline = contact.isOnline,
+                companionCardId = companionCardId ?: existing.companionCardId,
             )
             conversationState.value = conversationState.value.map { conversation ->
                 if (conversation.id == existing.id) refreshed else conversation
@@ -722,6 +725,7 @@ class LiveMessagingRepository(
             unreadCount = 0,
             isOnline = contact.isOnline,
             messages = emptyList(),
+            companionCardId = companionCardId,
         )
         conversationState.value = listOf(placeholderConversation) + conversationState.value
         if (contactState.value.none { existingContact -> existingContact.id == contact.id }) {

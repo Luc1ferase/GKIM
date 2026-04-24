@@ -72,4 +72,5 @@ data class Conversation(
     val unreadCount: Int,
     val isOnline: Boolean,
     val messages: List<ChatMessage>,
+    val companionCardId: String? = null,
 )
