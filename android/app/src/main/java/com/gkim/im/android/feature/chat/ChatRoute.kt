@@ -77,6 +77,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 internal fun appLanguageWireKey(language: AppLanguage): String = when (language) {
@@ -91,6 +92,7 @@ internal data class ChatUiState(
     val latestTask: AigcTask? = null,
     val draftRequest: DraftAigcRequest = DraftAigcRequest(),
     val generationActionFeedback: String? = null,
+    val companionMessages: List<ChatMessage>? = null,
 )
 
 private data class CoreChatState(
@@ -131,16 +133,24 @@ internal class ChatViewModel(
         CoreChatState(conversation, providers, activeProviderId, history, draftRequest)
     }
 
+    private val companionMessagesFlow =
+        companionTurnRepository.activePathByConversation.map { byConversation ->
+            byConversation[resolvedConversationId]
+        }
+
     private val baseUiState = combine(
         coreChatState,
         userPersonaRepository.observeActivePersona(),
-    ) { core, activePersona ->
+        companionMessagesFlow,
+    ) { core, activePersona, companionMessages ->
+        val isCompanion = core.conversation?.companionCardId != null
         ChatUiState(
             conversation = core.conversation,
             activeProvider = core.providers.firstOrNull { it.id == core.activeProviderId },
             activePersona = activePersona,
             latestTask = core.history.firstOrNull(),
             draftRequest = core.draftRequest,
+            companionMessages = if (isCompanion) companionMessages.orEmpty() else null,
         )
     }
 
@@ -317,7 +327,7 @@ private fun ChatScreen(
     onSaveGeneratedImage: (AigcTask) -> Unit,
     onSendGeneratedImage: (AigcTask) -> Unit,
 ) {
-    val timelineMessages = uiState.conversation?.messages.orEmpty()
+    val timelineMessages = uiState.companionMessages ?: uiState.conversation?.messages.orEmpty()
     val timelineState = rememberLazyListState()
     val visibleModes = visibleAigcModes(uiState.activeProvider)
     val readyModes = readyAigcModes(uiState.activeProvider, generationSourceMedia?.type)
