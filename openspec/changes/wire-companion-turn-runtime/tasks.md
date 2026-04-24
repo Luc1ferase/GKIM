@@ -24,7 +24,7 @@
 
 ## 6. Spec delta
 
-- [ ] 6.1 Finalize `openspec/changes/wire-companion-turn-runtime/specs/core/im-app/spec.md` with the ADDED Requirement *"Companion chat Send path invokes CompanionTurnRepository end-to-end"* covering (a) submit-path dispatch, (b) optimistic Pending user bubble on submit, (c) `ChatMessageRow` rendering from the companion state flow, and (d) end-to-end instrumentation on `codex_api34`. Verification: `openspec validate wire-companion-turn-runtime --strict` passes.
+- [x] 6.1 Finalize `openspec/changes/wire-companion-turn-runtime/specs/llm-text-companion-chat/spec.md` (the flat capability name is required by OpenSpec 1.3.0 — nested `specs/core/im-app/` path does not parse as a delta) with the ADDED Requirement *"Companion chat Send path invokes CompanionTurnRepository end-to-end"* covering (a) submit-path dispatch, (b) optimistic Pending user bubble on submit, (c) `ChatMessageRow` rendering from the companion state flow sourced via `CompanionLifecycleTimelineHost`, and (d) Compose-rendered instrumentation on `codex_api34` per the `llm-text-companion-chat` §5.2 precedent (full-route navigation covered by `CharacterDetailActivateCompanionConversationTest` and ViewModel dispatch/uiState covered by `ChatViewModelCompanionDispatchTest` + `ChatViewModelUiStateCompanionTest`, not re-asserted here). Verification: `openspec validate wire-companion-turn-runtime --strict` passes.
 
 ## 7. Verification and delivery evidence
 
