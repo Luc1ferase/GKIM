@@ -1,7 +1,7 @@
 # companion-character-card-depth Specification
 
 ## Purpose
-TBD - created by archiving change deepen-companion-character-card. Update Purpose after archive.
+Captures the companion character card as a full persona authoring record — system prompt, personality, scenario framing, example dialogue, first-message greeting, alternate greetings, tags, creator attribution, character version, and a forward-compatible extensions bag — using the bilingual `LocalizedText` contract for every prose field. Defines the authoring surfaces (tavern character detail, character editor) and the ownership + mutability rules for user-authored, preset, and draw-acquired cards.
 ## Requirements
 ### Requirement: Companion character cards carry a full persona authoring record
 

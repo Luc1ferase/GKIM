@@ -46,7 +46,7 @@
 
 ## 6. Purpose stub cleanup (archive-time step)
 
-- [ ] 6.1 As part of this slice's archival, manually update `openspec/specs/companion-character-card-depth/spec.md` Purpose section from "TBD - created by archiving change deepen-companion-character-card. Update Purpose after archive." to the exact text defined in design.md § "Companion-character-card-depth Purpose rewrite". Commit the update as part of the archival commit. Verification: `rg -n "TBD" openspec/specs/companion-character-card-depth/spec.md` returns no matches after the archival commit.
+- [x] 6.1 As part of this slice's archival, manually update `openspec/specs/companion-character-card-depth/spec.md` Purpose section from "TBD - created by archiving change deepen-companion-character-card. Update Purpose after archive." to the exact text defined in design.md § "Companion-character-card-depth Purpose rewrite". Commit the update as part of the archival commit. Verification: `rg -n "TBD" openspec/specs/companion-character-card-depth/spec.md` returns no matches after the archival commit.
 
 ## 7. Verification and delivery evidence
 
@@ -54,4 +54,4 @@
 
 - [x] 7.2 Add instrumentation coverage on `codex_api34`: `ChatFailureAndSafetyBubbleInstrumentationTest` plus `ContentPolicyAcknowledgmentInstrumentationTest`. Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest` runs both suites green.
 
-- [ ] 7.3 Record verification, review, score (≥95), and GitHub upload evidence in `docs/DELIVERY_WORKFLOW.md` for this slice, following the template used by the previous proposals. Include explicit pointers to the block-reason wire-key table, the failure-subtype table, and the Purpose-stub cleanup evidence. Verification: the delivery workflow entry exists with task rows 1.1 through 7.2 plus this recording task, and lists the `openspec archive` command + output (which also performs the Purpose stub rewrite in 6.1).
+- [x] 7.3 Record verification, review, score (≥95), and GitHub upload evidence in `docs/DELIVERY_WORKFLOW.md` for this slice, following the template used by the previous proposals. Include explicit pointers to the block-reason wire-key table, the failure-subtype table, and the Purpose-stub cleanup evidence. Verification: the delivery workflow entry exists with task rows 1.1 through 7.2 plus this recording task, and lists the `openspec archive` command + output (which also performs the Purpose stub rewrite in 6.1).
