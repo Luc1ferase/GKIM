@@ -26,7 +26,7 @@
 
 - [x] 4.2 Extend the character-detail editor with an "Override preset" row that lets the user pick a preset from the library (or clear to default). Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.CharacterDetailPresetOverrideTest` covers picker invocation, selection persistence, and clear-to-default.
 
-- [ ] 4.3 Update the chat chrome's preset pill so it surfaces the override (visually distinct "(card override)" suffix) when `characterPresetId` is non-null, and tapping routes to the character's detail surface where the override can be cleared. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatPresetPillOverrideTest` covers rendered label + route target.
+- [x] 4.3 Update the chat chrome's preset pill so it surfaces the override (visually distinct "(card override)" suffix) when `characterPresetId` is non-null, and tapping routes to the character's detail surface where the override can be cleared. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatPresetPillOverrideTest` covers rendered label + route target.
 
 ## 5. JSONL chat export
 
