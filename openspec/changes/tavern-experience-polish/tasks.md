@@ -1,14 +1,14 @@
 ## 1. Portrait large-view
 
-- [ ] 1.1 Add `android/app/src/main/java/com/gkim/im/android/feature/tavern/PortraitLargeViewRoute.kt` with a full-screen composable backed by a `PortraitLargeViewViewModel`. Pinch-to-zoom + pan + double-tap-to-toggle-zoom. Fallback: avatar-less cards render a placeholder with the card's display name and an "Edit card" shortcut. Verification: `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.PortraitLargeViewPresentationTest` covers render + zoom + fallback.
+- [x] 1.1 Add `android/app/src/main/java/com/gkim/im/android/feature/tavern/PortraitLargeViewRoute.kt` with a full-screen composable backed by a `PortraitLargeViewViewModel`. Pinch-to-zoom + pan + double-tap-to-toggle-zoom. Fallback: avatar-less cards render a placeholder with the card's display name and an "Edit card" shortcut. Verification: `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.PortraitLargeViewPresentationTest` covers render + zoom + fallback.
 
-- [ ] 1.2 Wire avatar taps in tavern card rows, chat header, and chat bubble avatars to route to `PortraitLargeViewRoute` with the active card id. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.PortraitTapRoutingTest` covers the three surfaces.
+- [x] 1.2 Wire avatar taps in tavern card rows, chat header, and chat bubble avatars to route to `PortraitLargeViewRoute` with the active card id. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.PortraitTapRoutingTest` covers the three surfaces.
 
 ## 2. Alt-greeting picker refinement
 
-- [ ] 2.1 Extend the existing opener picker (introduced by `llm-text-companion-chat`) so each option renders a ~120-character localized preview and supports tap-to-preview the full greeting in a modal. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.AltGreetingPickerPresentationTest` covers preview rendering, modal invocation, and selection commit.
+- [x] 2.1 Extend the existing opener picker (introduced by `llm-text-companion-chat`) so each option renders a ~120-character localized preview and supports tap-to-preview the full greeting in a modal. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.AltGreetingPickerPresentationTest` covers preview rendering, modal invocation, and selection commit.
 
-- [ ] 2.2 Persist the last-selected alt-greeting per companion; on subsequent opener renders (after relationship reset or on a fresh conversation), default the selection highlight to that greeting with a "Remembered from last time" caption. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.AltGreetingRememberedDefaultTest` covers the persistence + default-select behavior.
+- [x] 2.2 Persist the last-selected alt-greeting per companion; on subsequent opener renders (after relationship reset or on a fresh conversation), default the selection highlight to that greeting with a "Remembered from last time" caption. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.AltGreetingRememberedDefaultTest` covers the persistence + default-select behavior.
 
 ## 3. Chat branch tree navigation
 
@@ -42,13 +42,13 @@
 
 ## 7. Gacha probability + duplicate-handling animation
 
-- [ ] 7.1 Extend the gacha pre-draw UI (from `replace-space-with-character-roster-and-gacha`) to surface the rarity / probability breakdown, drawn from the existing backend catalog response. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.GachaProbabilitySurfacingTest` covers breakdown rendering with several fixture probability distributions.
+- [x] 7.1 Extend the gacha pre-draw UI (from `replace-space-with-character-roster-and-gacha`) to surface the rarity / probability breakdown, drawn from the existing backend catalog response. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.GachaProbabilitySurfacingTest` covers breakdown rendering with several fixture probability distributions.
 
-- [ ] 7.2 Extend the gacha result animation so a drawn card whose id already appears in the user's owned roster branches into the "Already owned" variant; the variant renders a "Keep as bonus" CTA that records a `bonusAwarded` event. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.GachaDuplicateAnimationTest` covers duplicate detection, variant-animation selection, and the bonus-event recording call.
+- [x] 7.2 Extend the gacha result animation so a drawn card whose id already appears in the user's owned roster branches into the "Already owned" variant; the variant renders a "Keep as bonus" CTA that records a `bonusAwarded` event. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.GachaDuplicateAnimationTest` covers duplicate detection, variant-animation selection, and the bonus-event recording call.
 
 ## 8. Creator attribution sub-surface
 
-- [ ] 8.1 Extend `feature/tavern/CharacterDetailRoute.kt` with an "About this card" sub-section rendering `creator`, `creatorNotes`, `characterVersion`, linkified `stSource` from `extensions.st.stSource`, and formatted `stCreationDate` / `stModificationDate`. Missing fields are hidden. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.CharacterDetailCreatorSubSectionTest` covers populated fields, missing fields (not rendered), and `stSource` link tap routing to the system browser.
+- [x] 8.1 Extend `feature/tavern/CharacterDetailRoute.kt` with an "About this card" sub-section rendering `creator`, `creatorNotes`, `characterVersion`, linkified `stSource` from `extensions.st.stSource`, and formatted `stCreationDate` / `stModificationDate`. Missing fields are hidden. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.CharacterDetailCreatorSubSectionTest` covers populated fields, missing fields (not rendered), and `stSource` link tap routing to the system browser.
 
 ## 9. Backend contract alignment
 
