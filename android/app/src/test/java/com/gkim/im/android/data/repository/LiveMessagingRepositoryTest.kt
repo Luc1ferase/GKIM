@@ -67,7 +67,7 @@ class LiveMessagingRepositoryTest {
         assertEquals("nox-dev", repository.integrationState.value.activeUserExternalId)
         assertEquals("session-token-1", backendClient.issuedToken)
         assertEquals("session-token-1", realtimeGateway.connectedToken)
-        assertEquals("ws://10.0.2.2:18080/ws", realtimeGateway.connectedEndpoint)
+        assertEquals("wss://chat.lastxuans.sbs/ws", realtimeGateway.connectedEndpoint)
         assertEquals(1, repository.contacts.value.size)
         assertEquals("leo-vance", repository.contacts.value.single().id)
         assertEquals(1, repository.conversations.value.size)
@@ -394,7 +394,7 @@ class LiveMessagingRepositoryTest {
         val conversation = repository.conversations.value.single()
         assertEquals("Look at this render", conversation.lastMessage)
         assertEquals(
-            "http://10.0.2.2:18080/api/messages/message-image-uploaded/attachment",
+            "https://chat.lastxuans.sbs/api/messages/message-image-uploaded/attachment",
             conversation.messages.last().attachment?.preview,
         )
     }
