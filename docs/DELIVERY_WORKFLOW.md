@@ -3308,7 +3308,7 @@ Upload
   - Push: `origin/feature/tavern-experience-polish-client-items`
 - Result: `accepted`
 
-### Task 10.3 (tavern-experience-polish): Record verification, review, score (≥95), and GitHub upload evidence in `docs/DELIVERY_WORKFLOW.md` for this slice following prior slices' template. Include explicit pointers to each of the eight items, the branch-tree contract extensions, and the JSONL export format description. (commit `<follow-up>`)
+### Task 10.3 (tavern-experience-polish): Record verification, review, score (≥95), and GitHub upload evidence in `docs/DELIVERY_WORKFLOW.md` for this slice following prior slices' template. Include explicit pointers to each of the eight items, the branch-tree contract extensions, and the JSONL export format description. (commit `46c0b50`)
 
 - Verification:
   - `openspec validate tavern-experience-polish --strict` (pre-archive) → `Change 'tavern-experience-polish' is valid`.
