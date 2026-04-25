@@ -26,6 +26,9 @@ If this diff is non-empty after a PR merges, one side has drifted — the two re
 | `submit-request.json` | `CompanionTurnSubmitRequestDto` — body of `POST /api/companion-turns` | Android `ImBackendHttpClient.submitCompanionTurn`; Rust submit handler |
 | `submit-response.json` | `CompanionTurnRecordDto` — 200 response of `POST /api/companion-turns` | Android `LiveCompanionTurnRepository`; Rust submit handler success path |
 | `regenerate-request.json` | `CompanionTurnRegenerateRequestDto` — body of `POST /api/companion-turns/:turnId/regenerate` | Android `ImBackendHttpClient.regenerateCompanionTurn`; Rust regenerate handler |
+| `edit-request.json` | `EditUserTurnRequestDto` — body of `POST /api/companion-turns/:conversationId/edit` (tavern-experience-polish §3.2) | Android edit-user-turn caller; Rust `service.edit()` handler |
+| `edit-response.json` | `EditUserTurnResponseDto` — 200 response of `POST /api/companion-turns/:conversationId/edit` carrying `{ userMessage: NewUserMessageRecordDto, companionTurn: CompanionTurnRecordDto }` | Android edit-user-turn caller; Rust `service.edit()` handler success path |
+| `regenerate-at-request.json` | `RegenerateAtRequestDto` — body of `POST /api/companion-turns/:conversationId/regenerate-at` accepting optional `targetMessageId` (tavern-experience-polish §3.3) | Android regenerate-from-here caller; Rust `service.regenerate_at()` handler |
 | `event-started.json` | `ImGatewayEvent.CompanionTurnStarted` — WebSocket frame | Android `ImGatewayEventParser`; Rust WebSocket broadcaster |
 | `event-delta.json` | `ImGatewayEvent.CompanionTurnDelta` — WebSocket frame | Android `ImGatewayEventParser`; Rust WebSocket broadcaster |
 | `event-completed.json` | `ImGatewayEvent.CompanionTurnCompleted` — WebSocket frame | Android `ImGatewayEventParser`; Rust WebSocket broadcaster |
@@ -41,7 +44,14 @@ All fixtures refer to the same imaginary smoke turn so a reader can follow the l
 - `variantGroupId`: `variant-group-scripted-smoke-01`
 - `clientTurnId` (submit): `client-turn-submit-smoke-01`
 - `clientTurnId` (regenerate): `client-turn-regenerate-smoke-01`
-- `startedAt`: `2026-04-24T12:00:00Z`
+- `clientTurnId` (edit): `client-turn-edit-smoke-01`
+- `clientTurnId` (regenerate-at): `client-turn-regenerate-at-smoke-01`
+- `messageId` (edit user-message): `user-message-edit-smoke-01`
+- `turnId` (edit companion turn): `turn-edit-companion-smoke-01`
+- `variantGroupId` (edit user variant group): `variant-group-edit-user-smoke-01`
+- `variantGroupId` (edit companion variant group): `variant-group-edit-companion-smoke-01`
+- `parentMessageId` (edit-request, the original user message being edited): `msg-original-user-7`
+- `startedAt`: `2026-04-24T12:00:00Z` (submit/regenerate fixtures); `2026-04-25T12:00:00Z` (edit-response fixture)
 - `completedAt`: `2026-04-24T12:00:01.500Z`
 
 ## Not yet covered (scheduled for S3)

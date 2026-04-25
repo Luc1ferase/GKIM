@@ -486,6 +486,36 @@ data class CompanionTurnRegenerateRequestDto(
 )
 
 @Serializable
+data class EditUserTurnRequestDto(
+    val parentMessageId: String,
+    val newUserText: String,
+    val clientTurnId: String,
+    val activeCompanionId: String,
+    val activeLanguage: String,
+)
+
+@Serializable
+data class NewUserMessageRecordDto(
+    val messageId: String,
+    val variantGroupId: String,
+    val variantIndex: Int,
+    val parentMessageId: String? = null,
+    val role: String,
+)
+
+@Serializable
+data class EditUserTurnResponseDto(
+    val userMessage: NewUserMessageRecordDto,
+    val companionTurn: CompanionTurnRecordDto,
+)
+
+@Serializable
+data class RegenerateAtRequestDto(
+    val clientTurnId: String,
+    val targetMessageId: String? = null,
+)
+
+@Serializable
 data class CardImportUploadRequestDto(
     val filename: String,
     val contentBase64: String,

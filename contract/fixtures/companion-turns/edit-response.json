@@ -1,0 +1,26 @@
+{
+  "userMessage": {
+    "messageId": "user-message-edit-smoke-01",
+    "variantGroupId": "variant-group-edit-user-smoke-01",
+    "variantIndex": 0,
+    "parentMessageId": "msg-original-user-7",
+    "role": "user"
+  },
+  "companionTurn": {
+    "turnId": "turn-edit-companion-smoke-01",
+    "conversationId": "conversation-daylight-listener-smoke",
+    "messageId": "turn-edit-companion-smoke-01",
+    "variantGroupId": "variant-group-edit-companion-smoke-01",
+    "variantIndex": 0,
+    "parentMessageId": "user-message-edit-smoke-01",
+    "status": "thinking",
+    "accumulatedBody": "",
+    "lastDeltaSeq": 0,
+    "providerId": null,
+    "model": null,
+    "startedAt": "2026-04-25T12:00:00Z",
+    "completedAt": null,
+    "failureSubtype": null,
+    "errorMessage": null
+  }
+}
