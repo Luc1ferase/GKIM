@@ -52,7 +52,7 @@
 
 ## 9. Backend contract alignment
 
-- [ ] 9.1 Finalize `openspec/changes/tavern-experience-polish/specs/im-backend/spec.md` to cover: edit-user-turn endpoint (`POST /api/companion-turns/{conversationId}/edit`), arbitrary-layer regenerate extension (`POST /api/companion-turns/{conversationId}/regenerate` with `{ targetMessageId }`), relationship-reset endpoint (`POST /api/relationships/{characterId}/reset`), JSONL export endpoint (`GET /api/conversations/{conversationId}/export?format=jsonl&pathOnly=...`), `characterPresetId` card-record field, and the gacha duplicate / bonusAwarded contract. Verification: `openspec validate tavern-experience-polish --strict` passes.
+- [x] 9.1 Finalize `openspec/changes/tavern-experience-polish/specs/im-backend/spec.md` to cover: edit-user-turn endpoint (`POST /api/companion-turns/{conversationId}/edit`), arbitrary-layer regenerate extension (`POST /api/companion-turns/{conversationId}/regenerate` with `{ targetMessageId }`), relationship-reset endpoint (`POST /api/relationships/{characterId}/reset`), JSONL export endpoint (`GET /api/conversations/{conversationId}/export?format=jsonl&pathOnly=...`), `characterPresetId` card-record field, and the gacha duplicate / bonusAwarded contract. Verification: `openspec validate tavern-experience-polish --strict` passes.
 
 - [x] 9.2 Finalize `openspec/changes/tavern-experience-polish/specs/core/im-app/spec.md` to cover all eight Android-side polish items (portrait view, alt-greeting picker refinement, branch-tree navigation, per-character override, JSONL export, relationship reset, gacha surfacing, creator attribution). Verification: `openspec validate tavern-experience-polish --strict` passes.
 
