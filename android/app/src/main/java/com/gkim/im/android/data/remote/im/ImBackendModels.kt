@@ -516,6 +516,23 @@ data class RegenerateAtRequestDto(
 )
 
 @Serializable
+data class ConversationExportLineDto(
+    val messageId: String,
+    val parentMessageId: String? = null,
+    val variantGroupId: String,
+    val variantIndex: Int,
+    val role: String,
+    val timestamp: String,
+    val content: String,
+    val extensions: kotlinx.serialization.json.JsonElement? = null,
+)
+
+@Serializable
+data class RelationshipResetResponseDto(
+    val ok: Boolean,
+)
+
+@Serializable
 data class CardImportUploadRequestDto(
     val filename: String,
     val contentBase64: String,

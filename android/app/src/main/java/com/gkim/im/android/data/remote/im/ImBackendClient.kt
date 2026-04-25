@@ -92,6 +92,24 @@ interface ImBackendClient {
         error("regenerateCompanionTurnAtTarget is not implemented for this backend client")
     }
 
+    suspend fun exportConversation(
+        baseUrl: String,
+        token: String,
+        conversationId: String,
+        format: String,
+        pathOnly: Boolean? = null,
+    ): String {
+        error("exportConversation is not implemented for this backend client")
+    }
+
+    suspend fun resetRelationship(
+        baseUrl: String,
+        token: String,
+        characterId: String,
+    ): RelationshipResetResponseDto {
+        error("resetRelationship is not implemented for this backend client")
+    }
+
     suspend fun listPendingCompanionTurns(
         baseUrl: String,
         token: String,

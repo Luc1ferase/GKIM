@@ -111,6 +111,20 @@ private interface ImBackendService {
         @Body request: RegenerateAtRequestDto,
     ): CompanionTurnRecordDto
 
+    @GET("api/conversations/{conversationId}/export")
+    suspend fun exportConversation(
+        @Header("Authorization") authorization: String,
+        @Path("conversationId") conversationId: String,
+        @Query("format") format: String,
+        @Query("pathOnly") pathOnly: Boolean? = null,
+    ): okhttp3.ResponseBody
+
+    @POST("api/relationships/{characterId}/reset")
+    suspend fun resetRelationship(
+        @Header("Authorization") authorization: String,
+        @Path("characterId") characterId: String,
+    ): RelationshipResetResponseDto
+
     @GET("api/companion-turns/pending")
     suspend fun listPendingCompanionTurns(
         @Header("Authorization") authorization: String,
@@ -385,6 +399,28 @@ class ImBackendHttpClient(
         authorization = bearerToken(token),
         conversationId = conversationId,
         request = request,
+    )
+
+    override suspend fun exportConversation(
+        baseUrl: String,
+        token: String,
+        conversationId: String,
+        format: String,
+        pathOnly: Boolean?,
+    ): String = serviceFor(baseUrl).exportConversation(
+        authorization = bearerToken(token),
+        conversationId = conversationId,
+        format = format,
+        pathOnly = pathOnly,
+    ).string()
+
+    override suspend fun resetRelationship(
+        baseUrl: String,
+        token: String,
+        characterId: String,
+    ): RelationshipResetResponseDto = serviceFor(baseUrl).resetRelationship(
+        authorization = bearerToken(token),
+        characterId = characterId,
     )
 
     override suspend fun listPendingCompanionTurns(
