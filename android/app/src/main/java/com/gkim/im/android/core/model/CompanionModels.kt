@@ -45,6 +45,7 @@ data class CompanionCharacterCard(
     val accent: AccentTone,
     val source: CompanionCharacterSource,
     val extensions: JsonObject = JsonObject(emptyMap()),
+    val characterPresetId: String? = null,
 )
 
 data class ResolvedCompanionCharacterCard(
@@ -66,6 +67,7 @@ data class ResolvedCompanionCharacterCard(
     val avatarUri: String?,
     val accent: AccentTone,
     val source: CompanionCharacterSource,
+    val characterPresetId: String?,
 )
 
 fun CompanionCharacterCard.resolve(language: AppLanguage): ResolvedCompanionCharacterCard =
@@ -88,6 +90,7 @@ fun CompanionCharacterCard.resolve(language: AppLanguage): ResolvedCompanionChar
         avatarUri = avatarUri,
         accent = accent,
         source = source,
+        characterPresetId = characterPresetId,
     )
 
 val CompanionCharacterCard.isEditable: Boolean

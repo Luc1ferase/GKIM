@@ -29,6 +29,8 @@ import com.gkim.im.android.core.model.UserPersona
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -339,6 +341,7 @@ data class CompanionCharacterCardDto(
                 else -> CompanionCharacterSource.Preset
             },
             extensions = extensions,
+            characterPresetId = readCharPresetIdFromStExtensions(extensions),
         )
     }
 
@@ -377,8 +380,40 @@ data class CompanionCharacterCardDto(
                     CompanionCharacterSource.UserAuthored -> "user_authored"
                     CompanionCharacterSource.Preset -> "preset"
                 },
-                extensions = card.extensions,
+                extensions = mergeCharPresetIdIntoStExtensions(
+                    extensions = card.extensions,
+                    charPresetId = card.characterPresetId,
+                ),
             )
+    }
+}
+
+private fun readCharPresetIdFromStExtensions(extensions: JsonObject): String? {
+    val st = extensions["st"] as? JsonObject ?: return null
+    return (st["charPresetId"] as? JsonPrimitive)?.contentOrNull?.takeUnless { it.isBlank() }
+}
+
+private fun mergeCharPresetIdIntoStExtensions(
+    extensions: JsonObject,
+    charPresetId: String?,
+): JsonObject {
+    val existingSt = extensions["st"] as? JsonObject
+    if (charPresetId == null && existingSt?.containsKey("charPresetId") != true) {
+        return extensions
+    }
+    val newSt: JsonObject? = when {
+        charPresetId != null -> {
+            val baseStMap: Map<String, kotlinx.serialization.json.JsonElement> = existingSt ?: emptyMap()
+            JsonObject(baseStMap + ("charPresetId" to JsonPrimitive(charPresetId)))
+        }
+        else -> {
+            val pruned = existingSt!! - "charPresetId"
+            if (pruned.isEmpty()) null else JsonObject(pruned)
+        }
+    }
+    return when (newSt) {
+        null -> JsonObject(extensions - "st")
+        else -> JsonObject(extensions + ("st" to newSt))
     }
 }
 

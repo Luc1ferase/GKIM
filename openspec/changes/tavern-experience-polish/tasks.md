@@ -22,11 +22,11 @@
 
 ## 4. Per-character provider / preset override
 
-- [ ] 4.1 Extend `android/app/src/main/java/com/gkim/im/android/core/model/CompanionCharacterCard.kt` with `characterPresetId: String?` alongside the existing persona fields; map through the `sillytavern-card-interop` round-trip by preserving the field under `extensions.st.charPresetId`. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.core.model.CharacterCardPresetOverrideTest` covers round-trip and default-null behavior.
+- [x] 4.1 Extend `android/app/src/main/java/com/gkim/im/android/core/model/CompanionCharacterCard.kt` with `characterPresetId: String?` alongside the existing persona fields; map through the `sillytavern-card-interop` round-trip by preserving the field under `extensions.st.charPresetId`. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.core.model.CharacterCardPresetOverrideTest` covers round-trip and default-null behavior.
 
-- [ ] 4.2 Extend the character-detail editor with an "Override preset" row that lets the user pick a preset from the library (or clear to default). Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.CharacterDetailPresetOverrideTest` covers picker invocation, selection persistence, and clear-to-default.
+- [x] 4.2 Extend the character-detail editor with an "Override preset" row that lets the user pick a preset from the library (or clear to default). Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.CharacterDetailPresetOverrideTest` covers picker invocation, selection persistence, and clear-to-default.
 
-- [ ] 4.3 Update the chat chrome's preset pill so it surfaces the override (visually distinct "(card override)" suffix) when `characterPresetId` is non-null, and tapping routes to the character's detail surface where the override can be cleared. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatPresetPillOverrideTest` covers rendered label + route target.
+- [x] 4.3 Update the chat chrome's preset pill so it surfaces the override (visually distinct "(card override)" suffix) when `characterPresetId` is non-null, and tapping routes to the character's detail surface where the override can be cleared. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatPresetPillOverrideTest` covers rendered label + route target.
 
 ## 5. JSONL chat export
 
