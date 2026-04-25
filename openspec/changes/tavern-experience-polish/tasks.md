@@ -36,7 +36,7 @@
 
 ## 6. Full relationship reset
 
-- [ ] 6.1 Add a "Reset relationship" affordance on the character-detail surface behind a two-step confirmation dialog. Confirming calls `POST /api/relationships/{characterId}/reset` which clears all conversations, the memory record, and the last-selected alt-greeting for the user-companion pair; the card itself is not deleted. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.RelationshipResetAffordanceTest` covers the two-step gate, the endpoint call shape, and the post-reset state (empty conversations + empty memory + cleared last-greeting).
+- [x] 6.1 Add a "Reset relationship" affordance on the character-detail surface behind a two-step confirmation dialog. Confirming calls `POST /api/relationships/{characterId}/reset` which clears all conversations, the memory record, and the last-selected alt-greeting for the user-companion pair; the card itself is not deleted. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.RelationshipResetAffordanceTest` covers the two-step gate, the endpoint call shape, and the post-reset state (empty conversations + empty memory + cleared last-greeting).
 
 - [ ] 6.2 Add instrumentation `RelationshipResetInstrumentationTest` on `codex_api34` that seeds a companion with 2 conversations + memory + pinned facts, invokes relationship reset, and asserts the tavern surface shows zero conversations for the companion and memory is empty. Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.tavern.RelationshipResetInstrumentationTest` passes.
 
