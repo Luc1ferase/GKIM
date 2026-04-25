@@ -30,7 +30,7 @@
 
 ## 5. JSONL chat export
 
-- [ ] 5.1 Add `feature/chat/ChatExportDialog.kt` with a dialog offering active-path-only vs. full-tree toggle, target-language selector defaulted to active `AppLanguage`, and share-sheet vs. Downloads target. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatExportDialogPresentationTest` covers each control.
+- [x] 5.1 Add `feature/chat/ChatExportDialog.kt` with a dialog offering active-path-only vs. full-tree toggle, target-language selector defaulted to active `AppLanguage`, and share-sheet vs. Downloads target. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatExportDialogPresentationTest` covers each control.
 
 - [ ] 5.2 Wire the dialog to call `GET /api/conversations/{conversationId}/export?format=jsonl&pathOnly=...` and route the returned payload to the chosen target (share sheet or `DownloadManager`); filename default includes a `_<first8OfConversationId>` suffix for disambiguation. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatExportRoutingTest` covers both targets and the filename shape.
 
