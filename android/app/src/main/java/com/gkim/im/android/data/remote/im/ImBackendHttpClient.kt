@@ -97,6 +97,20 @@ private interface ImBackendService {
         @Body request: CompanionTurnRegenerateRequestDto,
     ): CompanionTurnRecordDto
 
+    @POST("api/companion-turns/{conversationId}/edit")
+    suspend fun editUserTurn(
+        @Header("Authorization") authorization: String,
+        @Path("conversationId") conversationId: String,
+        @Body request: EditUserTurnRequestDto,
+    ): EditUserTurnResponseDto
+
+    @POST("api/companion-turns/{conversationId}/regenerate-at")
+    suspend fun regenerateCompanionTurnAtTarget(
+        @Header("Authorization") authorization: String,
+        @Path("conversationId") conversationId: String,
+        @Body request: RegenerateAtRequestDto,
+    ): CompanionTurnRecordDto
+
     @GET("api/companion-turns/pending")
     suspend fun listPendingCompanionTurns(
         @Header("Authorization") authorization: String,
@@ -349,6 +363,28 @@ class ImBackendHttpClient(
         authorization = bearerToken(token),
         turnId = turnId,
         request = CompanionTurnRegenerateRequestDto(clientTurnId = clientTurnId),
+    )
+
+    override suspend fun editUserTurn(
+        baseUrl: String,
+        token: String,
+        conversationId: String,
+        request: EditUserTurnRequestDto,
+    ): EditUserTurnResponseDto = serviceFor(baseUrl).editUserTurn(
+        authorization = bearerToken(token),
+        conversationId = conversationId,
+        request = request,
+    )
+
+    override suspend fun regenerateCompanionTurnAtTarget(
+        baseUrl: String,
+        token: String,
+        conversationId: String,
+        request: RegenerateAtRequestDto,
+    ): CompanionTurnRecordDto = serviceFor(baseUrl).regenerateCompanionTurnAtTarget(
+        authorization = bearerToken(token),
+        conversationId = conversationId,
+        request = request,
     )
 
     override suspend fun listPendingCompanionTurns(

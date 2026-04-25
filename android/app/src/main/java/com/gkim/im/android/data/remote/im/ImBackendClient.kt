@@ -74,6 +74,24 @@ interface ImBackendClient {
         error("regenerateCompanionTurn is not implemented for this backend client")
     }
 
+    suspend fun editUserTurn(
+        baseUrl: String,
+        token: String,
+        conversationId: String,
+        request: EditUserTurnRequestDto,
+    ): EditUserTurnResponseDto {
+        error("editUserTurn is not implemented for this backend client")
+    }
+
+    suspend fun regenerateCompanionTurnAtTarget(
+        baseUrl: String,
+        token: String,
+        conversationId: String,
+        request: RegenerateAtRequestDto,
+    ): CompanionTurnRecordDto {
+        error("regenerateCompanionTurnAtTarget is not implemented for this backend client")
+    }
+
     suspend fun listPendingCompanionTurns(
         baseUrl: String,
         token: String,
