@@ -36,6 +36,8 @@ data class CompanionTurnMeta(
     val canRegenerate: Boolean = false,
     val blockReasonKey: String? = null,
     val failedSubtypeKey: String? = null,
+    val siblingCount: Int = 1,
+    val siblingActiveIndex: Int = 0,
 )
 
 data class MessageAttachment(

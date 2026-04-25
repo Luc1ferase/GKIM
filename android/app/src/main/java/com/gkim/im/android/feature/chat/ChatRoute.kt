@@ -56,6 +56,7 @@ import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AttachmentType
 import com.gkim.im.android.core.model.BlockReason
 import com.gkim.im.android.core.model.ChatMessage
+import com.gkim.im.android.core.model.CompanionTurnMeta
 import com.gkim.im.android.core.model.FailedSubtype
 import com.gkim.im.android.core.model.Conversation
 import com.gkim.im.android.core.model.DraftAigcRequest
@@ -706,9 +707,7 @@ internal fun ChatMessageRow(
     message: ChatMessage,
     isMostRecentCompanionVariant: Boolean = false,
     onBubbleAvatarTap: (() -> Unit)? = null,
-    variantNavigation: VariantNavigationState? = null,
-    onSelectPreviousVariant: () -> Unit = {},
-    onSelectNextVariant: () -> Unit = {},
+    onSelectVariantAt: (variantGroupId: String, newIndex: Int) -> Unit = { _, _ -> },
     onRegenerate: () -> Unit = {},
     onRetrySubmission: () -> Unit = {},
     onComposeNewMessage: () -> Unit = {},
@@ -716,6 +715,7 @@ internal fun ChatMessageRow(
     onRetryCompanionTurn: () -> Unit = {},
     onEditUserTurn: () -> Unit = {},
 ) {
+    val variantNavigation = chatBubbleVariantNavigation(message.companionTurnMeta)
     val context = LocalContext.current
     val language = LocalAppLanguage.current
     val isOutgoing = message.direction == MessageDirection.Outgoing
@@ -855,6 +855,7 @@ internal fun ChatMessageRow(
                         )
                     }
                     if (variantNavigation != null) {
+                        val meta = message.companionTurnMeta
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -865,7 +866,10 @@ internal fun ChatMessageRow(
                                 style = MaterialTheme.typography.labelLarge,
                                 color = if (variantNavigation.hasPrevious) AetherColors.Primary else AetherColors.OnSurfaceVariant,
                                 modifier = Modifier
-                                    .clickable(enabled = variantNavigation.hasPrevious, onClick = onSelectPreviousVariant)
+                                    .clickable(enabled = variantNavigation.hasPrevious) {
+                                        resolveVariantSelection(meta, VariantSwipeDirection.Previous)
+                                            ?.let { (groupId, newIndex) -> onSelectVariantAt(groupId, newIndex) }
+                                    }
                                     .testTag("chat-companion-variant-prev-${message.id}"),
                             )
                             Text(
@@ -879,7 +883,10 @@ internal fun ChatMessageRow(
                                 style = MaterialTheme.typography.labelLarge,
                                 color = if (variantNavigation.hasNext) AetherColors.Primary else AetherColors.OnSurfaceVariant,
                                 modifier = Modifier
-                                    .clickable(enabled = variantNavigation.hasNext, onClick = onSelectNextVariant)
+                                    .clickable(enabled = variantNavigation.hasNext) {
+                                        resolveVariantSelection(meta, VariantSwipeDirection.Next)
+                                            ?.let { (groupId, newIndex) -> onSelectVariantAt(groupId, newIndex) }
+                                    }
                                     .testTag("chat-companion-variant-next-${message.id}"),
                             )
                         }
@@ -1099,6 +1106,26 @@ internal fun variantNavigationState(
         activeIndex = clampedIndex,
         total = variantGroupSiblingCount,
     )
+}
+
+internal enum class VariantSwipeDirection { Previous, Next }
+
+internal fun chatBubbleVariantNavigation(meta: CompanionTurnMeta?): VariantNavigationState? {
+    if (meta == null) return null
+    return variantNavigationState(meta.siblingCount, meta.siblingActiveIndex)
+}
+
+internal fun resolveVariantSelection(
+    meta: CompanionTurnMeta?,
+    direction: VariantSwipeDirection,
+): Pair<String, Int>? {
+    if (meta == null) return null
+    val nav = chatBubbleVariantNavigation(meta) ?: return null
+    val newIndex = when (direction) {
+        VariantSwipeDirection.Previous -> if (nav.hasPrevious) nav.activeIndex - 1 else return null
+        VariantSwipeDirection.Next -> if (nav.hasNext) nav.activeIndex + 1 else return null
+    }
+    return meta.variantGroupId to newIndex
 }
 
 internal data class CompanionLifecyclePresentation(

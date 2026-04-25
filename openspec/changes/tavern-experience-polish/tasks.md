@@ -12,7 +12,7 @@
 
 ## 3. Chat branch tree navigation
 
-- [ ] 3.1 Extend `feature/chat/ChatMessageRow.kt` so every companion bubble renders left/right swipe chevrons when its `variantGroupId`'s sibling count > 1, along with a `(n / total)` caption. Tapping a chevron mutates the conversation's `activePath` for that `variantGroupId` and the UI re-resolves the path. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatBranchChevronsTest` covers chevron visibility, caption, and active-path mutation.
+- [x] 3.1 Extend `feature/chat/ChatMessageRow.kt` so every companion bubble renders left/right swipe chevrons when its `variantGroupId`'s sibling count > 1, along with a `(n / total)` caption. Tapping a chevron mutates the conversation's `activePath` for that `variantGroupId` and the UI re-resolves the path. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatBranchChevronsTest` covers chevron visibility, caption, and active-path mutation.
 
 - [ ] 3.2 Add an "Edit" overflow action on every **user** bubble that opens an edit sheet prefilled with the bubble's content. Submitting creates a new sibling under the same `parentMessageId` through `POST /api/companion-turns/{conversationId}/edit`; the new user-branch + its companion-turn become the active path. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatEditUserBubbleTest` covers edit-sheet prefill, backend call shape, and active-path switch.
 
