@@ -18,7 +18,7 @@
 
 - [x] 3.3 Add a "Regenerate from here" overflow action on every **companion** bubble (not just the latest). Invoking the action calls the extended `POST /api/companion-turns/{conversationId}/regenerate` with `{ targetMessageId }`, producing a new sibling under the same `variantGroupId`; the UI switches the active path to the new sibling. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatRegenerateFromHereTest` covers the endpoint call shape for a mid-conversation bubble and the sibling creation + path switch.
 
-- [ ] 3.4 Add instrumentation `ChatBranchNavigationInstrumentationTest` on `codex_api34` that seeds a conversation with 3 companion turns, edits turn 1's user message, regenerates turn 2, and asserts sibling navigation produces the expected 4-branch tree with each branch independently reachable. Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.chat.ChatBranchNavigationInstrumentationTest` passes.
+- [x] 3.4 Add instrumentation `ChatBranchNavigationInstrumentationTest` on `codex_api34` that seeds a conversation with 3 companion turns, edits turn 1's user message, regenerates turn 2, and asserts sibling navigation produces the expected 4-branch tree with each branch independently reachable. Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.chat.ChatBranchNavigationInstrumentationTest` passes.
 
 ## 4. Per-character provider / preset override
 
