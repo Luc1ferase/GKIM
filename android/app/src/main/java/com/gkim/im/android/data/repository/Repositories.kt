@@ -49,6 +49,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.util.UUID
 
 enum class MessagingIntegrationPhase {
     Idle,
@@ -714,8 +715,16 @@ class LiveMessagingRepository(
         }
 
         val timestamp = Instant.now().toString()
+        // Companion conversations require a UUID conversation_id (server casts it to PostgreSQL
+        // UUID for ownership checks); for non-companion DMs preserve the historical contact.id
+        // value since those are routed through the legacy IM contract.
+        val newConversationId = if (companionCardId != null) {
+            UUID.randomUUID().toString()
+        } else {
+            contact.id
+        }
         val placeholderConversation = Conversation(
-            id = contact.id,
+            id = newConversationId,
             contactId = contact.id,
             contactName = contact.nickname,
             contactTitle = contact.title,

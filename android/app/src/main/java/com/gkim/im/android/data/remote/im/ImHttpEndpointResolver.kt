@@ -9,9 +9,9 @@ import com.gkim.im.android.data.repository.AppContainer
 import kotlinx.coroutines.flow.first
 import java.net.URI
 
-const val DEFAULT_IM_DEVELOPER_BACKEND_ORIGIN = "http://10.0.2.2:18080/"
+const val DEFAULT_IM_DEVELOPER_BACKEND_ORIGIN = "https://chat.lastxuans.sbs/"
 const val DEFAULT_IM_HTTP_BASE_URL = DEFAULT_IM_DEVELOPER_BACKEND_ORIGIN
-const val DEFAULT_IM_WEBSOCKET_URL = "ws://10.0.2.2:18080/ws"
+const val DEFAULT_IM_WEBSOCKET_URL = "wss://chat.lastxuans.sbs/ws"
 
 private const val IM_REALTIME_PATH_SEGMENT = "ws"
 
