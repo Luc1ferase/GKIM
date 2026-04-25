@@ -3205,3 +3205,37 @@ Upload
   - Branch: `feature/tavern-experience-polish-client-items`
   - Push: `origin/feature/tavern-experience-polish-client-items`
 - Result: `accepted`
+
+### Task 10.1 (tavern-experience-polish): Add focused unit suites as named in each section. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest` fully green. (status snapshot — task remains open pending backend-gated peers)
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest` → `BUILD SUCCESSFUL`. Aggregate across the entire `:app` module: `classes=87 tests=1007 skipped=0 failures=0 errors=0`. The fully-green gate that §10.1 names as its verification is currently true at branch tip `9fb40f9` (and was true at every shipped commit on this branch — §3.1 / §4.1 / §4.2 / §4.3 / §5.1 each ran the full suite green before push).
+  - Roll-call of the 16 unit suites named in the §10.1 task wording — 12 / 16 are present (each green) and 4 / 16 are blocked on backend-gated parent tasks (`[ ]` in tasks.md):
+    | Suite | Parent task | Status | Tests |
+    |---|---|---|---|
+    | `PortraitLargeViewPresentationTest` | §1.1 | shipped | 12 |
+    | `PortraitTapRoutingTest` | §1.2 | shipped | 10 |
+    | `AltGreetingPickerPresentationTest` | §2.1 | shipped | 10 |
+    | `AltGreetingRememberedDefaultTest` | §2.2 | shipped | 8 |
+    | `ChatBranchChevronsTest` | §3.1 | shipped | 14 |
+    | `ChatEditUserBubbleTest` | §3.2 | **owed** (backend `/edit` endpoint) | — |
+    | `ChatRegenerateFromHereTest` | §3.3 | **owed** (backend regenerate `targetMessageId` extension) | — |
+    | `CharacterCardPresetOverrideTest` | §4.1 | shipped | 9 |
+    | `CharacterDetailPresetOverrideTest` | §4.2 | shipped | 18 |
+    | `ChatPresetPillOverrideTest` | §4.3 | shipped | 16 |
+    | `ChatExportDialogPresentationTest` | §5.1 | shipped | 15 |
+    | `ChatExportRoutingTest` | §5.2 | **owed** (backend `/export` endpoint) | — |
+    | `RelationshipResetAffordanceTest` | §6.1 | **owed** (backend `/relationships/{id}/reset` endpoint) | — |
+    | `GachaProbabilitySurfacingTest` | §7.1 | shipped | 11 |
+    | `GachaDuplicateAnimationTest` | §7.2 | shipped | 8 |
+    | `CharacterDetailCreatorSubSectionTest` | §8.1 | shipped | 8 |
+
+    Sum across the 12 currently-shipped named suites: `tests=147 failures=0 errors=0` (each suite individually green). The remaining 859 tests in the full `:app:testDebugUnitTest` run come from neighbour suites (lifecycle, repository, routing, model interop) that the tavern-experience-polish slice's commits do not break.
+- Review:
+  - Score: `n/a` (status snapshot, not a final acceptance — the fully-green gradle gate currently passes, but four named suites do not yet exist; their absence is honest evidence that §3.2 / §3.3 / §5.2 / §6.1 have not yet shipped, not a §10.1 deliverable gap. §10.1 will be flipped to `[x]` and re-recorded with `accepted` once the four backend-gated parent tasks land their parent + suite atomically — the standing per-task discipline ensures each backend-gated task ships with its named suite, so this entry's role is to (a) lock in the current 12-of-16 status with concrete test counts, and (b) confirm that the gradle "fully green" gate has been true at every shipped commit on this branch.)
+  - Findings: `12 of the 16 unit suites named in the §10.1 task wording are present in the worktree under android/app/src/test/java/com/gkim/im/android/{feature,core}; each was authored by its parent task's commit (PortraitLargeViewPresentationTest by a7fa767, PortraitTapRoutingTest by 7f28c55, AltGreetingPickerPresentationTest by d5bc51a, AltGreetingRememberedDefaultTest by d10035f, ChatBranchChevronsTest by b5f5fe6, CharacterCardPresetOverrideTest by e670b15, CharacterDetailPresetOverrideTest by a9b2575, ChatPresetPillOverrideTest by 209b6da, ChatExportDialogPresentationTest by e0ab9f8, GachaProbabilitySurfacingTest by 517e398, GachaDuplicateAnimationTest by 87de8bc, CharacterDetailCreatorSubSectionTest by abb66ef). The four outstanding suites (ChatEditUserBubbleTest, ChatRegenerateFromHereTest, ChatExportRoutingTest, RelationshipResetAffordanceTest) are listed by name in §3.2 / §3.3 / §5.2 / §6.1 respectively as their own verification commands; those tasks are in turn blocked on the backend window's tavern-experience-polish-branch-tree-backend slice (POST .../edit + regenerate-with-targetMessageId), the §5.2 export endpoint, and the §6.1 relationships-reset endpoint. The 1007-test aggregate across the entire :app module being zero-failure is the strongest available evidence that the slice's many additive changes (UUID conversation_id flip, sibling chevrons, characterPresetId interop, chat export presentation contract, ST creator attribution sub-section, gacha probability + duplicate animation, etc.) compose cleanly with the rest of the codebase — no neighbour suite turned red as a side effect of any tavern-experience-polish commit. The slice's archive (§10.3) cannot proceed until §10.1 + §10.2 close, which in turn waits on the four backend-gated parent tasks shipping their suites.`
+- Upload:
+  - Commit: status-only (no source change in this turn); the full-green gate evidence is reproducible by anyone who runs the verification command at branch tip `9fb40f9` or any later HEAD on the polish-client-items branch.
+  - Branch: `feature/tavern-experience-polish-client-items`
+  - Push: `origin/feature/tavern-experience-polish-client-items`
+- Result: `blocked` (pending §3.2 / §3.3 / §5.2 / §6.1 unit suites which ship atomically with their backend-gated parent tasks)
