@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +35,7 @@ import com.gkim.im.android.core.designsystem.pick
 import com.gkim.im.android.core.model.CompanionCharacterCard
 import com.gkim.im.android.core.model.CompanionCharacterSource
 import com.gkim.im.android.core.model.LocalizedText
+import com.gkim.im.android.core.model.Preset
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.CompanionCardMutationResult
 import kotlinx.serialization.json.JsonObject
@@ -89,6 +91,7 @@ fun CharacterEditorRoute(
     var version by remember { mutableStateOf(seed.characterVersion) }
     var avatarText by remember { mutableStateOf(seed.avatarText) }
     var avatarUri by remember { mutableStateOf(seed.avatarUri.orEmpty()) }
+    var characterPresetId by remember { mutableStateOf(seed.characterPresetId) }
     var tagDraft by remember { mutableStateOf("") }
     val tags = remember { mutableStateListOf<String>().apply { addAll(seed.tags) } }
     val alternateGreetings = remember {
@@ -96,6 +99,9 @@ fun CharacterEditorRoute(
             addAll(if (seed.alternateGreetings.isEmpty()) listOf(LocalizedText("", "")) else seed.alternateGreetings)
         }
     }
+    val availablePresets by container.companionPresetRepository
+        .observePresets()
+        .collectAsState(initial = emptyList())
 
     CharacterEditorScreen(
         isEdit = isEdit,
@@ -120,6 +126,8 @@ fun CharacterEditorRoute(
         version = version,
         avatarText = avatarText,
         avatarUri = avatarUri,
+        characterPresetId = characterPresetId,
+        availablePresets = availablePresets,
         tags = tags,
         tagDraft = tagDraft,
         alternateGreetings = alternateGreetings,
@@ -144,6 +152,7 @@ fun CharacterEditorRoute(
         onVersionChanged = { version = it },
         onAvatarTextChanged = { avatarText = it },
         onAvatarUriChanged = { avatarUri = it },
+        onPresetSelected = { characterPresetId = it },
         onTagDraftChanged = { tagDraft = it },
         onAddTag = {
             val normalized = tagDraft.trim()
@@ -173,6 +182,7 @@ fun CharacterEditorRoute(
                 avatarText = avatarText,
                 avatarUri = avatarUri.ifBlank { null },
                 source = if (seed.source == CompanionCharacterSource.Preset) CompanionCharacterSource.UserAuthored else seed.source,
+                characterPresetId = characterPresetId,
             )
             when (container.companionRosterRepository.upsertUserCharacter(draft)) {
                 is CompanionCardMutationResult.Success -> navController.popBackStack()
@@ -207,6 +217,8 @@ private fun CharacterEditorScreen(
     version: String,
     avatarText: String,
     avatarUri: String,
+    characterPresetId: String?,
+    availablePresets: List<Preset>,
     tags: List<String>,
     tagDraft: String,
     alternateGreetings: List<LocalizedText>,
@@ -231,6 +243,7 @@ private fun CharacterEditorScreen(
     onVersionChanged: (String) -> Unit,
     onAvatarTextChanged: (String) -> Unit,
     onAvatarUriChanged: (String) -> Unit,
+    onPresetSelected: (String?) -> Unit,
     onTagDraftChanged: (String) -> Unit,
     onAddTag: () -> Unit,
     onRemoveTag: (String) -> Unit,
@@ -315,6 +328,13 @@ private fun CharacterEditorScreen(
         item { SimpleField(appLanguage.pick("Version", "版本"), version, onVersionChanged, "character-editor-version") }
         item { SimpleField(appLanguage.pick("Avatar text", "头像文字"), avatarText, onAvatarTextChanged, "character-editor-avatar-text") }
         item { SimpleField(appLanguage.pick("Avatar URI", "头像 URI"), avatarUri, onAvatarUriChanged, "character-editor-avatar-uri") }
+        item {
+            PresetOverrideRow(
+                characterPresetId = characterPresetId,
+                availablePresets = availablePresets,
+                onPresetSelected = onPresetSelected,
+            )
+        }
     }
 }
 
