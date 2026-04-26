@@ -19,7 +19,7 @@
 
 ## §5 — Instrumentation
 
-- [ ] §5.1 — `RelationshipResetButtonInstrumentationTest` — composes `RelationshipResetButton` against a fake `MessagingRepository`; drives the state machine through (a) Idle → Armed → Cancel → Idle (no backend call), (b) Idle → Armed → Confirm → Completed (one backend call, conversations cleared), (c) Confirm → Failed → Retry → Completed (two backend calls, no re-arming gate).
+- [x] §5.1 — `RelationshipResetButtonInstrumentationTest` — 3 tests against the production `RelationshipResetButton` with a fake `MessagingRepository`: cancel-from-Armed returns to Idle without backend call; confirm-from-Armed dispatches + auto-dismisses on success; retry-from-Failed advances directly to Submitting (bypasses Armed gate) and a second backend call drives Completed. 3/3 green on `codex_api34(AVD) - 14` in 1m 8s. (`<TBD>`)
 
 ## §6 — Verification + archive
 
