@@ -14,12 +14,12 @@
 
 ## §3 — Resolution helper
 
-- [ ] §3.1 — New file `feature/chat/CharacterPromptContextResolver.kt` exposing `internal fun resolveCharacterPromptContext(card: CompanionCharacterCard?, persona: UserPersona?, language: AppLanguage): CharacterPromptContextDto?` and a private `defaultPersonaName(language: AppLanguage): String` (returns `"User"` for English, `"用户"` for Chinese, matching the convention used elsewhere). The helper:
-  - Returns `null` when `card == null` so callers can bail before the wire call (matches `ChatViewModel.sendMessage`'s existing companion-only gate).
-  - Otherwise computes `resolved = card.resolve(language)` and packs `systemPrompt = resolved.systemPrompt`, `personality = resolved.personality`, `scenario = resolved.scenario`, `exampleDialogue = resolved.exampleDialogue`, `userPersonaName = persona?.displayName?.resolve(language) ?: defaultPersonaName(language)`, `companionDisplayName = resolved.displayName`.
+- [x] §3.1 — New file `feature/chat/CharacterPromptContextResolver.kt` exposing `internal fun resolveCharacterPromptContext(card: CompanionCharacterCard?, persona: UserPersona?, language: AppLanguage): CharacterPromptContextDto?` and a private `defaultPersonaName(language: AppLanguage): String` (returns `"User"` for English, `"用户"` for Chinese). The helper:
+  - Returns `null` when `card == null` so callers can bail before the wire call.
+  - Otherwise computes `resolved = card.resolve(language)` and packs the six fields; uses `?.takeIf { it.isNotBlank() }` on the persona name so a blank-after-trim display name also falls through to the localized default.
   - Does NOT macro-substitute. The backend prompt-assembly module is the single substitution point per the paired backend slice's `design.md` §2.
 
-  Verification: new `feature/chat/CharacterPromptContextResolverTest.kt` exercises (a) `card == null → null`, (b) full card + active persona → all six fields populated and macros un-substituted (assert `"{{user}}"` survives in the output when present in `systemPrompt`), (c) full card + `persona == null` → `userPersonaName == "User"` for `AppLanguage.English` and `"用户"` for `AppLanguage.Chinese`, (d) language switch swaps which `LocalizedText` branch is picked. 5 tests minimum.
+  Verification: `:app:testDebugUnitTest --tests "com.gkim.im.android.feature.chat.CharacterPromptContextResolverTest"` BUILD SUCCESSFUL (5 tests green): null-card, full card + persona with macros literal, null persona EN default, null persona ZH default + Chinese-branch projection, blank persona name fallback. (`03283ad`)
 
 ## §4 — Repository surface
 
