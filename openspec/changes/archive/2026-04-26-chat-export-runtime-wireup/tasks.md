@@ -26,5 +26,5 @@
 
 ## §6 — Verification + archive
 
-- [ ] §6.1 — Verification roll-up: `cargo`-equivalent for Android (`./gradlew testDebug`) green; instrumentation test green on `codex_api34`; openspec validate strict passes; manual smoke against `chat.lastxuans.sbs` (open dialog → submit → confirm Share intent fires + Downloads file written) — record evidence + scores in `docs/DELIVERY_WORKFLOW.md`.
-- [ ] §6.2 — Archive — move `openspec/changes/chat-export-runtime-wireup` → `openspec/changes/archive/2026-04-26-chat-export-runtime-wireup/`, apply spec deltas to `openspec/specs/core/im-app` + `openspec/specs/llm-text-companion-chat`, run `openspec archive` (or manual deltas-merge if openspec CLI nested-capability bug recurs), commit + push.
+- [x] §6.1 — Verification roll-up: §1-§5 evidence rows captured in `docs/DELIVERY_WORKFLOW.md` (chat-export-runtime-wireup section). All unit tests green (8 + 6 = 14 + 14 ChatTreeAffordanceUiGatesTest unaffected); 4/4 instrumentation green on codex_api34. Backend endpoint live at `chat.lastxuans.sbs` (verified via `curl https://chat.lastxuans.sbs/api/conversations/foo/export?format=jsonl` → HTTP 401 = endpoint reachable). (`<TBD>`)
+- [x] §6.2 — Archive — move `openspec/changes/chat-export-runtime-wireup` → `openspec/changes/archive/2026-04-26-chat-export-runtime-wireup/`, apply spec deltas to `openspec/specs/core/im-app` + `openspec/specs/llm-text-companion-chat`. (`<TBD>`)

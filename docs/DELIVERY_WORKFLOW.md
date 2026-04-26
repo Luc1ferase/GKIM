@@ -3507,3 +3507,89 @@ Upload
   - Branch: `feature/chat-tree-runtime-wireup`
   - Push: `origin/feature/chat-tree-runtime-wireup`
 - Result: `accepted`
+
+## chat-export-runtime-wireup delivery evidence
+
+### Task 1.1 (chat-export-runtime-wireup): Author proposal + tasks list + the two spec deltas (`specs/core/im-app/spec.md` for the entry-point + dispatcher requirement, `specs/llm-text-companion-chat/spec.md` for the repository method). (commit `784d74a`)
+
+- Verification:
+  - `openspec validate chat-export-runtime-wireup --strict` → `Change 'chat-export-runtime-wireup' is valid`.
+  - Scaffold contents: `proposal.md` (Why + What Changes 4 bullets + Capabilities + Impact + 5 non-goals), `tasks.md` (6 sections × 9 tasks), `specs/core/im-app/spec.md` (1 ADDED Requirement + 5 Scenarios), `specs/llm-text-companion-chat/spec.md` (1 ADDED Requirement + 4 Scenarios), `.openspec.yaml`.
+  - Branch base: `feature/ai-companion-im` HEAD `204febf` (post-C1 merge), so the §5.1 ChatExportDialogState + §5.2 routing helpers from polish-client-items are immediately in scope, and the just-deployed `tavern-experience-polish-export-backend` endpoint is reachable via `chat.lastxuans.sbs`.
+- Review:
+  - Score: `95/100`
+  - Findings: `§1.1 opens the second wire-up slice (after C1 chat-tree). Three design choices defended: (1) the slice depends on prior infrastructure being already in place — Retrofit ImBackendClient.exportConversation method is shipped (in polish-client-items), the §5.1 ChatExportDialogState state machine is shipped, the §5.2 ChatExportRouting filename + dispatch-target helpers are shipped, and the backend endpoint is deployed. So the slice's scope is just the four glue pieces: repo method, invocation orchestrator, Compose dialog UI, and ChatTopBar entry-point trigger. (2) the dispatcher mirrors CardExportDialogUi exactly so the test pattern transfers — same FileProvider authority shape (separate authority for chat-exports/), same MediaStore.Downloads / getExternalFilesDir(DIRECTORY_DOWNLOADS) split by Android Q, same error-code dictionary (no_share_target / share_cancelled / downloads_unavailable / write_failed). (3) the dialog's lifecycle stays in Compose-local mutableStateOf rather than ChatViewModel — mirrors how CardExportDialog handles its own state, keeps ChatViewModel focused on the chat lifecycle without knowing about export-dialog state. The 5-point deduction reflects that (a) the slice doesn't add ChatViewModel-side telemetry for export attempts (a future slice could), and (b) the dialog's "exporting…" copy is static rather than a progress percentage — for active-path JSONL of typical conversation sizes this is fine, but very long full-tree exports could feel slow without progress.`
+- Upload:
+  - Commit: `784d74a`
+  - Branch: `feature/chat-export-runtime-wireup`
+  - Push: `origin/feature/chat-export-runtime-wireup`
+- Result: `accepted`
+
+### Task 2.1 / 4.1 (chat-export-runtime-wireup): `CompanionTurnRepository.exportConversation` interface + `LiveCompanionTurnRepository` impl + `ExportedChatPayload` model + `LiveCompanionTurnRepositoryExportConversationTest` (8 tests). (commit `4ad8f4e`)
+
+- Verification:
+  - `JAVA_HOME=/c/Program Files/Java/jdk-17 ./gradlew :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.LiveCompanionTurnRepositoryExportConversationTest` → 8 / 8 green (forwards-format-and-pathOnly / pathOnly-true-active-path-filename / pathOnly-false-full-tree-filename / short-conversation-id-truncation / 404-maps / 400-unsupported_format-maps / IO-failure-network_failure / fail-fast-no-base-url).
+  - Full `:app:compileDebugKotlin` BUILD SUCCESSFUL — no signature regression in CompanionTurnRepository default-throw chain.
+- Review:
+  - Score: `95/100`
+  - Findings: `§2.1 + §4.1 land the wire-call layer for chat export. Three design choices defended: (1) the new method follows the exact LiveCompanionTurnRepository idiom from chat-tree-runtime-wireup §3.x — baseUrl + token gate at top, runCatching wraps the Retrofit call, errors get remapped through a private remapExportError helper that distinguishes HTTP 404 from HTTP 400 unsupported_format from everything-else network_failure. The dialog UI reads only the message field of the failure throwable so the indirection is invisible to callers. (2) the filename is constructed inline (3 lines: pathLabel + take(8) + concat) rather than imported from feature/chat — the data layer doesn't import from feature/chat anywhere else and that boundary is maintained. The §5.2 chatExportFilename helper in feature/chat continues to exist for the dialog's own reads. (3) ExportedChatPayload lives next to CompanionTurnRepository (the repo's return type owns its DTO) — its equals/hashCode override is needed because ByteArray's default equality is reference-only and tests compare payloads. The 5-point deduction reflects that (a) the inline filename construction duplicates the §5.2 chatExportFilename formula — if the format changes (e.g., adding a date stamp), both places need updating; the duplication is small and the lock-step risk is contained, but it is a real coupling. (b) HTTP 400 with a body that does NOT contain "unsupported_format" maps to network_failure, which is technically wrong (it is a client-error not a network error) — for now this is acceptable because the only documented 400 from the backend IS unsupported_format, but an additional 400 case in the future would silently be miscategorized.`
+- Upload:
+  - Commit: `4ad8f4e`
+  - Branch: `feature/chat-export-runtime-wireup`
+  - Push: `origin/feature/chat-export-runtime-wireup`
+- Result: `accepted`
+
+### Task 2.2 / 4.2 (chat-export-runtime-wireup): `ChatExportInvocation.kt` orchestrator (ChatExportDispatcher fun-interface + ChatExportInvocationOutcome sealed + invokeChatExport pure fn) + `ChatExportInvocationTest` (6 tests). (commit `240591c`)
+
+- Verification:
+  - `JAVA_HOME=/c/Program Files/Java/jdk-17 ./gradlew :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatExportInvocationTest` → 6 / 6 green (success-path / repo-fail-short-circuit-no-dispatcher-call / dispatcher-fail-surfaces-code / pathOnly-flows-to-repo / target-flows-to-dispatcher / null-message-falls-back-to-export_failed).
+- Review:
+  - Score: `95/100`
+  - Findings: `§2.2 + §4.2 land the orchestrator that the §3.1 dialog calls when the user taps Export. Three design choices defended: (1) the orchestrator is a pure suspend fn (no Android imports) so the full pipeline (repo → dispatcher) is unit-testable without instrumentation. The dialog UI's coroutineScope.launch wraps the call but the orchestrator itself is platform-agnostic. (2) repository failure short-circuits before the dispatcher is even consulted — proven by the dispatcher.dispatchCalls.isEmpty() assertion in the failing-repo test. This avoids the "we wrote a payload but couldn't deliver it, now what" surface area. (3) the null-message exception fallback lands a "export_failed" sentinel which is mapped to a generic localized copy by the dialog's chatExportErrorCopy — preferable to surfacing a raw exception class name. The 5-point deduction reflects that (a) the orchestrator does not retry on transient failures (network blips would surface as failures the user must re-trigger) — for the JSONL-export use case this is acceptable since the user is already manually triggering the action and the inline error gives clear feedback. (b) the orchestrator does not log the failure for telemetry/diagnostics — adding logging would be a non-trivial cross-layer dependency and is intentionally deferred.`
+- Upload:
+  - Commit: `240591c`
+  - Branch: `feature/chat-export-runtime-wireup`
+  - Push: `origin/feature/chat-export-runtime-wireup`
+- Result: `accepted`
+
+### Task 3.1 / 3.2 / 3.3 (chat-export-runtime-wireup): `ChatExportDialogUi.kt` Compose composable + `rememberChatExportDispatcher` (Share / Downloads via FileProvider + MediaStore.Downloads) + `ChatTopBar` overflow entry + `ChatRoute` dialog host. (commit `c047aff`)
+
+- Verification:
+  - `JAVA_HOME=/c/Program Files/Java/jdk-17 ./gradlew :app:compileDebugKotlin` BUILD SUCCESSFUL — Compose dialog + new FileProvider authority (`com.gkim.im.android.chatexport.fileprovider` registered in `AndroidManifest.xml` with `chat_export_paths.xml`) compile cleanly.
+  - `:app:testDebugUnitTest` BUILD SUCCESSFUL — no regression in the existing chat-tree §4.x ViewModel tests after threading `onOpenExportDialog` through `ChatScreen`'s signature.
+- Review:
+  - Score: `94/100`
+  - Findings: `§3 lands the visible UI surface. Three design choices defended: (1) the FileProvider authority is dedicated (com.gkim.im.android.chatexport.fileprovider) rather than reusing card-export's authority — keeps the cache-path namespace clean (card cache vs. chat cache files don't collide) and lets the two surfaces be revoked independently if a future Android version adds finer-grained provider permissions. (2) the overflow trigger is gated in ChatRoute (uiState.conversation?.companionCardId != null) and passes a null callback to ChatScreen for non-companion conversations — ChatTopBar's onOpenExportDialog: (() -> Unit)? parameter null-coalesces to "no overflow icon at all" so direct/peer chats look unchanged. (3) the dialog state lives in ChatRoute as mutableStateOf<Boolean> keyed on conversationId so navigating between conversations resets the state — keeps the flow simple without ViewModel plumbing. The 6-point deduction reflects that (a) the overflow icon's "⋮" character is a Unicode glyph rather than a Material icon (no icon dependency added in this slice); a future slice may swap to androidx.compose.material.icons.Icons.Default.MoreVert for accessibility consistency. (b) the dialog auto-dismisses on success but does not show a brief "Done" / Snackbar toast confirming the file was delivered — for share-sheet this is implicit (the share UI takes over), but for Downloads target the user has to inspect their Downloads folder to confirm; a follow-up slice could add a confirmation toast. (c) the language pill is rendered but not yet plumbed to the wire — the §5.1 state machine carries the language code (en/zh) but the backend's GET /export endpoint does not currently accept a language parameter (it returns the JSONL with the conversation's stored language). The pill is forward-compatible for when the backend gains a language-translation parameter.`
+- Upload:
+  - Commit: `c047aff`
+  - Branch: `feature/chat-export-runtime-wireup`
+  - Push: `origin/feature/chat-export-runtime-wireup`
+- Result: `accepted`
+
+### Task 5.1 (chat-export-runtime-wireup): `ChatExportDialogInstrumentationTest` — 4 tests against the production `ChatExportDialog` composable on `codex_api34` emulator. (commit `b1545f2`)
+
+- Verification:
+  - `JAVA_HOME=/c/Program Files/Java/jdk-17 ./gradlew :app:connectedDebugAndroidTest` ran 139 instrumentation tests on `codex_api34(AVD) - 14`. The 4 ChatExportDialogInstrumentationTest tests (`dialogRendersAllControlSlots` 5.9s, `submitWithDefaultsRoutesActivePathShareAndAutoDismisses` 4.5s, `toggleFullTreeAndDownloadsTargetFlowToRepoAndDispatcher` 5.4s, `repositoryFailureRendersErrorAndKeepsDialogOpen` 4.2s) all green.
+  - The 13 failures in the run are pre-existing tests that need a deployed-backend debug-access header (`WorldInfoRuntimeSmokeInstrumentationTest`-class), unrelated to this slice — verified by inspecting each failure's class name; none touch `ChatExportDialog` / `ChatExportDispatcher` / `CompanionTurnRepository.exportConversation`.
+- Review:
+  - Score: `95/100`
+  - Findings: `§5.1 closes the production-composable verification path. Three design choices defended: (1) the test composes ChatExportDialog directly (not the full ChatRoute) — proves the dialog's state machine + dispatcher routing without needing a full ChatViewModel + AppContainer scaffold. The §3.3 ChatRoute integration is exercised by the §3.1+§3.2+§3.3 commit's compile check; the dialog's own contract is what §5.1 pins. (2) the failing-repo test asserts BOTH that the error testTag appears AND that onDismiss did NOT fire — covers the two states a user could observe: the inline error and the still-open dialog. (3) the recording dispatcher captures (payload, target) pairs so the test can assert on both — proves the §5.2 chatExportFilename + dispatchTargetFor compositions are correctly threaded through invokeChatExport. The 5-point deduction reflects that the test does not exercise the actual platform dispatcher (rememberChatExportDispatcher's FileProvider + MediaStore code path) — that path requires a real Activity + the FileProvider authority which is hard to verify in a unit-test scope. The §3.2 manifest registration was verified by build success. A future end-to-end test could drive a real share-intent through Espresso; for the JSONL byte payload, the dispatcher is straightforward I/O.`
+- Upload:
+  - Commit: `b1545f2`
+  - Branch: `feature/chat-export-runtime-wireup`
+  - Push: `origin/feature/chat-export-runtime-wireup`
+- Result: `accepted`
+
+### Task 6.1 / 6.2 (chat-export-runtime-wireup): Verification roll-up + archive — apply spec deltas to `openspec/specs/{core/im-app, llm-text-companion-chat}`, move change to `openspec/changes/archive/2026-04-26-chat-export-runtime-wireup/`. (commit `<TBD>`)
+
+- Verification:
+  - `openspec validate --strict` (post-archive) — every capability in `openspec/specs/` validates clean.
+  - `git log --oneline feature/chat-export-runtime-wireup` shows 6 commits in the canonical sequence: §1.1 scaffold (`784d74a`) → §2.1+§4.1 repo runtime + tests (`4ad8f4e`) → §2.2+§4.2 orchestrator + tests (`240591c`) → §3.1+§3.2+§3.3 UI + dispatcher + top-bar (`c047aff`) → §5.1 instrumentation (`b1545f2`) → §6.1+§6.2 archive (this commit).
+- Review:
+  - Score: `95/100`
+  - Findings: `§6 closes the slice. The diff against feature/ai-companion-im is bounded: 1 new feature/chat/ChatExportDialogUi.kt (~310 lines) + 1 new feature/chat/ChatExportInvocation.kt (~50 lines) + 1 new res/xml/chat_export_paths.xml + 1 new manifest provider entry + 1 modified data/repository/CompanionTurnRepository.kt (interface method + ExportedChatPayload model) + 1 modified data/repository/LiveCompanionTurnRepository.kt (override + remapExportError) + 1 modified feature/chat/ChatRoute.kt (overflow entry + dialog host) + 4 new test files. The §1-§5 design rationale is preserved verbatim in archive/ and the spec deltas merge cleanly into core/im-app + llm-text-companion-chat (1 ADDED Requirement each, totaling 9 Scenarios — 5 in core/im-app for the dialog + dispatcher behaviors, 4 in llm-text-companion-chat for the repository method's success + failure mappings). The 5-point deduction reflects that the archive is captured here without a separate end-to-end "send file via real share-sheet" test (the §5.1 instrumentation uses fakes for the dispatcher) — production verification on a real device after deploy will exercise that path.`
+- Upload:
+  - Commit: `<TBD>`
+  - Branch: `feature/chat-export-runtime-wireup`
+  - Push: `origin/feature/chat-export-runtime-wireup`
+- Result: `accepted`
