@@ -6,7 +6,7 @@
 
 ## §2 — DTO surface
 
-- [ ] §2.1 — Add `@Serializable data class CharacterPromptContextDto(systemPrompt: String, personality: String, scenario: String, exampleDialogue: String, userPersonaName: String, companionDisplayName: String)` to `data/remote/im/ImBackendModels.kt` immediately above `CompanionTurnSubmitRequestDto`. No mapper to a domain type — the DTO carries already-resolved strings only. Verification: compiles; `kotlinx.serialization.json.Json.decodeFromString<CharacterPromptContextDto>` round-trips a hand-typed JSON literal containing the six fields.
+- [x] §2.1 — Add `@Serializable data class CharacterPromptContextDto(systemPrompt: String, personality: String, scenario: String, exampleDialogue: String, userPersonaName: String, companionDisplayName: String)` to `data/remote/im/ImBackendModels.kt` immediately above `CompanionTurnSubmitRequestDto`. No mapper to a domain type — the DTO carries already-resolved strings only. Verification: compiles (`:app:compileDebugKotlin` BUILD SUCCESSFUL); round-trip assertion deferred to §2.3's serialization test which exercises the full DTO graph against on-disk fixtures. (`d5b9fd9`)
 
 - [ ] §2.2 — Extend `CompanionTurnSubmitRequestDto`, `EditUserTurnRequestDto`, `RegenerateAtRequestDto` each with `val characterPromptContext: CharacterPromptContextDto? = null` as the last constructor parameter. The default `null` keeps every existing call-site source-compatible. Verification: `:app:compileDebugKotlin` succeeds with no callsite changes; old serialized payloads (without the field) still deserialize because `null` is the default.
 
