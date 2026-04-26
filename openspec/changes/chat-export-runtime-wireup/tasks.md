@@ -7,7 +7,7 @@
 ## §2 — Repository runtime + invocation orchestrator
 
 - [x] §2.1 — `CompanionTurnRepository.exportConversation(conversationId, format, pathOnly): Result<ExportedChatPayload>` interface method with default-throw, plus `LiveCompanionTurnRepository.exportConversation` impl that calls `ImBackendClient.exportConversation` and wraps the JSONL string + filename + content-type into `ExportedChatPayload`. `DefaultCompanionTurnRepository` keeps the default-throw (offline / non-live impls won't expose export). (`<TBD>`)
-- [ ] §2.2 — `ChatExportInvocationOutcome` sealed interface + `invokeChatExport(conversationId, state, repository, dispatcher)` pure orchestrator + `ExportedChatPayload(filename, bytes, contentType)` data class in `feature/chat/ChatExportInvocation.kt`. Mirrors `invokeCardExport` shape so the test pattern transfers.
+- [x] §2.2 — `ChatExportInvocationOutcome` sealed interface + `invokeChatExport(conversationId, state, repository, dispatcher)` pure orchestrator + `ChatExportDispatcher` fun-interface in `feature/chat/ChatExportInvocation.kt`. (`ExportedChatPayload` lives next to the repo in `data/repository/CompanionTurnRepository.kt` per §2.1.) (`<TBD>`)
 
 ## §3 — UI + dispatcher
 
@@ -18,7 +18,7 @@
 ## §4 — Tests
 
 - [x] §4.1 — `LiveCompanionTurnRepositoryExportConversationTest` — exercises `exportConversation` with a fake `ImBackendClient`: success returns wrapped payload, HTTP 404 maps to `404_unknown_conversation`, HTTP 400 (unsupported format) maps to `unsupported_format`, `pathOnly=true` and `pathOnly=false` both forwarded correctly to the wire query parameter. 8 tests, all green. (`<TBD>`)
-- [ ] §4.2 — `ChatExportInvocationTest` — exercises `invokeChatExport` with fake repo + fake dispatcher: success returns `Success`, repo failure short-circuits with `Failed(code)`, dispatcher failure returns `Failed(code)`, pathOnly + target choices flow correctly through the orchestrator.
+- [x] §4.2 — `ChatExportInvocationTest` — exercises `invokeChatExport` with fake repo + fake dispatcher: success returns `Success`, repo failure short-circuits with `Failed(code)`, dispatcher failure returns `Failed(code)`, pathOnly + target choices flow correctly through the orchestrator. 6 tests, all green. (`<TBD>`)
 
 ## §5 — Instrumentation
 
