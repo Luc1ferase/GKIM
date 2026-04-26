@@ -445,6 +445,26 @@ data class ActiveCompanionSelectionDto(
     val characterId: String,
 )
 
+/**
+ * Resolved character prompt context for a single companion-turn dispatch
+ * (`companion-turn-character-prompt-context` §2.1). Carries the active
+ * card's `systemPrompt`, `personality`, `scenario`, `exampleDialogue`
+ * already projected into the active language plus the active persona's
+ * display name and the companion's display name. The four character-content
+ * fields MUST contain `{{user}}` / `{{char}}` macros literally — substitution
+ * is performed by the paired backend slice's prompt-assembly module so the
+ * audit log has a single source of truth.
+ */
+@Serializable
+data class CharacterPromptContextDto(
+    val systemPrompt: String,
+    val personality: String,
+    val scenario: String,
+    val exampleDialogue: String,
+    val userPersonaName: String,
+    val companionDisplayName: String,
+)
+
 @Serializable
 data class CompanionTurnSubmitRequestDto(
     val conversationId: String,
