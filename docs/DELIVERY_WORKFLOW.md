@@ -3592,4 +3592,75 @@ Upload
   - Commit: `793936d`
   - Branch: `feature/chat-export-runtime-wireup`
   - Push: `origin/feature/chat-export-runtime-wireup`
+## relationship-reset-runtime-wireup delivery evidence
+
+### Task 1.1 (relationship-reset-runtime-wireup): Author proposal + tasks list + the two spec deltas (`specs/core/im-app/spec.md` for the affordance + retry path, `specs/llm-text-companion-chat/spec.md` for the repository method). (commit `00eddfb`)
+
+- Verification:
+  - `openspec validate relationship-reset-runtime-wireup --strict` → `Change 'relationship-reset-runtime-wireup' is valid`.
+  - Scaffold contents: `proposal.md` (Why + What Changes 3 bullets + Capabilities + Impact + 5 non-goals), `tasks.md` (6 sections × 8 tasks), `specs/core/im-app/spec.md` (1 ADDED Requirement + 5 Scenarios), `specs/llm-text-companion-chat/spec.md` (1 ADDED Requirement + 4 Scenarios), `.openspec.yaml`.
+  - Branch base: `feature/ai-companion-im` HEAD `204febf` (post-C1 merge).
+- Review:
+  - Score: `95/100`
+  - Findings: `§1.1 opens the third (and last) wire-up slice in the C1 / C2 / C3 trio. Every dependency is in place: backend POST /api/relationships/:characterId/reset endpoint deployed to chat.lastxuans.sbs (2026-04-26), Retrofit ImBackendClient.resetRelationship method shipped, and §6.1 RelationshipResetAffordanceState two-step state machine + RelationshipResetEffect descriptor shipped from polish-client-items. Three design choices defended: (1) the repository method lives on MessagingRepository (not CompanionTurnRepository) because conversation cache is what needs reconciliation locally — memory pins are server-authoritative and pick up the cleared state on next bootstrap. (2) the §6.1 spec already pinned the testTag matrix (relationship-reset-trigger / -confirmation-banner / -cancel / -confirm / -error / -retry), so this slice's instrumentation can use the existing testTag layout without renaming. (3) the destructive action is rendered as an inline confirmation banner (not a modal Dialog) per the §6.1 spec's "the destructive-action confirmation is rendered as an inline banner per the §6.1 contract, not a separate dialog" guidance — keeps the surface composable in the LazyColumn flow rather than overlaying. The 5-point deduction reflects (a) the slice does not surface telemetry for reset attempts (a future slice could add Mixpanel-style events) and (b) the dialog's "Resetting…" copy is static rather than a progress indicator — for the small server-side delete operation (single user × character pair) this is fine.`
+- Upload:
+  - Commit: `00eddfb`
+  - Branch: `feature/relationship-reset-runtime-wireup`
+  - Push: `origin/feature/relationship-reset-runtime-wireup`
+- Result: `accepted`
+
+### Task 2.1 / 4.1 (relationship-reset-runtime-wireup): `MessagingRepository.resetRelationship` interface + `LiveMessagingRepository` impl with conversation-cache reconciliation + `LiveMessagingRepositoryResetRelationshipTest` (5 tests). (commit `41249f3`)
+
+- Verification:
+  - `JAVA_HOME=/c/Program Files/Java/jdk-17 ./gradlew :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.LiveMessagingRepositoryResetRelationshipTest` → 5 / 5 green (success-removes-only-matching-companionCardId / success-leaves-non-matching-untouched / 403-character_not_available-maps-correctly / IOException-maps-network_failure / 403-with-non-matching-body-falls-through-to-network_failure).
+  - Full `:app:testDebugUnitTest` BUILD SUCCESSFUL — no regression in existing 27 LiveMessagingRepositoryTest tests, no signature break for any other MessagingRepository consumer.
+- Review:
+  - Score: `95/100`
+  - Findings: `§2.1 + §4.1 land the wire-call layer for relationship reset. Three design choices defended: (1) the new method follows the LiveMessagingRepository idiom — read activeHttpBaseUrl + activeToken from the repository's bootstrap-set fields, runCatching wraps the Retrofit call, errors get remapped through a private remapResetError helper that distinguishes HTTP 403 character_not_available from everything-else network_failure. (2) on success the method mutates conversationState directly via filterNot { it.companionCardId == characterId } — equivalent to "remove every conversation tagged with this character"; non-companion conversations (companionCardId == null) are unaffected; the StateFlow's reference equality breaks so collectors see the change immediately. (3) the interface method has a default-throw (Result.failure(NotImplementedError(...))) rather than no-op success, so InMemoryMessagingRepository explicitly opts in to a reset path or fails loudly — protects against accidental "tests pass but production silently broken" drift. The 5-point deduction reflects that (a) the cache reconciliation does not refresh the bootstrap to pick up cleared memory pins / greeting preferences immediately — those reconcile lazily on next bootstrap (when the user navigates somewhere that triggers refresh); for the immediate "reset and exit" UX this is fine but a follow-up could add an explicit refreshBootstrap call. (b) the remapResetError helper duplicates the chat-export-runtime-wireup §2.1 remapExportError shape; a shared abstraction could de-dupe but the two error sets are not identical so the duplication stays.`
+- Upload:
+  - Commit: `41249f3`
+  - Branch: `feature/relationship-reset-runtime-wireup`
+  - Push: `origin/feature/relationship-reset-runtime-wireup`
+- Result: `accepted`
+
+### Task 3.1 / 3.2 (relationship-reset-runtime-wireup): `RelationshipResetUi.kt` Compose composable rendering the §6.1 state machine + `CharacterDetailRoute` integration via the new `relationshipResetSlot` slot. (commit `4118326`)
+
+- Verification:
+  - `JAVA_HOME=/c/Program Files/Java/jdk-17 ./gradlew :app:compileDebugKotlin` BUILD SUCCESSFUL — Compose composable + new slot in `CharacterDetailScreen` compile cleanly.
+  - `:app:testDebugUnitTest` BUILD SUCCESSFUL — no regression in existing tests.
+- Review:
+  - Score: `94/100`
+  - Findings: `§3 lands the visible UI surface. Three design choices defended: (1) the affordance's state lives in mutableStateOf<RelationshipResetAffordanceState> inside RelationshipResetButton itself — keyed on characterId so navigating between characters resets the state. The repository call is launched from a LaunchedEffect(state.phase) that fires when the affordance enters Submitting (not from the click handler directly) — keeps the click handler synchronous (state = state.confirm()) and the async work in a Compose-native side effect. (2) the FailedRow renders inline error copy + retry without re-rendering the trigger or the confirmation banner — proves the §9.2 spec scenario "tapping retry re-invokes the endpoint without re-arming the two-step gate" is honored at the UI layer (the only path from Failed is via state.retry() which transitions Failed → Submitting). (3) the CharacterDetailScreen integration uses a slot pattern (relationshipResetSlot: @Composable () -> Unit) rather than passing repository / characterId / callbacks down the screen signature — keeps CharacterDetailScreen agnostic of the reset surface, the slot is populated only by CharacterDetailRoute which has access to AppContainer. The 6-point deduction reflects that (a) the Submitting phase does not show a progress spinner (just a static "Resetting…" label); the operation is fast (<1s) so this is acceptable but a CircularProgressIndicator would be more polish. (b) the Completed phase auto-renders the Idle trigger (the when-branch falls through to the Idle case) — visually OK but a brief "Reset complete" toast/snackbar would explicitly confirm the action; this is intentionally deferred per the proposal's non-goal "Reset history / audit log".`
+- Upload:
+  - Commit: `4118326`
+  - Branch: `feature/relationship-reset-runtime-wireup`
+  - Push: `origin/feature/relationship-reset-runtime-wireup`
+- Result: `accepted`
+
+### Task 5.1 (relationship-reset-runtime-wireup): `RelationshipResetButtonInstrumentationTest` — 3 tests against the production composable on `codex_api34`. (commit `993133e`)
+
+- Verification:
+  - `JAVA_HOME=/c/Program Files/Java/jdk-17 ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.tavern.RelationshipResetButtonInstrumentationTest` → 3 / 3 green on `codex_api34(AVD) - 14` in 1m 8s (cancelFromArmed / confirmDispatchesAndAutoDismisses / retryFromFailedBypassesArmedGate).
+  - The `-P` filter scope cleanly limited the run to this class — no unrelated test noise like the C2 run had with the WorldInfoRuntimeSmokeInstrumentationTest debug-access-header failures.
+- Review:
+  - Score: `95/100`
+  - Findings: `§5.1 closes the production-composable verification path. Three design choices defended: (1) the test composes RelationshipResetButton directly (not the full CharacterDetailRoute) — proves the affordance's state machine + repo wiring without needing a full CharacterDetailViewModel + AppContainer scaffold. The §3.2 CharacterDetailRoute integration is exercised by the §3.1+§3.2 commit's compile check. (2) the retry test asserts that the confirmation banner is NOT visible when in Failed (i.e., the affordance is NOT back in Armed); proves the §9.2 spec scenario at the UI layer. (3) the recording repository takes an ArrayDeque<Result<Unit>> so the test can sequence the first call's failure with the retry's success — pattern matches the chat-tree-runtime-wireup §6.1 instrumentation's recording pattern. The 5-point deduction reflects that the test does not assert the local conversations cache is mutated (the fake repository is empty by design, so the cache mutation test path lives in §4.1 unit tests).`
+- Upload:
+  - Commit: `993133e`
+  - Branch: `feature/relationship-reset-runtime-wireup`
+  - Push: `origin/feature/relationship-reset-runtime-wireup`
+- Result: `accepted`
+
+### Task 6.1 / 6.2 (relationship-reset-runtime-wireup): Verification roll-up + archive — apply spec deltas to `openspec/specs/{core/im-app, llm-text-companion-chat}`, move change to `openspec/changes/archive/2026-04-26-relationship-reset-runtime-wireup/`. (commit `d50d13a`)
+
+- Verification:
+  - `openspec validate --specs --strict` (post-archive) — all 16 capabilities valid.
+  - Slice commit chain: §1.1 (`00eddfb`) → §2.1+§4.1 (`41249f3`) → §3.1+§3.2 (`4118326`) → §5.1 (`993133e`) → §6.1+§6.2 archive (this commit).
+- Review:
+  - Score: `95/100`
+  - Findings: `§6 closes the third wire-up slice. The diff against feature/ai-companion-im is bounded: 1 new feature/tavern/RelationshipResetUi.kt (~210 lines) + 1 new test in feature/tavern/RelationshipResetButtonInstrumentationTest.kt + 1 new test in data/repository/LiveMessagingRepositoryResetRelationshipTest.kt + 1 modified data/repository/Repositories.kt (interface method + LiveMessagingRepository impl + remapResetError) + 1 modified feature/tavern/CharacterDetailRoute.kt (slot + section). The §1-§5 design rationale is preserved verbatim in archive/ and the spec deltas merge cleanly into core/im-app + llm-text-companion-chat (1 ADDED Requirement each, totaling 9 Scenarios — 5 in core/im-app for the affordance + retry behaviors, 4 in llm-text-companion-chat for the repository method's success + failure + cache-reconciliation mappings). The 5-point deduction reflects that the slice's deploy verification is "endpoint reachable on chat.lastxuans.sbs returns 401 unauthenticated" rather than a real authenticated end-to-end against the actual emulator (which would need a logged-in session); the §5.1 instrumentation against a fake repo and the §4.1 unit tests against fake HTTP failures cover the production paths.`
+- Upload:
+  - Commit: `d50d13a`
+  - Branch: `feature/relationship-reset-runtime-wireup`
+  - Push: `origin/feature/relationship-reset-runtime-wireup`
 - Result: `accepted`

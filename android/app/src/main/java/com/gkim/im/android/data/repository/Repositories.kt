@@ -84,6 +84,17 @@ interface MessagingRepository {
     fun appendAigcResult(conversationId: String, task: AigcTask)
     fun loadConversationHistory(conversationId: String)
     fun refreshBootstrap()
+
+    /**
+     * §2.1 — Calls `POST /api/relationships/{characterId}/reset` and on success removes
+     * every conversation in the local cache whose `companionCardId == characterId`. Wire
+     * failures are remapped to stable error codes so the UI can render localized copy
+     * without parsing exception types: `character_not_available` (HTTP 403),
+     * `network_failure` (anything else). Default impl throws so `InMemoryMessagingRepository`
+     * does not silently no-op when a test forgets to use `LiveMessagingRepository`.
+     */
+    suspend fun resetRelationship(characterId: String): Result<Unit> =
+        Result.failure(NotImplementedError("reset path requires a live repository"))
 }
 
 class InMemoryMessagingRepository(
@@ -821,6 +832,45 @@ class LiveMessagingRepository(
                 if (error is CancellationException) throw error
                 reportError(error.message ?: "Failed to sync messages.")
             }
+        }
+    }
+
+    /**
+     * §2.1 — POST `/api/relationships/{characterId}/reset` then reconcile the local
+     * conversations cache by removing entries whose `companionCardId == characterId`. The
+     * server's response confirms the user×character pair's conversations + memory + greeting
+     * are cleared on the backend; client-side memory pins (if cached anywhere) are
+     * server-authoritative and pick up the cleared state on next bootstrap.
+     */
+    override suspend fun resetRelationship(characterId: String): Result<Unit> {
+        val baseUrl = activeHttpBaseUrl ?: return Result.failure(IllegalStateException("missing_base_url"))
+        val token = activeToken ?: return Result.failure(IllegalStateException("missing_token"))
+        return try {
+            backendClient.resetRelationship(
+                baseUrl = baseUrl,
+                token = token,
+                characterId = characterId,
+            )
+            conversationState.value = conversationState.value.filterNot { it.companionCardId == characterId }
+            Result.success(Unit)
+        } catch (t: Throwable) {
+            Result.failure(remapResetError(t))
+        }
+    }
+
+    private fun remapResetError(t: Throwable): Throwable {
+        val httpException = t as? retrofit2.HttpException
+        return when (httpException?.code()) {
+            403 -> {
+                val errorBody = runCatching { httpException.response()?.errorBody()?.string() }.getOrNull().orEmpty()
+                if (errorBody.contains("character_not_available")) {
+                    RuntimeException("character_not_available")
+                } else {
+                    RuntimeException("network_failure")
+                }
+            }
+            null -> RuntimeException("network_failure", t)
+            else -> RuntimeException("network_failure", t)
         }
     }
 

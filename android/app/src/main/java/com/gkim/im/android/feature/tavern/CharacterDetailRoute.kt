@@ -102,6 +102,12 @@ fun CharacterDetailRoute(
                 },
             )
         },
+        relationshipResetSlot = {
+            CharacterDetailRelationshipResetSection(
+                container = container,
+                characterId = card.id,
+            )
+        },
     )
 
     pendingExportFormat?.let { format ->
@@ -113,6 +119,25 @@ fun CharacterDetailRoute(
             onDismiss = { pendingExportFormat = null },
         )
     }
+}
+
+/**
+ * §3.2 wire-up host — renders the [RelationshipResetButton] under the action row on the
+ * character-detail screen. Public so [CharacterDetailRoute] above can compose it.
+ */
+@Composable
+internal fun CharacterDetailRelationshipResetSection(
+    container: AppContainer,
+    characterId: String,
+) {
+    RelationshipResetButton(
+        characterId = characterId,
+        repository = container.messagingRepository,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp)
+            .testTag("character-detail-relationship-reset"),
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -127,6 +152,7 @@ private fun CharacterDetailScreen(
     onExportPng: () -> Unit,
     onExportJson: () -> Unit,
     lorebookTab: @Composable () -> Unit = {},
+    relationshipResetSlot: @Composable () -> Unit = {},
 ) {
     val appLanguage = LocalAppLanguage.current
     LazyColumn(
@@ -179,6 +205,7 @@ private fun CharacterDetailScreen(
         }
         item { AboutCardSection(card) }
         item { lorebookTab() }
+        item { relationshipResetSlot() }
         if (character.tags.isNotEmpty()) {
             item {
                 GlassCard(modifier = Modifier.testTag("character-detail-tags")) {
