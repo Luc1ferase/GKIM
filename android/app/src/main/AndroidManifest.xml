@@ -31,6 +31,16 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/card_export_paths" />
         </provider>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.gkim.im.android.chatexport.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/chat_export_paths" />
+        </provider>
     </application>
 
 </manifest>

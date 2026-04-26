@@ -11,9 +11,9 @@
 
 ## §3 — UI + dispatcher
 
-- [ ] §3.1 — `ChatExportDialogUi.kt` Compose composable that renders the §5.1 state-machine controls (path-only toggle, language pills, share/downloads target pills) with in-flight gating, error-code copy, and auto-dismiss on completed.
-- [ ] §3.2 — `rememberChatExportDispatcher()` Compose helper that builds Android `Intent(ACTION_SEND)` (share-sheet) and `MediaStore.Downloads` (>= Q) / `getExternalFilesDir(DIRECTORY_DOWNLOADS)` (< Q) paths. Maps platform failures → error codes (`no_share_target` / `share_cancelled` / `downloads_unavailable` / `write_failed`) identical to `CardExportDialogUi`.
-- [ ] §3.3 — `ChatTopBar` overflow trigger ("Export" entry) visible on companion conversations only (gate: `conversation.companionCardId != null`). Tap opens the dialog with the active conversation id.
+- [x] §3.1 — `ChatExportDialogUi.kt` Compose composable rendering the §5.1 state-machine controls (path-only / language / target pills) with in-flight gating + error-code copy + auto-dismiss on completed. Includes localized error messages for the 7 codes (`share_cancelled` / `no_share_target` / `downloads_unavailable` / `write_failed` / `404_unknown_conversation` / `unsupported_format` / `network_failure`). (`<TBD>`)
+- [x] §3.2 — `rememberChatExportDispatcher()` Compose helper that builds `Intent(ACTION_SEND)` via dedicated `com.gkim.im.android.chatexport.fileprovider` (new authority + `chat_export_paths.xml` registered in `AndroidManifest.xml`) and `MediaStore.Downloads` (Android Q+) / `getExternalFilesDir(DIRECTORY_DOWNLOADS)` (pre-Q) under the `GKIMChats/` subdir. (`<TBD>`)
+- [x] §3.3 — `ChatTopBar` overflow trigger ("Export chat" entry in DropdownMenu) visible on companion conversations only (gate: `conversation.companionCardId != null` evaluated in `ChatRoute`; passes `null` callback for non-companion conversations so the entire overflow icon is hidden). `ChatRoute` hosts `ChatExportDialog` when `showExportDialog == true`, wires `container.companionTurnRepository` + `rememberChatExportDispatcher()`. (`<TBD>`)
 
 ## §4 — Tests
 

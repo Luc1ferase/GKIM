@@ -17,6 +17,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -377,6 +379,8 @@ fun ChatRoute(
     var chatAttachmentMedia by remember { mutableStateOf<MediaInput?>(null) }
     var generationSourceMedia by remember { mutableStateOf<MediaInput?>(null) }
     var isSecondaryMenuOpen by remember { mutableStateOf(false) }
+    var showExportDialog by remember(conversationId) { mutableStateOf(false) }
+    val exportDispatcher = rememberChatExportDispatcher()
     val chatAttachmentPicker = mediaPickerControllerFactory?.invoke { chatAttachmentMedia = it }
         ?: rememberMediaPickerController { chatAttachmentMedia = it }
     val generationSourcePicker = mediaPickerControllerFactory?.invoke { generationSourceMedia = it }
@@ -433,7 +437,21 @@ fun ChatRoute(
         },
         onRegenerateFromHere = viewModel::regenerateFromHere,
         onDismissTreeAffordanceError = viewModel::dismissTreeAffordanceError,
+        onOpenExportDialog = if (uiState.conversation?.companionCardId != null) {
+            { showExportDialog = true }
+        } else {
+            null
+        },
     )
+
+    if (showExportDialog) {
+        ChatExportDialog(
+            conversationId = conversationId,
+            repository = container.companionTurnRepository,
+            dispatcher = exportDispatcher,
+            onDismiss = { showExportDialog = false },
+        )
+    }
 }
 
 @Composable
@@ -459,6 +477,7 @@ private fun ChatScreen(
     onEditUserBubble: (messageId: String, draftText: String) -> Unit = { _, _ -> },
     onRegenerateFromHere: (messageId: String) -> Unit = { _ -> },
     onDismissTreeAffordanceError: () -> Unit = {},
+    onOpenExportDialog: (() -> Unit)? = null,
 ) {
     val appLanguage = LocalAppLanguage.current
     val timelineMessages = uiState.companionMessages ?: uiState.conversation?.messages.orEmpty()
@@ -488,6 +507,7 @@ private fun ChatScreen(
             onBack = onBack,
             onPersonaPillTap = onPersonaPillTap,
             onHeaderAvatarTap = headerPortraitRoute?.let { route -> { onOpenPortrait(route) } },
+            onOpenExportDialog = onOpenExportDialog,
         )
         chatChromePersonaFooter(uiState.activePersona, LocalAppLanguage.current)?.let { footer ->
             Text(
@@ -806,9 +826,11 @@ private fun ChatTopBar(
     onBack: () -> Unit,
     onPersonaPillTap: () -> Unit,
     onHeaderAvatarTap: (() -> Unit)? = null,
+    onOpenExportDialog: (() -> Unit)? = null,
 ) {
     val language = LocalAppLanguage.current
     val personaPill = chatChromePersonaPill(activePersona, language)
+    var overflowOpen by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -864,6 +886,38 @@ private fun ChatTopBar(
         }
         Box(modifier = Modifier.testTag("chat-persona-pill")) {
             PillAction(label = personaPill.label, onClick = onPersonaPillTap)
+        }
+        if (onOpenExportDialog != null) {
+            Box(modifier = Modifier.testTag("chat-top-overflow")) {
+                Box(
+                    modifier = Modifier
+                        .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(14.dp))
+                        .clickable { overflowOpen = true }
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                        .testTag("chat-top-overflow-trigger"),
+                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                ) {
+                    Text(text = "⋮", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
+                }
+                DropdownMenu(
+                    expanded = overflowOpen,
+                    onDismissRequest = { overflowOpen = false },
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = if (language == AppLanguage.English) "Export chat" else "导出对话",
+                                modifier = Modifier.testTag("chat-top-overflow-export-text"),
+                            )
+                        },
+                        onClick = {
+                            overflowOpen = false
+                            onOpenExportDialog()
+                        },
+                        modifier = Modifier.testTag("chat-top-overflow-export"),
+                    )
+                }
+            }
         }
     }
 }
