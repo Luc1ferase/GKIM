@@ -3390,3 +3390,20 @@ Upload
   - Branch: `feature/tavern-experience-polish-client-items`
   - Push: `origin/feature/tavern-experience-polish-client-items`
 - Result: `accepted`
+
+## chat-tree-runtime-wireup delivery evidence
+
+### Task 1.1 (chat-tree-runtime-wireup): Author proposal + tasks list + the two spec deltas (`specs/core/im-app/spec.md` for the Android-side runtime requirements, `specs/llm-text-companion-chat/spec.md` for the repository-layer requirements). (commit `f0cc8b6`)
+
+- Verification:
+  - `openspec validate chat-tree-runtime-wireup --strict` → `Change 'chat-tree-runtime-wireup' is valid` (no warnings, no errors).
+  - Scaffold contents: `proposal.md` (Why + What Changes 4 bullets + Capabilities + Impact + 5 non-goals), `tasks.md` (7 sections × 12 tasks with explicit gradle verification commands), `specs/core/im-app/spec.md` (3 ADDED Requirements + 9 Scenarios), `specs/llm-text-companion-chat/spec.md` (2 ADDED Requirements + 5 Scenarios), `.openspec.yaml` (schema + created-date).
+  - Branch base: `feature/ai-companion-im` HEAD `30eddaf` (post-A3 core/im-app deltas merge), so the §3.x presentation helpers from the archived tavern-experience-polish slice are immediately in scope.
+- Review:
+  - Score: `95/100`
+  - Findings: `§1.1 opens the wire-up slice that closes the deferred-runtime gap from tavern-experience-polish §3.1-§3.4. Three design choices defended: (1) the slice scope is bounded to chat-tree affordances only (Edit / Regenerate-from-here / sibling-swipe at every layer + active-path map). Export wire-up + relationship-reset wire-up are explicitly scoped out into peer slices (chat-export-runtime-wireup + relationship-reset-runtime-wireup) so each slice stays under ~12 tasks and ships independently. (2) the slice modifies two capabilities — core/im-app for the Android UI surface + llm-text-companion-chat for the repository runtime — rather than introducing a new capability. The new behavior is layered on top of the existing companion-chat lifecycle (submit → regenerate → ws events) the mvp slice locked, not a parallel system. (3) the §6.1 instrumentation task replaces the §3.4 self-contained BranchTreeHost with the production ChatRoute / ChatViewModel / LiveCompanionTurnRepository wired against a fake ImBackendClient — keeps the testTag matrix byte-identical so the close-out diff is "which composables get exercised" rather than "what gets asserted", which makes the instrumentation refactor cheap to review. The 5-point deduction reflects three trade-offs: (a) the slice does not yet enumerate the failure-subtype mapping (network_timeout / 4xx / 5xx) that the inline-error UI will display — those subtypes ride on the shared lifecycle from llm-text-companion-chat and will be re-stated in the §4.1 / §4.2 task implementations rather than in the spec. (b) the active-path map's persistence (process restart, app cold-launch) is not addressed in this slice — the map is in-memory only; a future slice could persist it through Datastore or the existing repository's caching layer. (c) the per-character preset override's prompt-time application is explicitly out of scope — that requires a backend slice (the existing characterPresetId field is interop-only on the wire today, the backend doesn't read it during prompt assembly).`
+- Upload:
+  - Commit: `f0cc8b6`
+  - Branch: `feature/chat-tree-runtime-wireup`
+  - Push: `origin/feature/chat-tree-runtime-wireup`
+- Result: `accepted`
