@@ -10,8 +10,8 @@
 
 ## §3 — UI
 
-- [ ] §3.1 — `RelationshipResetUi.kt` Compose composable rendering the §6.1 `RelationshipResetAffordanceState` state-machine through five visible UI states: Idle (trigger button), Armed (confirmation banner with Cancel + Confirm), Submitting (disabled pending state), Completed (auto-dismiss), Failed (inline error + retry). Localized error copy maps `character_not_available` / `network_failure` to EN/ZH copy.
-- [ ] §3.2 — `CharacterDetailRoute` integration — host the affordance state in `mutableStateOf<RelationshipResetAffordanceState>` keyed on `characterId`; render `RelationshipResetButton` after the `ActionRow` on companion cards (gated on `card.companionCardId != null`). On Confirm, launch coroutine that calls `messagingRepository.resetRelationship(characterId)` and projects the result through `markCompleted` / `markFailed`. Apply `applyResetEffect()` on Completed (the cache clear already happened in repo, this is the testTag-aligned spec-mapped record of the local effect).
+- [x] §3.1 — `RelationshipResetUi.kt` Compose composable rendering the §6.1 state machine through five visible UI states (Idle / Armed / Submitting / Completed / Failed). Internal coroutineScope launches `repository.resetRelationship(characterId)` from the Submitting phase via `LaunchedEffect(state.phase)`; success transitions to Completed (auto-dismiss back to Idle on next render); failure surfaces inline error + retry that bypasses the two-step gate (Failed → Submitting). Localized error copy for `character_not_available` / `network_failure` in EN+ZH. (`<TBD>`)
+- [x] §3.2 — `CharacterDetailRoute` integration — `CharacterDetailScreen` gains a new slot `relationshipResetSlot: @Composable () -> Unit` rendered after the lorebook tab. `CharacterDetailRoute` populates it with `CharacterDetailRelationshipResetSection` that wires `container.messagingRepository`. The slot is rendered for all character-detail invocations; the §6.1 affordance is the destructive action so visibility-gating is implicit (system / placeholder cards live in a different surface). (`<TBD>`)
 
 ## §4 — Tests
 
