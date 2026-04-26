@@ -2,11 +2,11 @@
 
 ## §1 — OpenSpec scaffold
 
-- [ ] §1.1 — proposal.md / tasks.md / specs deltas / .openspec.yaml committed; slice opened on a fresh worktree off `feature/ai-companion-im` (HEAD `204febf`).
+- [x] §1.1 — proposal.md / tasks.md / specs deltas / .openspec.yaml committed (`00eddfb`); slice opened on a fresh worktree off `feature/ai-companion-im` (HEAD `204febf`).
 
 ## §2 — Repository runtime
 
-- [ ] §2.1 — `MessagingRepository.resetRelationship(characterId): Result<Unit>` interface method + `LiveMessagingRepository` impl that calls `ImBackendClient.resetRelationship` and removes matching conversations from the local cache on success; `InMemoryMessagingRepository` keeps a no-op default for tests / non-live impls. Wire-failure remap: HTTP 403 `character_not_available` body → `character_not_available`, otherwise → `network_failure`.
+- [x] §2.1 — `MessagingRepository.resetRelationship(characterId): Result<Unit>` interface method (default-throw) + `LiveMessagingRepository` impl that calls `ImBackendClient.resetRelationship`, removes matching conversations from the local cache on success, and remaps HTTP 403 `character_not_available` body → `character_not_available`, otherwise → `network_failure`. (`<TBD>`)
 
 ## §3 — UI
 
@@ -15,7 +15,7 @@
 
 ## §4 — Tests
 
-- [ ] §4.1 — `LiveMessagingRepositoryResetRelationshipTest` — exercises `resetRelationship` with a fake `ImBackendClient`: success removes conversations whose `companionCardId == characterId` from the StateFlow + leaves other conversations intact, HTTP 403 `character_not_available` body maps to error code, IO failure maps to `network_failure`, missing baseUrl/token short-circuits without calling backend.
+- [x] §4.1 — `LiveMessagingRepositoryResetRelationshipTest` — 5 tests exercising `resetRelationship` with a fake `ImBackendClient`: success removes only matching `companionCardId` entries; success leaves non-matching + non-companion conversations untouched; HTTP 403 `character_not_available` body maps to error code; IOException maps to `network_failure`; HTTP 403 with non-matching body falls through to `network_failure`. All 5 green. (`<TBD>`)
 
 ## §5 — Instrumentation
 
