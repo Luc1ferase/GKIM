@@ -6,8 +6,11 @@ import com.gkim.im.android.core.model.MessageKind
 import com.gkim.im.android.core.model.MessageStatus
 import com.gkim.im.android.data.remote.im.CompanionTurnRecordDto
 import com.gkim.im.android.data.remote.im.CompanionTurnSubmitRequestDto
+import com.gkim.im.android.data.remote.im.EditUserTurnRequestDto
+import com.gkim.im.android.data.remote.im.EditUserTurnResponseDto
 import com.gkim.im.android.data.remote.im.ImBackendClient
 import com.gkim.im.android.data.remote.im.ImGatewayEvent
+import com.gkim.im.android.data.remote.im.RegenerateAtRequestDto
 import com.gkim.im.android.data.remote.realtime.RealtimeGateway
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -209,6 +212,85 @@ class LiveCompanionTurnRepository(
                 token = token,
                 turnId = turnId,
                 clientTurnId = clientTurnId,
+            )
+            default.applyRecord(record)
+            Result.success(record)
+        } catch (t: Throwable) {
+            Result.failure(t)
+        }
+    }
+
+    /**
+     * §3.1 — calls `POST /api/companion-turns/:conversationId/edit`, projects the response
+     * into the local sibling tree, and emits the resulting `ChatMessage` updates through
+     * `companionMessages`. The new user-message lands as an Outgoing entry under its
+     * response-supplied `parentMessageId` (typically the original user message being
+     * edited); the new companion-turn lands as an Incoming entry via the existing
+     * `applyRecord` projection that already tracks variantGroups + activePath.
+     */
+    suspend fun editUserTurn(
+        conversationId: String,
+        parentMessageId: String,
+        newUserText: String,
+        activeCompanionId: String,
+        activeLanguage: String,
+    ): Result<EditUserTurnResponseDto> {
+        val baseUrl = baseUrlProvider() ?: return Result.failure(IllegalStateException("no base url"))
+        val token = tokenProvider() ?: return Result.failure(IllegalStateException("no token"))
+        val clientTurnId = clientTurnIdGenerator()
+        return try {
+            val response = backendClient.editUserTurn(
+                baseUrl = baseUrl,
+                token = token,
+                conversationId = conversationId,
+                request = EditUserTurnRequestDto(
+                    parentMessageId = parentMessageId,
+                    newUserText = newUserText,
+                    clientTurnId = clientTurnId,
+                    activeCompanionId = activeCompanionId,
+                    activeLanguage = activeLanguage,
+                ),
+            )
+            val newUserMessage = ChatMessage(
+                id = response.userMessage.messageId,
+                direction = MessageDirection.Outgoing,
+                kind = MessageKind.Text,
+                body = newUserText,
+                createdAt = clock(),
+                parentMessageId = response.userMessage.parentMessageId,
+                status = MessageStatus.Completed,
+            )
+            default.recordUserTurn(newUserMessage, conversationId)
+            default.applyRecord(response.companionTurn)
+            Result.success(response)
+        } catch (t: Throwable) {
+            Result.failure(t)
+        }
+    }
+
+    /**
+     * §3.2 — calls `POST /api/companion-turns/:conversationId/regenerate-at` with an explicit
+     * `targetMessageId` so the backend appends a sibling under that message's variantGroup.
+     * The response is projected through `applyRecord` which already advances the active
+     * variant to the new sibling and re-runs the §2.1 projection so chevrons reflect the new
+     * `siblingCount` / `siblingActiveIndex`.
+     */
+    suspend fun regenerateCompanionTurnAtTarget(
+        conversationId: String,
+        targetMessageId: String,
+    ): Result<CompanionTurnRecordDto> {
+        val baseUrl = baseUrlProvider() ?: return Result.failure(IllegalStateException("no base url"))
+        val token = tokenProvider() ?: return Result.failure(IllegalStateException("no token"))
+        val clientTurnId = clientTurnIdGenerator()
+        return try {
+            val record = backendClient.regenerateCompanionTurnAtTarget(
+                baseUrl = baseUrl,
+                token = token,
+                conversationId = conversationId,
+                request = RegenerateAtRequestDto(
+                    clientTurnId = clientTurnId,
+                    targetMessageId = targetMessageId,
+                ),
             )
             default.applyRecord(record)
             Result.success(record)
