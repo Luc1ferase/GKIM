@@ -98,3 +98,20 @@ internal fun editUserBubbleActivePathEffect(
         newActiveCompanionMessageId = response.companionTurn.messageId,
     )
 }
+
+/**
+ * §5.1 — visibility gate for the Edit overflow on user bubbles. The affordance only renders
+ * when (a) the bubble is Outgoing (user-side), (b) it carries a `parentMessageId` so the §3.2
+ * endpoint contract can be honored (the endpoint rejects edits with no parent), and (c) the
+ * conversation is companion-shaped (companionCardId non-null) — peer-to-peer chats don't
+ * have an LLM regenerate path and therefore don't benefit from edit-creates-sibling.
+ */
+internal fun shouldShowUserBubbleEdit(
+    bubble: com.gkim.im.android.core.model.ChatMessage,
+    conversation: com.gkim.im.android.core.model.Conversation?,
+): Boolean {
+    if (bubble.direction != com.gkim.im.android.core.model.MessageDirection.Outgoing) return false
+    if (bubble.parentMessageId.isNullOrBlank()) return false
+    if (conversation?.companionCardId.isNullOrBlank()) return false
+    return true
+}

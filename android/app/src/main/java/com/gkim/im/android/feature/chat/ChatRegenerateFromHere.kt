@@ -52,3 +52,25 @@ internal fun regenerateFromHereActivePathEffect(
     newActiveMessageId = response.messageId,
     newActiveVariantIndex = response.variantIndex,
 )
+
+/**
+ * §5.2 — visibility gate for the Regenerate-from-here overflow on companion bubbles. The
+ * affordance renders on every companion bubble (not only the most recent, per the §3.3 spec)
+ * when the bubble (a) is Incoming, (b) carries a [CompanionTurnMeta] (system messages don't),
+ * and (c) is in a terminal state where re-running the prompt is meaningful (Completed,
+ * Failed, Timeout, or Blocked — Thinking / Streaming bubbles are mid-flight, regenerate
+ * would race).
+ */
+internal fun shouldShowRegenerateFromHere(
+    bubble: ChatMessage,
+): Boolean {
+    if (bubble.direction != MessageDirection.Incoming) return false
+    if (bubble.companionTurnMeta == null) return false
+    return when (bubble.status) {
+        com.gkim.im.android.core.model.MessageStatus.Completed,
+        com.gkim.im.android.core.model.MessageStatus.Failed,
+        com.gkim.im.android.core.model.MessageStatus.Timeout,
+        com.gkim.im.android.core.model.MessageStatus.Blocked -> true
+        else -> false
+    }
+}

@@ -16,9 +16,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -425,6 +427,12 @@ fun ChatRoute(
         },
         onSaveGeneratedImage = viewModel::saveGeneratedImage,
         onSendGeneratedImage = viewModel::sendGeneratedImage,
+        onSelectVariantAt = viewModel::selectVariantAt,
+        onEditUserBubble = { messageId, draftText ->
+            viewModel.editUserTurn(messageId, draftText, appLanguage)
+        },
+        onRegenerateFromHere = viewModel::regenerateFromHere,
+        onDismissTreeAffordanceError = viewModel::dismissTreeAffordanceError,
     )
 }
 
@@ -447,7 +455,12 @@ private fun ChatScreen(
     onRunMode: (AigcMode) -> Unit,
     onSaveGeneratedImage: (AigcTask) -> Unit,
     onSendGeneratedImage: (AigcTask) -> Unit,
+    onSelectVariantAt: (variantGroupId: String, newIndex: Int) -> Unit = { _, _ -> },
+    onEditUserBubble: (messageId: String, draftText: String) -> Unit = { _, _ -> },
+    onRegenerateFromHere: (messageId: String) -> Unit = { _ -> },
+    onDismissTreeAffordanceError: () -> Unit = {},
 ) {
+    val appLanguage = LocalAppLanguage.current
     val timelineMessages = uiState.companionMessages ?: uiState.conversation?.messages.orEmpty()
     val timelineState = rememberLazyListState()
     val visibleModes = visibleAigcModes(uiState.activeProvider)
@@ -489,6 +502,39 @@ private fun ChatScreen(
             )
         }
 
+        val treeLifecycle = uiState.treeAffordanceLifecycle
+        if (treeLifecycle.inFlightForMessageId != null) {
+            Text(
+                text = if (appLanguage == AppLanguage.English) "Updating…" else "更新中…",
+                style = MaterialTheme.typography.labelMedium,
+                color = AetherColors.OnSurfaceVariant,
+                modifier = Modifier.testTag("chat-tree-affordance-inflight"),
+            )
+        }
+        if (treeLifecycle.failedForMessageId != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("chat-tree-affordance-error"),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = (if (appLanguage == AppLanguage.English) "Update failed: " else "更新失败：") +
+                        (treeLifecycle.failureReason ?: ""),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = AetherColors.Danger,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    onClick = onDismissTreeAffordanceError,
+                    modifier = Modifier.testTag("chat-tree-affordance-error-dismiss"),
+                ) {
+                    Text(text = if (appLanguage == AppLanguage.English) "Dismiss" else "关闭")
+                }
+            }
+        }
+
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -511,6 +557,9 @@ private fun ChatScreen(
                         message = message,
                         isMostRecentCompanionVariant = isMostRecentCompanion,
                         onBubbleAvatarTap = bubblePortraitRoute?.let { route -> { onOpenPortrait(route) } },
+                        onSelectVariantAt = onSelectVariantAt,
+                        onEditUserBubble = onEditUserBubble,
+                        onRegenerateFromHere = onRegenerateFromHere,
                     )
                 }
                 uiState.latestTask?.let { task ->
@@ -832,7 +881,13 @@ internal fun ChatMessageRow(
     onLearnMorePolicy: () -> Unit = {},
     onRetryCompanionTurn: () -> Unit = {},
     onEditUserTurn: () -> Unit = {},
+    onEditUserBubble: (messageId: String, draftText: String) -> Unit = { _, _ -> },
+    onRegenerateFromHere: (messageId: String) -> Unit = { _ -> },
 ) {
+    var editDialogDraft by remember(message.id) { mutableStateOf<String?>(null) }
+    val showUserBubbleEdit = shouldShowUserBubbleEdit(message, conversation)
+    val showRegenerateFromHere = shouldShowRegenerateFromHere(message)
+
     val variantNavigation = chatBubbleVariantNavigation(message.companionTurnMeta)
     val context = LocalContext.current
     val language = LocalAppLanguage.current
@@ -1019,6 +1074,16 @@ internal fun ChatMessageRow(
                                 .testTag("chat-companion-regenerate-${message.id}"),
                         )
                     }
+                    if (showRegenerateFromHere) {
+                        Text(
+                            text = if (language == AppLanguage.English) "Regenerate from here" else "从这里重新生成",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.Primary,
+                            modifier = Modifier
+                                .clickable { onRegenerateFromHere(message.id) }
+                                .testTag("chat-companion-regenerate-from-here-${message.id}"),
+                        )
+                    }
                     if (companionPresentation.showRetry) {
                         Text(
                             text = if (language == AppLanguage.English) "Retry" else "重试",
@@ -1066,6 +1131,16 @@ internal fun ChatMessageRow(
                         color = AetherColors.OnSurface,
                         modifier = Modifier.testTag("chat-message-body-${message.id}"),
                     )
+                    if (showUserBubbleEdit) {
+                        Text(
+                            text = if (language == AppLanguage.English) "Edit" else "编辑",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.Primary,
+                            modifier = Modifier
+                                .clickable { editDialogDraft = message.body }
+                                .testTag("chat-edit-user-overflow-${message.id}"),
+                        )
+                    }
                 }
                 val userFailure = outgoingSubmissionFailureLine(message)
                 if (userFailure != null) {
@@ -1115,6 +1190,46 @@ internal fun ChatMessageRow(
                 }
             }
         }
+    }
+    val draft = editDialogDraft
+    if (draft != null) {
+        AlertDialog(
+            onDismissRequest = { editDialogDraft = null },
+            modifier = Modifier.testTag("chat-edit-user-dialog"),
+            title = {
+                Text(text = if (language == AppLanguage.English) "Edit message" else "编辑消息")
+            },
+            text = {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { editDialogDraft = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("chat-edit-user-textfield"),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val current = editDialogDraft.orEmpty()
+                        editDialogDraft = null
+                        onEditUserBubble(message.id, current)
+                    },
+                    enabled = draft.isNotBlank() && draft != message.body,
+                    modifier = Modifier.testTag("chat-edit-user-submit"),
+                ) {
+                    Text(text = if (language == AppLanguage.English) "Save" else "保存")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { editDialogDraft = null },
+                    modifier = Modifier.testTag("chat-edit-user-cancel"),
+                ) {
+                    Text(text = if (language == AppLanguage.English) "Cancel" else "取消")
+                }
+            },
+        )
     }
 }
 
