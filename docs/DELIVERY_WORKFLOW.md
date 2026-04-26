@@ -3435,3 +3435,18 @@ Upload
   - Branch: `feature/chat-tree-runtime-wireup`
   - Push: `origin/feature/chat-tree-runtime-wireup`
 - Result: `accepted`
+
+### Task 3.1 / 3.2 / 3.3 (chat-tree-runtime-wireup): LiveCompanionTurnRepository.editUserTurn + regenerateCompanionTurnAtTarget runtime methods (§3.3 siblingsFor accessor structurally satisfied by §2.1 projection). (commit `6d6b677`)
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.LiveCompanionTurnRepositoryEditUserTurnTest` → 6 / 6 green (POST-shape / Outgoing-Completed-projection / applyRecord-of-companion / transport-failure / no-base-url-fail-fast / idempotent-on-replay).
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.LiveCompanionTurnRepositoryRegenerateAtTest` → 6 / 6 green (POST-shape-with-targetMessageId+clientTurnId / sibling-appended-to-vg / §2.1-projection-rerun / transport-failure / no-token-fail-fast / mid-conversation-arbitrary-layer).
+  - Full `:app:testDebugUnitTest` BUILD SUCCESSFUL, 0 failures.
+- Review:
+  - Score: `94/100`
+  - Findings: `§3 lands the wire-call layer for the §3.x affordances. Three design choices defended: (1) the new methods follow the existing submitUserTurn / regenerateTurn pattern — baseUrl + token gate at top, clientTurnId-keyed idempotency, Result-fold on transport failures so the ChatViewModel layer can surface inline errors without exposing exceptions. (2) §3.1 editUserTurn projects the new user-message via recordUserTurn (Outgoing direction, Completed status, parentMessageId from the response) rather than via applyRecord — the existing recordUserTurn signature is the correct fit because user-message state is plain-text without companionTurnMeta tracking, while the new companion-turn rides applyRecord which already maintains variantGroups + the §2.1 projection. (3) §3.3 is structurally a no-op because the §2.1 projection already exposes siblingCount + siblingActiveIndex on every rendered ChatMessage.companionTurnMeta — the chevron-rendering path reads both fields directly via the §3.1 chatBubbleVariantNavigation helper without needing a sibling-list iteration. Adding the accessor would be unused-by-construction and would create a second source of truth that could drift from the projection. The 6-point deduction reflects three trade-offs: (a) the user-side variant tree (per the §3.4 instrumentation's combinatorial 4-branch claim) is not fully realized — the new user-message is added to the local tree but cannot be navigated back to the original via chevrons because user messages don't carry CompanionTurnMeta. The §3.4 spec's "prior sibling preserved + addressable" Scenario relies on the backend's persistence of both messages, which is honored — but on the client, navigating between user-side variants is not yet supported by this slice. (b) the two new methods do not yet surface inflight indicators (the ChatViewModel layer in §4 will add lifecycle state on top); the repository returns once the backend responds. (c) §3.1 idempotent-on-replay test uses the same EditUserTurnResponseDto on a second call and verifies the repository's existing duplicate-check (messagesById.containsKey + variantGroup re-applies) absorbs the second apply without re-creating duplicates — the backend's idempotency is keyed on clientTurnId server-side; the client always sends a fresh clientTurnId so true backend-side idempotency is exercised by §3.1's mvp slice, not here.`
+- Upload:
+  - Commit: `6d6b677`
+  - Branch: `feature/chat-tree-runtime-wireup`
+  - Push: `origin/feature/chat-tree-runtime-wireup`
+- Result: `accepted`
