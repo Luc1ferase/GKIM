@@ -22,7 +22,7 @@
 
 ## §5 — Instrumentation
 
-- [ ] §5.1 — `ChatExportDialogInstrumentationTest` — composes `ChatExportDialog` with a fake repository + fake dispatcher; tap path-only off, language ZH, target Downloads, then submit; assert the dispatcher saw `(payload.filename = chat-export-full-tree_<8>.jsonl, target = Downloads)` and the dialog auto-dismissed.
+- [x] §5.1 — `ChatExportDialogInstrumentationTest` — composes `ChatExportDialog` with a fake repository + fake dispatcher; 4 tests: dialog renders all control slots; submit with defaults dispatches Share + auto-dismisses; toggle to full-tree + Downloads + ZH flows to repo + dispatcher; repository failure renders inline error + keeps dialog open. 4/4 green on `codex_api34` (`<TBD>`).
 
 ## §6 — Verification + archive
 
