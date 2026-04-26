@@ -77,6 +77,7 @@ import com.gkim.im.android.feature.shared.simpleViewModelFactory
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -94,6 +95,20 @@ internal data class ChatUiState(
     val draftRequest: DraftAigcRequest = DraftAigcRequest(),
     val generationActionFeedback: String? = null,
     val companionMessages: List<ChatMessage>? = null,
+    val treeAffordanceLifecycle: TreeAffordanceLifecycle = TreeAffordanceLifecycle(),
+)
+
+/**
+ * §4 — lifecycle state for the chat-tree affordances (Edit user bubble + Regenerate-from-here).
+ * Drives the in-flight indicator + the inline error banner. At most one affordance is in-flight
+ * at a time per conversation, so a single `inFlightForMessageId` field is sufficient (vs. a
+ * map). On failure, `failedForMessageId` + `failureReason` carry the error context for the
+ * banner; `dismissTreeAffordanceError()` clears them.
+ */
+internal data class TreeAffordanceLifecycle(
+    val inFlightForMessageId: String? = null,
+    val failedForMessageId: String? = null,
+    val failureReason: String? = null,
 )
 
 private data class CoreChatState(
@@ -119,6 +134,9 @@ internal class ChatViewModel(
 ) : ViewModel() {
     private val resolvedConversationId = if (conversationId.isBlank() || conversationId == "studio") messagingRepository.ensureStudioRoom().id else conversationId
     private val generationActionFeedback = MutableStateFlow<String?>(null)
+    private val treeAffordanceLifecycleState = MutableStateFlow(TreeAffordanceLifecycle())
+    /** Direct read of the lifecycle state (bypasses `uiState`'s `WhileSubscribed` gating). */
+    val treeAffordanceLifecycle: StateFlow<TreeAffordanceLifecycle> = treeAffordanceLifecycleState
 
     init {
         messagingRepository.loadConversationHistory(resolvedConversationId)
@@ -155,8 +173,15 @@ internal class ChatViewModel(
         )
     }
 
-    val uiState = combine(baseUiState, generationActionFeedback) { baseState, actionFeedback ->
-        baseState.copy(generationActionFeedback = actionFeedback)
+    val uiState = combine(
+        baseUiState,
+        generationActionFeedback,
+        treeAffordanceLifecycleState,
+    ) { baseState, actionFeedback, treeLifecycle ->
+        baseState.copy(
+            generationActionFeedback = actionFeedback,
+            treeAffordanceLifecycle = treeLifecycle,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())
 
     fun sendMessage(
@@ -191,6 +216,99 @@ internal class ChatViewModel(
         messagingRepository.conversations.value.firstOrNull {
             it.id == resolvedConversationId || it.contactId == resolvedConversationId
         }
+
+    /**
+     * §4.1 — Edit a user bubble. Resolves the bubble from the current active path, builds the
+     * §3.2 `EditUserBubbleSheetState`, and delegates to
+     * `companionTurnRepository.editUserTurn`. The lifecycle map gates the affordance UI's
+     * in-flight indicator + inline-error banner; on success the repository's applyRecord
+     * already advances the active path so no extra effect application is needed at the
+     * ViewModel layer.
+     */
+    fun editUserTurn(
+        messageId: String,
+        newDraftText: String,
+        activeLanguage: AppLanguage = AppLanguage.English,
+    ) {
+        val companionId = currentConversationSnapshot()?.companionCardId ?: return
+        val activeMessages = companionTurnRepository.activePathByConversation.value[resolvedConversationId].orEmpty()
+        val bubble = activeMessages.firstOrNull { it.id == messageId } ?: return
+        val sheet = editUserBubbleSheetState(
+            bubble = bubble,
+            conversationId = resolvedConversationId,
+            activeCompanionId = companionId,
+            activeLanguage = activeLanguage,
+        ) ?: return
+        val draftSheet = sheet.withDraft(newDraftText)
+        if (!draftSheet.canSubmit()) return
+
+        treeAffordanceLifecycleState.value = TreeAffordanceLifecycle(inFlightForMessageId = messageId)
+        viewModelScope.launch {
+            val result = companionTurnRepository.editUserTurn(
+                conversationId = resolvedConversationId,
+                parentMessageId = draftSheet.parentMessageId,
+                newUserText = draftSheet.draftText,
+                activeCompanionId = draftSheet.activeCompanionId,
+                activeLanguage = draftSheet.activeLanguage,
+            )
+            treeAffordanceLifecycleState.value = result.fold(
+                onSuccess = { TreeAffordanceLifecycle() },
+                onFailure = { t ->
+                    TreeAffordanceLifecycle(
+                        failedForMessageId = messageId,
+                        failureReason = t.message ?: "edit_failed",
+                    )
+                },
+            )
+        }
+    }
+
+    /**
+     * §4.2 — Regenerate a companion bubble (mid-conversation supported per the §3.3 contract).
+     * Resolves the bubble, validates via the §3.3 helper, and delegates to
+     * `companionTurnRepository.regenerateCompanionTurnAtTarget`. Lifecycle handling mirrors
+     * §4.1.
+     */
+    fun regenerateFromHere(messageId: String) {
+        val activeMessages = companionTurnRepository.activePathByConversation.value[resolvedConversationId].orEmpty()
+        val bubble = activeMessages.firstOrNull { it.id == messageId } ?: return
+        val request = regenerateFromHereRequest(bubble, clientTurnId = "ignored-server-side") ?: return
+        val targetMessageId = request.targetMessageId ?: return
+
+        treeAffordanceLifecycleState.value = TreeAffordanceLifecycle(inFlightForMessageId = messageId)
+        viewModelScope.launch {
+            val result = companionTurnRepository.regenerateCompanionTurnAtTarget(
+                conversationId = resolvedConversationId,
+                targetMessageId = targetMessageId,
+            )
+            treeAffordanceLifecycleState.value = result.fold(
+                onSuccess = { TreeAffordanceLifecycle() },
+                onFailure = { t ->
+                    TreeAffordanceLifecycle(
+                        failedForMessageId = messageId,
+                        failureReason = t.message ?: "regenerate_failed",
+                    )
+                },
+            )
+        }
+    }
+
+    /**
+     * §3.1 chevron callback. Forwards the `(variantGroupId, newIndex)` pair to the
+     * repository's selectVariantByGroup mutation, which the §2.1 projection re-runs to
+     * surface the new active variant.
+     */
+    fun selectVariantAt(variantGroupId: String, newIndex: Int) {
+        companionTurnRepository.selectVariantByGroup(
+            conversationId = resolvedConversationId,
+            variantGroupId = variantGroupId,
+            newIndex = newIndex,
+        )
+    }
+
+    fun dismissTreeAffordanceError() {
+        treeAffordanceLifecycleState.value = TreeAffordanceLifecycle()
+    }
 
     fun runAigc(mode: AigcMode, prompt: String, mediaInput: MediaInput?) {
         if (prompt.isBlank()) return

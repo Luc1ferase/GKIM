@@ -228,7 +228,7 @@ class LiveCompanionTurnRepository(
      * edited); the new companion-turn lands as an Incoming entry via the existing
      * `applyRecord` projection that already tracks variantGroups + activePath.
      */
-    suspend fun editUserTurn(
+    override suspend fun editUserTurn(
         conversationId: String,
         parentMessageId: String,
         newUserText: String,
@@ -275,7 +275,7 @@ class LiveCompanionTurnRepository(
      * variant to the new sibling and re-runs the §2.1 projection so chevrons reflect the new
      * `siblingCount` / `siblingActiveIndex`.
      */
-    suspend fun regenerateCompanionTurnAtTarget(
+    override suspend fun regenerateCompanionTurnAtTarget(
         conversationId: String,
         targetMessageId: String,
     ): Result<CompanionTurnRecordDto> {

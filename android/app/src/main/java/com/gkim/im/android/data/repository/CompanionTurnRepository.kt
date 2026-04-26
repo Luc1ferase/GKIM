@@ -69,6 +69,21 @@ interface CompanionTurnRepository {
 
     suspend fun regenerateTurn(turnId: String): Result<CompanionTurnRecordDto> =
         throw NotImplementedError("submit path requires a live repository")
+
+    suspend fun editUserTurn(
+        conversationId: String,
+        parentMessageId: String,
+        newUserText: String,
+        activeCompanionId: String,
+        activeLanguage: String,
+    ): Result<com.gkim.im.android.data.remote.im.EditUserTurnResponseDto> =
+        throw NotImplementedError("edit path requires a live repository")
+
+    suspend fun regenerateCompanionTurnAtTarget(
+        conversationId: String,
+        targetMessageId: String,
+    ): Result<CompanionTurnRecordDto> =
+        throw NotImplementedError("regenerate-at path requires a live repository")
 }
 
 class DefaultCompanionTurnRepository : CompanionTurnRepository {
