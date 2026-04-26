@@ -244,6 +244,12 @@ class LiveCompanionTurnRepository(
     override fun selectVariant(turnId: String, variantIndex: Int) =
         default.selectVariant(turnId, variantIndex)
 
+    override fun selectVariantByGroup(
+        conversationId: String,
+        variantGroupId: String,
+        newIndex: Int,
+    ) = default.selectVariantByGroup(conversationId, variantGroupId, newIndex)
+
     override fun applyRecord(record: CompanionTurnRecordDto) = default.applyRecord(record)
 
     private suspend fun rehydratePending() {

@@ -50,6 +50,7 @@ interface CompanionTurnRepository {
     fun handleTurnBlocked(event: ImGatewayEvent.CompanionTurnBlocked)
 
     fun selectVariant(turnId: String, variantIndex: Int)
+    fun selectVariantByGroup(conversationId: String, variantGroupId: String, newIndex: Int)
 
     fun applyRecord(record: CompanionTurnRecordDto)
     fun applySnapshot(record: CompanionTurnRecordDto) = applyRecord(record)
@@ -258,6 +259,22 @@ class DefaultCompanionTurnRepository : CompanionTurnRepository {
             val updated = group.copy(activeIndex = variantIndex)
             tree.copy(
                 variantGroups = tree.variantGroups + (variantGroupId to updated),
+            )
+        }
+    }
+
+    override fun selectVariantByGroup(
+        conversationId: String,
+        variantGroupId: String,
+        newIndex: Int,
+    ) {
+        mutateTree(conversationId) { tree ->
+            val group = tree.variantGroups[variantGroupId] ?: return@mutateTree tree
+            if (group.siblingMessageIds.isEmpty()) return@mutateTree tree
+            val clamped = newIndex.coerceIn(0, group.siblingMessageIds.size - 1)
+            if (clamped == group.activeIndex) return@mutateTree tree
+            tree.copy(
+                variantGroups = tree.variantGroups + (variantGroupId to group.copy(activeIndex = clamped)),
             )
         }
     }
