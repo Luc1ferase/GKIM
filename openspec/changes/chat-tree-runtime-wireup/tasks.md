@@ -34,7 +34,7 @@
 
 ## 6. Instrumentation
 
-- [ ] 6.1 Replace `ChatBranchNavigationInstrumentationTest`'s self-contained `BranchTreeHost` with the production `ChatRoute` + `ChatViewModel` + `LiveCompanionTurnRepository` (driven by a fake `ImBackendClient` that returns scripted edit / regenerate responses). The 4-branch-tree assertions stay byte-identical to the §3.4 close-out; what changes is which composables they exercise. Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.chat.ChatBranchNavigationInstrumentationTest` passes against the production composable.
+- [x] 6.1 Replace `ChatBranchNavigationInstrumentationTest`'s self-contained `BranchTreeHost` with the production `ChatRoute` + `ChatViewModel` + `LiveCompanionTurnRepository` (driven by a fake `ImBackendClient` that returns scripted edit / regenerate responses). The 4-branch-tree assertions stay byte-identical to the §3.4 close-out; what changes is which composables they exercise. Verification: `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.chat.ChatBranchNavigationInstrumentationTest` passes against the production composable.
 
 ## 7. Verification + delivery
 
