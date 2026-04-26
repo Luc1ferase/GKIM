@@ -473,6 +473,7 @@ data class CompanionTurnSubmitRequestDto(
     val activeLanguage: String,
     val clientTurnId: String,
     val parentMessageId: String? = null,
+    val characterPromptContext: CharacterPromptContextDto? = null,
 )
 
 @Serializable
@@ -512,6 +513,7 @@ data class EditUserTurnRequestDto(
     val clientTurnId: String,
     val activeCompanionId: String,
     val activeLanguage: String,
+    val characterPromptContext: CharacterPromptContextDto? = null,
 )
 
 @Serializable
@@ -533,6 +535,7 @@ data class EditUserTurnResponseDto(
 data class RegenerateAtRequestDto(
     val clientTurnId: String,
     val targetMessageId: String? = null,
+    val characterPromptContext: CharacterPromptContextDto? = null,
 )
 
 @Serializable
