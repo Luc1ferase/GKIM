@@ -3580,7 +3580,7 @@ Upload
   - Push: `origin/feature/chat-export-runtime-wireup`
 - Result: `accepted`
 
-### Task 6.1 / 6.2 (chat-export-runtime-wireup): Verification roll-up + archive — apply spec deltas to `openspec/specs/{core/im-app, llm-text-companion-chat}`, move change to `openspec/changes/archive/2026-04-26-chat-export-runtime-wireup/`. (commit `<TBD>`)
+### Task 6.1 / 6.2 (chat-export-runtime-wireup): Verification roll-up + archive — apply spec deltas to `openspec/specs/{core/im-app, llm-text-companion-chat}`, move change to `openspec/changes/archive/2026-04-26-chat-export-runtime-wireup/`. (commit `793936d`)
 
 - Verification:
   - `openspec validate --strict` (post-archive) — every capability in `openspec/specs/` validates clean.
@@ -3589,7 +3589,7 @@ Upload
   - Score: `95/100`
   - Findings: `§6 closes the slice. The diff against feature/ai-companion-im is bounded: 1 new feature/chat/ChatExportDialogUi.kt (~310 lines) + 1 new feature/chat/ChatExportInvocation.kt (~50 lines) + 1 new res/xml/chat_export_paths.xml + 1 new manifest provider entry + 1 modified data/repository/CompanionTurnRepository.kt (interface method + ExportedChatPayload model) + 1 modified data/repository/LiveCompanionTurnRepository.kt (override + remapExportError) + 1 modified feature/chat/ChatRoute.kt (overflow entry + dialog host) + 4 new test files. The §1-§5 design rationale is preserved verbatim in archive/ and the spec deltas merge cleanly into core/im-app + llm-text-companion-chat (1 ADDED Requirement each, totaling 9 Scenarios — 5 in core/im-app for the dialog + dispatcher behaviors, 4 in llm-text-companion-chat for the repository method's success + failure mappings). The 5-point deduction reflects that the archive is captured here without a separate end-to-end "send file via real share-sheet" test (the §5.1 instrumentation uses fakes for the dispatcher) — production verification on a real device after deploy will exercise that path.`
 - Upload:
-  - Commit: `<TBD>`
+  - Commit: `793936d`
   - Branch: `feature/chat-export-runtime-wireup`
   - Push: `origin/feature/chat-export-runtime-wireup`
 - Result: `accepted`
