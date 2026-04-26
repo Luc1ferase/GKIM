@@ -2,7 +2,7 @@
 
 ## §1 — OpenSpec scaffold
 
-- [ ] §1.1 — `proposal.md` / `tasks.md` / `specs/llm-text-companion-chat/spec.md` delta committed; slice opened on a fresh worktree off `feature/ai-companion-im` (current HEAD `30eddaf`). Verification: `openspec validate companion-turn-character-prompt-context --strict` passes; sibling backend slice `companion-turn-backend-llm-bridge` exists at parity (paired-PR convention).
+- [x] §1.1 — `proposal.md` / `tasks.md` / `specs/llm-text-companion-chat/spec.md` delta committed on branch `feature/companion-turn-character-prompt-context` off `feature/ai-companion-im` (HEAD `30eddaf`). Scaffold commit `6edc786`, pushed to `origin/feature/companion-turn-character-prompt-context`. `openspec validate companion-turn-character-prompt-context --strict` returns valid. Paired backend slice `companion-turn-backend-llm-bridge` lives at `669c927` on `origin/feature/companion-turn-backend-llm-bridge` in `GKIM-Backend`.
 
 ## §2 — DTO surface
 
