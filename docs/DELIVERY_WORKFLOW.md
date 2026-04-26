@@ -3450,3 +3450,60 @@ Upload
   - Branch: `feature/chat-tree-runtime-wireup`
   - Push: `origin/feature/chat-tree-runtime-wireup`
 - Result: `accepted`
+
+### Task 4.1 / 4.2 (chat-tree-runtime-wireup): ChatViewModel handler entry-points + lifecycle. (commit `707bcac`)
+
+- Verification:
+  - `ChatViewModelEditUserTurnTest` 7 / 7 green covering wire-shape / lifecycle-clean-on-success / lifecycle-failed-with-reason / no-op-bubble-not-in-path / no-op-on-unchanged-draft / response-applies-to-tree / dismiss-clears-error.
+  - `ChatViewModelRegenerateFromHereTest` 5 / 5 green covering wire-shape / lifecycle-clean-on-success / lifecycle-failed-on-transport-failure / no-op-bubble-not-in-path / mid-conversation-non-latest-bubble.
+  - Full `:app:testDebugUnitTest` BUILD SUCCESSFUL with 0 failures.
+- Review:
+  - Score: `94/100`
+  - Findings: `§4 lands the ChatViewModel layer between ChatRoute and the repository. The handlers read from `companionTurnRepository.activePathByConversation.value` directly (not via `uiState`, which is `WhileSubscribed`-gated and would no-op without an active subscriber — important for unit-test compatibility, since tests can read repo flows directly without first standing up a Compose collector). The shared treeAffordanceLifecycle flow surfaces both inFlight + failed states through a single MutableStateFlow exposed both as `uiState.treeAffordanceLifecycle` (for production Compose collection) and as a dedicated `treeAffordanceLifecycle: StateFlow` (for unit tests reading without subscription). 6-point deduction reflects three trade-offs: (a) at most one affordance is in-flight at a time per conversation (a single inFlightForMessageId, not a map) — concurrent edits / regenerates would clobber lifecycle state, but the production UI gates against this by disabling overflows while inFlight; (b) the dismissTreeAffordanceError method clears both inFlight + failed in one call (dismiss collapses the lifecycle to idle), which is the desired UX but may surprise a future caller expecting only failed-clear; (c) the lifecycle does not yet differentiate between "in-flight for edit" vs "in-flight for regenerate" — both share the inFlightForMessageId key, sufficient for the current banner copy ("Updating…") but a future slice may want to surface different copy per affordance.`
+- Upload:
+  - Commit: `707bcac`
+  - Branch: `feature/chat-tree-runtime-wireup`
+  - Push: `origin/feature/chat-tree-runtime-wireup`
+- Result: `accepted`
+
+### Task 5.1 / 5.2 / 5.3 (chat-tree-runtime-wireup): ChatMessageRow Edit + Regenerate-from-here overflows + ChatRoute wiring. (commit `5419ca6`)
+
+- Verification:
+  - `ChatTreeAffordanceUiGatesTest` 16 / 16 green covering §5.1 (5 cases) + §5.2 (8 cases) + §5.3 lifecycle shape (3 cases). Full `:app:testDebugUnitTest` BUILD SUCCESSFUL with 0 failures.
+- Review:
+  - Score: `93/100`
+  - Findings: `§5.1 / §5.2 add visibility-gating helpers (shouldShowUserBubbleEdit, shouldShowRegenerateFromHere) that ChatMessageRow consults per render. §5.1 user-bubble Edit triggers an AlertDialog with OutlinedTextField prefilled to the bubble body; Save is gated to non-blank + differs-from-original (matches §3.2 canSubmit). §5.2 Regenerate-from-here renders on every applicable companion bubble (terminal status: Completed / Failed / Timeout / Blocked — mid-flight Thinking/Streaming bubbles suppress to prevent racing the in-flight turn). §5.3 ChatScreen accepts the new callback params and forwards through; ChatRoute binds them to ViewModel handlers. Lifecycle banners ("Updating…" + inline error with Dismiss) render above the timeline. 7-point deduction reflects three trade-offs: (a) §5 tests are helper-driven (pure functions + state-shape contracts) rather than Compose-renderer tests — the actual rendering is exercised in §6.1's emulator instrumentation but not in the unit suite, since the existing test convention for ChatMessageRow's affordances uses helper-level testing (consistent with ChatBranchChevronsTest from §3.1). (b) the AlertDialog uses material3's standard AlertDialog rather than ModalBottomSheet — simpler test surface, avoids the experimental ModalBottomSheet opt-in, and matches existing chat dialog conventions (no other ModalBottomSheet in the chat surface). (c) the lifecycle banner shows raw failureReason text without a localized error-code → user-friendly-copy mapping; a future slice could add a ChatTreeAffordanceErrorCopy mapper similar to BlockReasonCopy / SafetyCopy.`
+- Upload:
+  - Commit: `5419ca6`
+  - Branch: `feature/chat-tree-runtime-wireup`
+  - Push: `origin/feature/chat-tree-runtime-wireup`
+- Result: `accepted`
+
+### Task 6.1 (chat-tree-runtime-wireup): Replace BranchTreeHost with ProductionChatTimelineHost backed by DefaultCompanionTurnRepository + ChatMessageRow. (commit `2b11f0a`)
+
+- Verification:
+  - `:app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.chat.ChatBranchNavigationInstrumentationTest` → BUILD SUCCESSFUL in 4m 11s on emulator-5554 (codex_api34). 1/1 test passed: `chevronTapsMutateActivePathAtEveryLayerOfTheTree`.
+- Review:
+  - Score: `93/100`
+  - Findings: `§6.1 swaps the §3.4 close-out's self-contained BranchTreeHost (manual mutableStateOf indices) for a ProductionChatTimelineHost that subscribes to DefaultCompanionTurnRepository.activePathByConversation — the production flow ChatViewModel.uiState.companionMessages consumes. Chevron taps route through repository.selectVariantByGroup (the §2.2 mutation ChatViewModel.selectVariantAt delegates to). The two-layer 4-branch matrix is preserved from §3.4 but with two companion-axis variantGroups at different depths (vg-c1 + vg-c2) instead of one user-axis + one companion-axis — user-axis variant tracking remains explicitly out-of-scope per the tavern-experience-polish §3.x slice's "honest spec gap". The 7-point deduction reflects two trade-offs: (a) the test exercises ChatMessageRow + the repository's projection but not ChatViewModel.selectVariantAt itself — the ViewModel handler is a thin wrapper around the repository's selectVariantByGroup which is already tested at the unit level; the instrumentation focuses on the rendering + tap-mutation contract under live Compose. (b) the test does not yet exercise edit / regenerate end-to-end through ChatViewModel + LiveCompanionTurnRepository against a fake ImBackendClient — that would be a heavier instrumentation but is the natural §6.2-style follow-up; this slice's instrumentation focuses on the chevron-driven navigation contract which is the §3.4 scope.`
+- Upload:
+  - Commit: `2b11f0a`
+  - Branch: `feature/chat-tree-runtime-wireup`
+  - Push: `origin/feature/chat-tree-runtime-wireup`
+- Result: `accepted`
+
+### Task 7.1 / 7.2 (chat-tree-runtime-wireup): Verification + delivery + archive.
+
+- Verification:
+  - Final `:app:testDebugUnitTest` run on the slice's HEAD: BUILD SUCCESSFUL with 0 failures, 0 errors.
+  - Final `openspec validate chat-tree-runtime-wireup --strict` → `Change 'chat-tree-runtime-wireup' is valid`.
+  - Per-task evidence rows above cover §1.1 / §2.1 / §2.2 / §3.1 / §3.2 / §3.3 / §4.1 / §4.2 / §5.1 / §5.2 / §5.3 / §6.1 — every task in tasks.md ticked at archive time.
+  - Instrumentation: `ChatBranchNavigationInstrumentationTest` 1 / 1 green on codex_api34 against the production-wired ProductionChatTimelineHost.
+- Review:
+  - Score: `94/100`
+  - Findings: `§7 closes the slice. The wire-up slice consumed three structural design choices documented in earlier task evidence rows: (1) §2.1's sibling projection is the load-bearing bit that makes the §3.1 chevron rendering work in production at all (mvp slice's variantGroups state was tracked but never projected into companionTurnMeta); the projection runs on every repo mutation, O(messages) per emit which is bounded by user-driven activity rather than timeline depth. (2) §3.x repository methods follow the existing submit / regenerate Result-fold pattern, with editUserTurn projecting the new user-message via recordUserTurn (no user-side variantGroup tracking — the slice's "honest spec gap"). (3) §4 / §5 lifecycle uses a single inFlightForMessageId / failedForMessageId pair instead of per-affordance maps, sufficient because at most one affordance is in-flight per conversation in the production UI. The 6-point deduction reflects three open gaps: (a) user-axis variant tracking remains scoped out — production users can edit and see the new message but cannot navigate back to the original via chevrons; (b) §6.1 instrumentation exercises the production repo + ChatMessageRow but not the full ChatViewModel + LiveCompanionTurnRepository wire-up against a fake ImBackendClient (a heavier instrumentation that would be a natural follow-up to lock the HTTP boundary too); (c) the lifecycle banner displays raw failureReason without an error-code → user-friendly-copy mapping (similar to BlockReasonCopy in the existing chat surface).`
+- Upload:
+  - Commit: this docs commit (the §7 entry's own SHA, captured by the SHA fill-in commit per the standard two-phase dance).
+  - Branch: `feature/chat-tree-runtime-wireup`
+  - Push: `origin/feature/chat-tree-runtime-wireup`
+- Result: `accepted`

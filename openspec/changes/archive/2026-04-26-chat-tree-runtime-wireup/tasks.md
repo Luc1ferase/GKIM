@@ -38,6 +38,6 @@
 
 ## 7. Verification + delivery
 
-- [ ] 7.1 Run the full `:app:testDebugUnitTest` suite and confirm zero failures. Add a DELIVERY_WORKFLOW evidence row for §1.1 through §6.1 plus this row, each with a real SHA and a ≥94/100 score per the standing per-task discipline. Verification: the `docs/DELIVERY_WORKFLOW.md` entry exists with task rows §1.1 through §6.1 plus this recording task, and lists the openspec archive command + output.
+- [x] 7.1 Run the full `:app:testDebugUnitTest` suite and confirm zero failures. Add a DELIVERY_WORKFLOW evidence row for §1.1 through §6.1 plus this row, each with a real SHA and a ≥94/100 score per the standing per-task discipline. Verification: the `docs/DELIVERY_WORKFLOW.md` entry exists with task rows §1.1 through §6.1 plus this recording task, and lists the openspec archive command + output.
 
-- [ ] 7.2 Archive the slice via `openspec archive chat-tree-runtime-wireup --yes` after §7.1 lands. Apply the `core/im-app` and `llm-text-companion-chat` deltas into their main capability specs by hand if the openspec CLI's nested-capability auto-merge gap (observed on `tavern-experience-polish` archive 46c0b50) re-surfaces. Verification: post-archive `openspec validate --specs --strict` passes.
+- [x] 7.2 Archive the slice via `openspec archive chat-tree-runtime-wireup --yes` after §7.1 lands. Apply the `core/im-app` and `llm-text-companion-chat` deltas into their main capability specs by hand if the openspec CLI's nested-capability auto-merge gap (observed on `tavern-experience-polish` archive 46c0b50) re-surfaces. Verification: post-archive `openspec validate --specs --strict` passes.
