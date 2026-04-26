@@ -79,6 +79,7 @@ class ChatViewModelUiStateCompanionTest {
             aigcRepository = StubAigcRepository(),
             generatedImageSaver = StubImageSaver,
             userPersonaRepository = StubUserPersonaRepository,
+            companionRosterRepository = stubCompanionRosterRepository(),
         )
         val collectorJob = viewModel.uiState.launchIn(backgroundScope)
 
@@ -167,6 +168,7 @@ class ChatViewModelUiStateCompanionTest {
             aigcRepository = StubAigcRepository(),
             generatedImageSaver = StubImageSaver,
             userPersonaRepository = StubUserPersonaRepository,
+            companionRosterRepository = stubCompanionRosterRepository(),
         )
         viewModel.uiState.launchIn(backgroundScope)
         advanceUntilIdle()

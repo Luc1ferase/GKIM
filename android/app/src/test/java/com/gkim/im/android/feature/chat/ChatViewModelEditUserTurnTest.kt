@@ -75,6 +75,7 @@ class ChatViewModelEditUserTurnTest {
         aigcRepository = StubAigcRepository(),
         generatedImageSaver = StubImageSaver,
         userPersonaRepository = StubUserPersonaRepository,
+            companionRosterRepository = stubCompanionRosterRepository(),
     )
 
     private fun seedActivePath(

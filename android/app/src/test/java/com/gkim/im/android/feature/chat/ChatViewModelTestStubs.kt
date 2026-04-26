@@ -10,7 +10,10 @@ import com.gkim.im.android.core.model.DraftAigcRequest
 import com.gkim.im.android.core.model.MediaInput
 import com.gkim.im.android.core.model.PresetProviderConfig
 import com.gkim.im.android.core.model.UserPersona
+import com.gkim.im.android.core.model.CompanionCharacterCard
 import com.gkim.im.android.data.repository.AigcRepository
+import com.gkim.im.android.data.repository.CompanionRosterRepository
+import com.gkim.im.android.data.repository.DefaultCompanionRosterRepository
 import com.gkim.im.android.data.repository.UserPersonaMutationResult
 import com.gkim.im.android.data.repository.UserPersonaRepository
 import kotlinx.coroutines.flow.Flow
@@ -39,6 +42,13 @@ internal object StubImageSaver : GeneratedImageSaver {
     override suspend fun saveImage(source: String, prompt: String): GeneratedImageSaveResult =
         GeneratedImageSaveResult.Failure("stub")
 }
+
+internal fun stubCompanionRosterRepository(
+    presetCharacters: List<CompanionCharacterCard> = emptyList(),
+): CompanionRosterRepository = DefaultCompanionRosterRepository(
+    presetCharacters = presetCharacters,
+    drawPool = emptyList(),
+)
 
 internal object StubUserPersonaRepository : UserPersonaRepository {
     override fun observePersonas(): Flow<List<UserPersona>> = flowOf(emptyList())

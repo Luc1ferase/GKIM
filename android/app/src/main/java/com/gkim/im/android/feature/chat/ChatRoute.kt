@@ -75,6 +75,7 @@ import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.CompanionTurnRepository
 import com.gkim.im.android.data.repository.MessagingRepository
+import com.gkim.im.android.data.repository.CompanionRosterRepository
 import com.gkim.im.android.data.repository.UserPersonaRepository
 import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
@@ -134,8 +135,10 @@ internal class ChatViewModel(
     private val companionTurnRepository: CompanionTurnRepository,
     private val aigcRepository: AigcRepository,
     private val generatedImageSaver: GeneratedImageSaver,
-    userPersonaRepository: UserPersonaRepository,
+    private val userPersonaRepository: UserPersonaRepository,
+    private val companionRosterRepository: CompanionRosterRepository,
 ) : ViewModel() {
+    private val activePersonaState = MutableStateFlow<UserPersona?>(null)
     private val resolvedConversationId = if (conversationId.isBlank() || conversationId == "studio") messagingRepository.ensureStudioRoom().id else conversationId
     private val generationActionFeedback = MutableStateFlow<String?>(null)
     private val treeAffordanceLifecycleState = MutableStateFlow(TreeAffordanceLifecycle())
@@ -144,6 +147,21 @@ internal class ChatViewModel(
 
     init {
         messagingRepository.loadConversationHistory(resolvedConversationId)
+        viewModelScope.launch {
+            userPersonaRepository.observeActivePersona().collect { activePersonaState.value = it }
+        }
+    }
+
+    private fun resolveActiveCardPromptContext(
+        companionId: String?,
+        language: AppLanguage,
+    ): com.gkim.im.android.data.remote.im.CharacterPromptContextDto? {
+        val card = companionId?.let { companionRosterRepository.characterById(it) }
+        return resolveCharacterPromptContext(
+            card = card,
+            persona = activePersonaState.value,
+            language = language,
+        )
     }
 
     private val coreChatState = combine(
@@ -196,6 +214,7 @@ internal class ChatViewModel(
         if (body.isBlank() && attachmentInput == null) return
         val companionCardId = currentConversationSnapshot()?.companionCardId
         if (companionCardId != null && attachmentInput == null) {
+            val ctx = resolveActiveCardPromptContext(companionCardId, activeLanguage)
             viewModelScope.launch {
                 companionTurnRepository.submitUserTurn(
                     conversationId = resolvedConversationId,
@@ -203,6 +222,7 @@ internal class ChatViewModel(
                     userTurnBody = body,
                     activeLanguage = appLanguageWireKey(activeLanguage),
                     parentMessageId = null,
+                    characterPromptContext = ctx,
                 )
             }
             generationActionFeedback.value = null
@@ -246,6 +266,7 @@ internal class ChatViewModel(
         val draftSheet = sheet.withDraft(newDraftText)
         if (!draftSheet.canSubmit()) return
 
+        val ctx = resolveActiveCardPromptContext(draftSheet.activeCompanionId, activeLanguage)
         treeAffordanceLifecycleState.value = TreeAffordanceLifecycle(inFlightForMessageId = messageId)
         viewModelScope.launch {
             val result = companionTurnRepository.editUserTurn(
@@ -254,6 +275,7 @@ internal class ChatViewModel(
                 newUserText = draftSheet.draftText,
                 activeCompanionId = draftSheet.activeCompanionId,
                 activeLanguage = draftSheet.activeLanguage,
+                characterPromptContext = ctx,
             )
             treeAffordanceLifecycleState.value = result.fold(
                 onSuccess = { TreeAffordanceLifecycle() },
@@ -273,17 +295,23 @@ internal class ChatViewModel(
      * `companionTurnRepository.regenerateCompanionTurnAtTarget`. Lifecycle handling mirrors
      * §4.1.
      */
-    fun regenerateFromHere(messageId: String) {
+    fun regenerateFromHere(
+        messageId: String,
+        activeLanguage: AppLanguage = AppLanguage.English,
+    ) {
         val activeMessages = companionTurnRepository.activePathByConversation.value[resolvedConversationId].orEmpty()
         val bubble = activeMessages.firstOrNull { it.id == messageId } ?: return
         val request = regenerateFromHereRequest(bubble, clientTurnId = "ignored-server-side") ?: return
         val targetMessageId = request.targetMessageId ?: return
+        val companionId = currentConversationSnapshot()?.companionCardId
+        val ctx = resolveActiveCardPromptContext(companionId, activeLanguage)
 
         treeAffordanceLifecycleState.value = TreeAffordanceLifecycle(inFlightForMessageId = messageId)
         viewModelScope.launch {
             val result = companionTurnRepository.regenerateCompanionTurnAtTarget(
                 conversationId = resolvedConversationId,
                 targetMessageId = targetMessageId,
+                characterPromptContext = ctx,
             )
             treeAffordanceLifecycleState.value = result.fold(
                 onSuccess = { TreeAffordanceLifecycle() },
@@ -370,6 +398,7 @@ fun ChatRoute(
                 aigcRepository = container.aigcRepository,
                 generatedImageSaver = container.generatedImageSaver,
                 userPersonaRepository = container.userPersonaRepository,
+                companionRosterRepository = container.companionRosterRepository,
             )
         },
     )
@@ -435,7 +464,9 @@ fun ChatRoute(
         onEditUserBubble = { messageId, draftText ->
             viewModel.editUserTurn(messageId, draftText, appLanguage)
         },
-        onRegenerateFromHere = viewModel::regenerateFromHere,
+        onRegenerateFromHere = { messageId ->
+            viewModel.regenerateFromHere(messageId, appLanguage)
+        },
         onDismissTreeAffordanceError = viewModel::dismissTreeAffordanceError,
         onOpenExportDialog = if (uiState.conversation?.companionCardId != null) {
             { showExportDialog = true }

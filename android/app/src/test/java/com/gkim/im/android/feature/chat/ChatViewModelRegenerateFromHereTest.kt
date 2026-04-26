@@ -68,6 +68,7 @@ class ChatViewModelRegenerateFromHereTest {
         aigcRepository = StubAigcRepository(),
         generatedImageSaver = StubImageSaver,
         userPersonaRepository = StubUserPersonaRepository,
+            companionRosterRepository = stubCompanionRosterRepository(),
     )
 
     private fun seedCompanionTurn(
