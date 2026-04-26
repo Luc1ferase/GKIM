@@ -299,6 +299,47 @@ class LiveCompanionTurnRepository(
         }
     }
 
+    /**
+     * §2.1 — calls `GET /api/conversations/:conversationId/export?format=...&pathOnly=...`,
+     * wraps the JSONL response body + a deterministic filename + `application/x-ndjson`
+     * content-type into [ExportedChatPayload] for the dispatcher. Wire failures are remapped
+     * to stable error codes so the dialog can render localized copy without inspecting
+     * exception types: `404_unknown_conversation` (HTTP 404), `unsupported_format` (HTTP 400
+     * with the backend's `unsupported_format` body), `network_failure` (everything else).
+     *
+     * The filename mirrors the §5.2 [chatExportFilename] formula so the dispatcher's
+     * Downloads-target name and the share-sheet's display name agree:
+     * `chat-export-<active-path|full-tree>_<first8OfConversationId>.jsonl`.
+     */
+    override suspend fun exportConversation(
+        conversationId: String,
+        format: String,
+        pathOnly: Boolean,
+    ): Result<ExportedChatPayload> {
+        val baseUrl = baseUrlProvider() ?: return Result.failure(IllegalStateException("no base url"))
+        val token = tokenProvider() ?: return Result.failure(IllegalStateException("no token"))
+        return try {
+            val body = backendClient.exportConversation(
+                baseUrl = baseUrl,
+                token = token,
+                conversationId = conversationId,
+                format = format,
+                pathOnly = pathOnly,
+            )
+            val pathLabel = if (pathOnly) "active-path" else "full-tree"
+            val filename = "chat-export-${pathLabel}_${conversationId.take(8)}.jsonl"
+            Result.success(
+                ExportedChatPayload(
+                    filename = filename,
+                    bytes = body.toByteArray(Charsets.UTF_8),
+                    contentType = "application/x-ndjson",
+                ),
+            )
+        } catch (t: Throwable) {
+            Result.failure(remapExportError(t))
+        }
+    }
+
     override fun recordUserTurn(userMessage: ChatMessage, conversationId: String) =
         default.recordUserTurn(userMessage, conversationId)
 
@@ -372,6 +413,23 @@ class LiveCompanionTurnRepository(
             default.applyRecord(record)
         } catch (_: Throwable) {
             // Silent: snapshot fallback is best-effort.
+        }
+    }
+
+    private fun remapExportError(t: Throwable): Throwable {
+        val httpException = t as? retrofit2.HttpException
+        return when (httpException?.code()) {
+            404 -> RuntimeException("404_unknown_conversation")
+            400 -> {
+                val errorBody = runCatching { httpException.response()?.errorBody()?.string() }.getOrNull().orEmpty()
+                if (errorBody.contains("unsupported_format")) {
+                    RuntimeException("unsupported_format")
+                } else {
+                    RuntimeException("network_failure")
+                }
+            }
+            null -> RuntimeException("network_failure", t)
+            else -> RuntimeException("network_failure", t)
         }
     }
 }

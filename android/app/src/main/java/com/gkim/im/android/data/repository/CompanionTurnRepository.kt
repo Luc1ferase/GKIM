@@ -35,6 +35,32 @@ data class FailedCompanionSubmission(
     val parentMessageId: String?,
 )
 
+/**
+ * §2.1 — wire-payload shape returned by `exportConversation`. Mirrors `ExportedCardPayload`
+ * (filename + bytes + contentType) so the Compose dispatcher can route to share-sheet or
+ * Downloads identically. The filename is the canonical
+ * `chat-export-<active-path|full-tree>_<first8OfConversationId>.jsonl` produced by
+ * `chatExportFilename(...)` in `ChatExportRouting.kt`.
+ */
+data class ExportedChatPayload(
+    val filename: String,
+    val bytes: ByteArray,
+    val contentType: String,
+) {
+    override fun equals(other: Any?): Boolean =
+        other is ExportedChatPayload &&
+            other.filename == filename &&
+            other.contentType == contentType &&
+            other.bytes.contentEquals(bytes)
+
+    override fun hashCode(): Int {
+        var result = filename.hashCode()
+        result = 31 * result + bytes.contentHashCode()
+        result = 31 * result + contentType.hashCode()
+        return result
+    }
+}
+
 interface CompanionTurnRepository {
     val treeByConversation: StateFlow<Map<String, ConversationTurnTree>>
     val activePathByConversation: StateFlow<Map<String, List<ChatMessage>>>
@@ -84,6 +110,13 @@ interface CompanionTurnRepository {
         targetMessageId: String,
     ): Result<CompanionTurnRecordDto> =
         throw NotImplementedError("regenerate-at path requires a live repository")
+
+    suspend fun exportConversation(
+        conversationId: String,
+        format: String,
+        pathOnly: Boolean,
+    ): Result<ExportedChatPayload> =
+        throw NotImplementedError("export path requires a live repository")
 }
 
 class DefaultCompanionTurnRepository : CompanionTurnRepository {

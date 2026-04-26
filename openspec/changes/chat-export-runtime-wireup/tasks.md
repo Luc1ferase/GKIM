@@ -2,11 +2,11 @@
 
 ## §1 — OpenSpec scaffold
 
-- [ ] §1.1 — proposal.md / tasks.md / specs deltas / .openspec.yaml committed; slice opened on a fresh worktree off `feature/ai-companion-im` (HEAD `204febf`).
+- [x] §1.1 — proposal.md / tasks.md / specs deltas / .openspec.yaml committed (`784d74a`); slice opened on a fresh worktree off `feature/ai-companion-im` (HEAD `204febf`).
 
 ## §2 — Repository runtime + invocation orchestrator
 
-- [ ] §2.1 — `CompanionTurnRepository.exportConversation(conversationId, format, pathOnly): Result<ExportedChatPayload>` interface method with default-throw, plus `LiveCompanionTurnRepository.exportConversation` impl that calls `ImBackendClient.exportConversation` and wraps the JSONL string + filename + content-type into `ExportedChatPayload`. `DefaultCompanionTurnRepository` keeps the default-throw (offline / non-live impls won't expose export).
+- [x] §2.1 — `CompanionTurnRepository.exportConversation(conversationId, format, pathOnly): Result<ExportedChatPayload>` interface method with default-throw, plus `LiveCompanionTurnRepository.exportConversation` impl that calls `ImBackendClient.exportConversation` and wraps the JSONL string + filename + content-type into `ExportedChatPayload`. `DefaultCompanionTurnRepository` keeps the default-throw (offline / non-live impls won't expose export). (`<TBD>`)
 - [ ] §2.2 — `ChatExportInvocationOutcome` sealed interface + `invokeChatExport(conversationId, state, repository, dispatcher)` pure orchestrator + `ExportedChatPayload(filename, bytes, contentType)` data class in `feature/chat/ChatExportInvocation.kt`. Mirrors `invokeCardExport` shape so the test pattern transfers.
 
 ## §3 — UI + dispatcher
@@ -17,7 +17,7 @@
 
 ## §4 — Tests
 
-- [ ] §4.1 — `LiveCompanionTurnRepositoryExportConversationTest` — exercises `exportConversation` with a fake `ImBackendClient`: success returns wrapped payload, HTTP 404 maps to `404_unknown_conversation`, HTTP 400 (unsupported format) maps to `unsupported_format`, `pathOnly=true` and `pathOnly=false` both forwarded correctly to the wire query parameter.
+- [x] §4.1 — `LiveCompanionTurnRepositoryExportConversationTest` — exercises `exportConversation` with a fake `ImBackendClient`: success returns wrapped payload, HTTP 404 maps to `404_unknown_conversation`, HTTP 400 (unsupported format) maps to `unsupported_format`, `pathOnly=true` and `pathOnly=false` both forwarded correctly to the wire query parameter. 8 tests, all green. (`<TBD>`)
 - [ ] §4.2 — `ChatExportInvocationTest` — exercises `invokeChatExport` with fake repo + fake dispatcher: success returns `Success`, repo failure short-circuits with `Failed(code)`, dispatcher failure returns `Failed(code)`, pathOnly + target choices flow correctly through the orchestrator.
 
 ## §5 — Instrumentation
