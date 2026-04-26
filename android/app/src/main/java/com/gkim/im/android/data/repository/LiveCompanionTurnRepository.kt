@@ -4,6 +4,7 @@ import com.gkim.im.android.core.model.ChatMessage
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
 import com.gkim.im.android.core.model.MessageStatus
+import com.gkim.im.android.data.remote.im.CharacterPromptContextDto
 import com.gkim.im.android.data.remote.im.CompanionTurnRecordDto
 import com.gkim.im.android.data.remote.im.CompanionTurnSubmitRequestDto
 import com.gkim.im.android.data.remote.im.EditUserTurnRequestDto
@@ -59,6 +60,7 @@ class LiveCompanionTurnRepository(
         userTurnBody: String,
         activeLanguage: String,
         parentMessageId: String?,
+        characterPromptContext: CharacterPromptContextDto?,
     ): Result<CompanionTurnRecordDto> {
         val clientTurnId = clientTurnIdGenerator()
         val userMessageId = "user-$clientTurnId"
@@ -84,6 +86,7 @@ class LiveCompanionTurnRepository(
                     userTurnBody = userTurnBody,
                     activeLanguage = activeLanguage,
                     parentMessageId = parentMessageId,
+                    characterPromptContext = characterPromptContext,
                 ),
                 error = IllegalStateException(
                     if (baseUrl == null) "no base url" else "no token",
@@ -102,6 +105,7 @@ class LiveCompanionTurnRepository(
                     activeLanguage = activeLanguage,
                     clientTurnId = clientTurnId,
                     parentMessageId = parentMessageId,
+                    characterPromptContext = characterPromptContext,
                 ),
             )
             default.updateUserMessageStatus(
@@ -122,6 +126,7 @@ class LiveCompanionTurnRepository(
                     userTurnBody = userTurnBody,
                     activeLanguage = activeLanguage,
                     parentMessageId = parentMessageId,
+                    characterPromptContext = characterPromptContext,
                 ),
                 error = t,
             )
@@ -162,6 +167,7 @@ class LiveCompanionTurnRepository(
                     activeLanguage = submission.activeLanguage,
                     clientTurnId = clientTurnId,
                     parentMessageId = submission.parentMessageId,
+                    characterPromptContext = submission.characterPromptContext,
                 ),
             )
             default.updateUserMessageStatus(
@@ -234,6 +240,7 @@ class LiveCompanionTurnRepository(
         newUserText: String,
         activeCompanionId: String,
         activeLanguage: String,
+        characterPromptContext: CharacterPromptContextDto?,
     ): Result<EditUserTurnResponseDto> {
         val baseUrl = baseUrlProvider() ?: return Result.failure(IllegalStateException("no base url"))
         val token = tokenProvider() ?: return Result.failure(IllegalStateException("no token"))
@@ -249,6 +256,7 @@ class LiveCompanionTurnRepository(
                     clientTurnId = clientTurnId,
                     activeCompanionId = activeCompanionId,
                     activeLanguage = activeLanguage,
+                    characterPromptContext = characterPromptContext,
                 ),
             )
             val newUserMessage = ChatMessage(
@@ -278,6 +286,7 @@ class LiveCompanionTurnRepository(
     override suspend fun regenerateCompanionTurnAtTarget(
         conversationId: String,
         targetMessageId: String,
+        characterPromptContext: CharacterPromptContextDto?,
     ): Result<CompanionTurnRecordDto> {
         val baseUrl = baseUrlProvider() ?: return Result.failure(IllegalStateException("no base url"))
         val token = tokenProvider() ?: return Result.failure(IllegalStateException("no token"))
@@ -290,6 +299,7 @@ class LiveCompanionTurnRepository(
                 request = RegenerateAtRequestDto(
                     clientTurnId = clientTurnId,
                     targetMessageId = targetMessageId,
+                    characterPromptContext = characterPromptContext,
                 ),
             )
             default.applyRecord(record)

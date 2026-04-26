@@ -7,6 +7,7 @@ import com.gkim.im.android.data.remote.im.BootstrapBundleDto
 import com.gkim.im.android.data.remote.im.CompanionCharacterCardDto
 import com.gkim.im.android.data.remote.im.CompanionDrawResultDto
 import com.gkim.im.android.data.remote.im.CompanionRosterDto
+import com.gkim.im.android.data.remote.im.CharacterPromptContextDto
 import com.gkim.im.android.data.remote.im.CompanionTurnPendingListDto
 import com.gkim.im.android.data.remote.im.CompanionTurnRecordDto
 import com.gkim.im.android.data.remote.im.CompanionTurnSubmitRequestDto
@@ -29,6 +30,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -534,5 +536,128 @@ class LiveCompanionTurnRepositoryTest {
 
         // Should not crash; pending rehydration is silent on failure.
         assertEquals(0, repo.activePathByConversation.value.size)
+    }
+
+    // -------------------------------------------------------------------------
+    // §4.2 verification — characterPromptContext is forwarded onto the wire
+    // (companion-turn-character-prompt-context).
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `submitUserTurn forwards characterPromptContext onto the outbound DTO`() = runTest(UnconfinedTestDispatcher()) {
+        val record = CompanionTurnRecordDto(
+            turnId = "turn-ctx-1",
+            conversationId = conversationId,
+            messageId = "companion-ctx-1",
+            variantGroupId = "vg-ctx-1",
+            variantIndex = 0,
+            parentMessageId = "user-client-turn-stub",
+            status = "thinking",
+            accumulatedBody = "",
+            lastDeltaSeq = 0,
+            startedAt = "2026-04-21T08:00:00Z",
+        )
+        val (repo, backend, _) = buildRepo(scope = backgroundScope, submit = { record })
+        val ctx = CharacterPromptContextDto(
+            systemPrompt = "You are {{char}}.",
+            personality = "Calm.",
+            scenario = "Tavern.",
+            exampleDialogue = "{{user}}: hi",
+            userPersonaName = "Aria",
+            companionDisplayName = "Daylight Listener",
+        )
+
+        val result = repo.submitUserTurn(
+            conversationId = conversationId,
+            activeCompanionId = "daylight-listener",
+            userTurnBody = "Hi",
+            activeLanguage = "en",
+            characterPromptContext = ctx,
+        )
+        advanceUntilIdle()
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, backend.submitCalls.size)
+        assertEquals(ctx, backend.submitCalls.single().characterPromptContext)
+    }
+
+    @Test
+    fun `submitUserTurn defaults characterPromptContext to null when omitted`() = runTest(UnconfinedTestDispatcher()) {
+        val record = CompanionTurnRecordDto(
+            turnId = "turn-noctx-1",
+            conversationId = conversationId,
+            messageId = "companion-noctx-1",
+            variantGroupId = "vg-noctx-1",
+            variantIndex = 0,
+            parentMessageId = "user-client-turn-stub",
+            status = "thinking",
+            accumulatedBody = "",
+            lastDeltaSeq = 0,
+            startedAt = "2026-04-21T08:00:00Z",
+        )
+        val (repo, backend, _) = buildRepo(scope = backgroundScope, submit = { record })
+
+        repo.submitUserTurn(
+            conversationId = conversationId,
+            activeCompanionId = "daylight-listener",
+            userTurnBody = "Hi",
+            activeLanguage = "en",
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, backend.submitCalls.size)
+        assertNull(backend.submitCalls.single().characterPromptContext)
+    }
+
+    @Test
+    fun `retrySubmitUserTurn replays the captured characterPromptContext byte-equivalently`() = runTest(UnconfinedTestDispatcher()) {
+        val record = CompanionTurnRecordDto(
+            turnId = "turn-retry-1",
+            conversationId = conversationId,
+            messageId = "companion-retry-1",
+            variantGroupId = "vg-retry-1",
+            variantIndex = 0,
+            parentMessageId = "user-client-turn-stub",
+            status = "thinking",
+            accumulatedBody = "",
+            lastDeltaSeq = 0,
+            startedAt = "2026-04-21T08:00:00Z",
+        )
+        var attempt = 0
+        val (repo, backend, _) = buildRepo(
+            scope = backgroundScope,
+            submit = {
+                attempt += 1
+                if (attempt == 1) throw RuntimeException("offline") else record
+            },
+        )
+        val ctx = CharacterPromptContextDto(
+            systemPrompt = "You are {{char}}.",
+            personality = "Calm.",
+            scenario = "Tavern.",
+            exampleDialogue = "{{user}}: hi",
+            userPersonaName = "Aria",
+            companionDisplayName = "Daylight Listener",
+        )
+
+        val firstResult = repo.submitUserTurn(
+            conversationId = conversationId,
+            activeCompanionId = "daylight-listener",
+            userTurnBody = "Hi",
+            activeLanguage = "en",
+            characterPromptContext = ctx,
+        )
+        advanceUntilIdle()
+        assertTrue(firstResult.isFailure)
+
+        val retryResult = repo.retrySubmitUserTurn("user-client-turn-stub")
+        advanceUntilIdle()
+        assertTrue(retryResult.isSuccess)
+
+        // Both the original failed call and the retry must carry the SAME ctx —
+        // the retry MUST NOT re-resolve at retry time per the spec scenario.
+        assertEquals(2, backend.submitCalls.size)
+        assertEquals(ctx, backend.submitCalls[0].characterPromptContext)
+        assertEquals(ctx, backend.submitCalls[1].characterPromptContext)
     }
 }

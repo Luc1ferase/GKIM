@@ -214,6 +214,7 @@ class ChatViewModelRegenerateFromHereTest {
         override suspend fun regenerateCompanionTurnAtTarget(
             conversationId: String,
             targetMessageId: String,
+            characterPromptContext: com.gkim.im.android.data.remote.im.CharacterPromptContextDto?,
         ): Result<CompanionTurnRecordDto> {
             regenAtCalls += conversationId to targetMessageId
             val result = regenAtResult?.invoke(conversationId, targetMessageId)

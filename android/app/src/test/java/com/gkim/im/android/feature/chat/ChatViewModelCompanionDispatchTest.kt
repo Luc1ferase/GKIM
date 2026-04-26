@@ -151,6 +151,7 @@ private data class SubmitCall(
     val userTurnBody: String,
     val activeLanguage: String,
     val parentMessageId: String?,
+    val characterPromptContext: com.gkim.im.android.data.remote.im.CharacterPromptContextDto?,
 )
 
 private data class SendMessageCall(
@@ -169,8 +170,16 @@ private class RecordingCompanionTurnRepository(
         userTurnBody: String,
         activeLanguage: String,
         parentMessageId: String?,
+        characterPromptContext: com.gkim.im.android.data.remote.im.CharacterPromptContextDto?,
     ): Result<CompanionTurnRecordDto> {
-        submitCalls += SubmitCall(conversationId, activeCompanionId, userTurnBody, activeLanguage, parentMessageId)
+        submitCalls += SubmitCall(
+            conversationId,
+            activeCompanionId,
+            userTurnBody,
+            activeLanguage,
+            parentMessageId,
+            characterPromptContext,
+        )
         return Result.failure(IllegalStateException("test stub — no backend"))
     }
 }

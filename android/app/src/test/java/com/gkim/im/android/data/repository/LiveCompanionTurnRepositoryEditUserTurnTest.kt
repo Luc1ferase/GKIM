@@ -4,6 +4,7 @@ import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageStatus
 import com.gkim.im.android.data.remote.im.AuthResponseDto
 import com.gkim.im.android.data.remote.im.BootstrapBundleDto
+import com.gkim.im.android.data.remote.im.CharacterPromptContextDto
 import com.gkim.im.android.data.remote.im.CompanionTurnPendingListDto
 import com.gkim.im.android.data.remote.im.CompanionTurnRecordDto
 import com.gkim.im.android.data.remote.im.DevSessionResponseDto
@@ -168,6 +169,50 @@ class LiveCompanionTurnRepositoryEditUserTurnTest {
         assertTrue(result.isFailure)
         assertTrue(backend.editCalls.isEmpty()) // never called
     }
+
+    @Test
+    fun `editUserTurn forwards characterPromptContext onto the outbound DTO`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val (repo, backend) = buildRepo(
+                editResponse = { sampleResponse() },
+                scope = backgroundScope,
+            )
+            val ctx = CharacterPromptContextDto(
+                systemPrompt = "You are {{char}}.",
+                personality = "Calm.",
+                scenario = "Tavern.",
+                exampleDialogue = "{{user}}: hi",
+                userPersonaName = "Aria",
+                companionDisplayName = "Daylight Listener",
+            )
+            val result = repo.editUserTurn(
+                conversationId = conversationId,
+                parentMessageId = parentMessageId,
+                newUserText = "rewritten",
+                activeCompanionId = "daylight-listener",
+                activeLanguage = "en",
+                characterPromptContext = ctx,
+            )
+            assertTrue(result.isSuccess)
+            assertEquals(ctx, backend.editCalls.single().characterPromptContext)
+        }
+
+    @Test
+    fun `editUserTurn defaults characterPromptContext to null when omitted`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val (repo, backend) = buildRepo(
+                editResponse = { sampleResponse() },
+                scope = backgroundScope,
+            )
+            repo.editUserTurn(
+                conversationId = conversationId,
+                parentMessageId = parentMessageId,
+                newUserText = "rewritten",
+                activeCompanionId = "daylight-listener",
+                activeLanguage = "en",
+            )
+            assertNull(backend.editCalls.single().characterPromptContext)
+        }
 
     @Test
     fun `editUserTurn re-applied with the same response is idempotent`() =

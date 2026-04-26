@@ -5,6 +5,7 @@ import com.gkim.im.android.core.model.CompanionTurnMeta
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
 import com.gkim.im.android.core.model.MessageStatus
+import com.gkim.im.android.data.remote.im.CharacterPromptContextDto
 import com.gkim.im.android.data.remote.im.CompanionTurnRecordDto
 import com.gkim.im.android.data.remote.im.ImGatewayEvent
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +34,7 @@ data class FailedCompanionSubmission(
     val userTurnBody: String,
     val activeLanguage: String,
     val parentMessageId: String?,
+    val characterPromptContext: CharacterPromptContextDto? = null,
 )
 
 /**
@@ -87,6 +89,7 @@ interface CompanionTurnRepository {
         userTurnBody: String,
         activeLanguage: String,
         parentMessageId: String? = null,
+        characterPromptContext: CharacterPromptContextDto? = null,
     ): Result<CompanionTurnRecordDto> =
         throw NotImplementedError("submit path requires a live repository")
 
@@ -102,12 +105,14 @@ interface CompanionTurnRepository {
         newUserText: String,
         activeCompanionId: String,
         activeLanguage: String,
+        characterPromptContext: CharacterPromptContextDto? = null,
     ): Result<com.gkim.im.android.data.remote.im.EditUserTurnResponseDto> =
         throw NotImplementedError("edit path requires a live repository")
 
     suspend fun regenerateCompanionTurnAtTarget(
         conversationId: String,
         targetMessageId: String,
+        characterPromptContext: CharacterPromptContextDto? = null,
     ): Result<CompanionTurnRecordDto> =
         throw NotImplementedError("regenerate-at path requires a live repository")
 

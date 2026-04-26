@@ -247,6 +247,7 @@ class ChatViewModelEditUserTurnTest {
         val newUserText: String,
         val activeCompanionId: String,
         val activeLanguage: String,
+        val characterPromptContext: com.gkim.im.android.data.remote.im.CharacterPromptContextDto?,
     )
 
     internal class RecordingCompanionTurnRepository(
@@ -261,8 +262,16 @@ class ChatViewModelEditUserTurnTest {
             newUserText: String,
             activeCompanionId: String,
             activeLanguage: String,
+            characterPromptContext: com.gkim.im.android.data.remote.im.CharacterPromptContextDto?,
         ): Result<EditUserTurnResponseDto> {
-            val call = RecordedEditCall(conversationId, parentMessageId, newUserText, activeCompanionId, activeLanguage)
+            val call = RecordedEditCall(
+                conversationId,
+                parentMessageId,
+                newUserText,
+                activeCompanionId,
+                activeLanguage,
+                characterPromptContext,
+            )
             editCalls += call
             val result = editResult?.invoke(call) ?: Result.failure(IllegalStateException("editResult not configured"))
             // Mirror the real LiveCompanionTurnRepository's projection so the test can

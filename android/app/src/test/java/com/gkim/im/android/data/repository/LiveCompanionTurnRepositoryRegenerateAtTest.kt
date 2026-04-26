@@ -2,6 +2,7 @@ package com.gkim.im.android.data.repository
 
 import com.gkim.im.android.data.remote.im.AuthResponseDto
 import com.gkim.im.android.data.remote.im.BootstrapBundleDto
+import com.gkim.im.android.data.remote.im.CharacterPromptContextDto
 import com.gkim.im.android.data.remote.im.CompanionTurnPendingListDto
 import com.gkim.im.android.data.remote.im.CompanionTurnRecordDto
 import com.gkim.im.android.data.remote.im.DevSessionResponseDto
@@ -22,6 +23,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
@@ -139,6 +141,44 @@ class LiveCompanionTurnRepositoryRegenerateAtTest {
             val result = repo.regenerateCompanionTurnAtTarget(conversationId, "any-target")
             assertTrue(result.isFailure)
             assertTrue(backend.regenAtCalls.isEmpty()) // never invoked
+        }
+
+    @Test
+    fun `regenerateCompanionTurnAtTarget forwards characterPromptContext onto the outbound DTO`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val backend = FakeBackendClient(
+                regenAtResponse = { seededRecord("turn-new-sibling", variantIndex = 1, body = "regen") },
+            )
+            val repo = buildRepo(backend, scope = backgroundScope)
+            repo.applyRecord(seededRecord(turnId = "turn-original", variantIndex = 0, body = "orig"))
+            val ctx = CharacterPromptContextDto(
+                systemPrompt = "You are {{char}}.",
+                personality = "Calm.",
+                scenario = "Tavern.",
+                exampleDialogue = "{{user}}: hi",
+                userPersonaName = "Aria",
+                companionDisplayName = "Daylight Listener",
+            )
+
+            repo.regenerateCompanionTurnAtTarget(
+                conversationId = conversationId,
+                targetMessageId = "turn-original",
+                characterPromptContext = ctx,
+            )
+            assertEquals(ctx, backend.regenAtCalls.single().characterPromptContext)
+        }
+
+    @Test
+    fun `regenerateCompanionTurnAtTarget defaults characterPromptContext to null when omitted`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val backend = FakeBackendClient(
+                regenAtResponse = { seededRecord("turn-new-sibling", variantIndex = 1, body = "regen") },
+            )
+            val repo = buildRepo(backend, scope = backgroundScope)
+            repo.applyRecord(seededRecord(turnId = "turn-original", variantIndex = 0, body = "orig"))
+
+            repo.regenerateCompanionTurnAtTarget(conversationId, "turn-original")
+            assertNull(backend.regenAtCalls.single().characterPromptContext)
         }
 
     @Test
