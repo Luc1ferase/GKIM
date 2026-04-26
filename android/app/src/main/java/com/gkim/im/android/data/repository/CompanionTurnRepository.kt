@@ -356,9 +356,36 @@ class DefaultCompanionTurnRepository : CompanionTurnRepository {
                 } else {
                     val group = tree.variantGroups[variantGroupId]
                     val activeId = group?.siblingMessageIds?.getOrNull(group.activeIndex)
-                    activeId?.let { tree.messagesById[it] }
+                    val message = activeId?.let { tree.messagesById[it] }
+                    if (message != null && group != null) {
+                        message.withSiblingProjection(group)
+                    } else {
+                        message
+                    }
                 }
             }
         }
     }
+}
+
+/**
+ * §2.1 — projects the variant-group's sibling count + active index onto the rendered
+ * `ChatMessage.companionTurnMeta` so the §3.1 chevron rendering path picks up multi-sibling
+ * groups in production. For single-sibling groups the projection emits `siblingCount = 1`
+ * which the chevron-suppression rule treats as "no chevrons rendered", matching the
+ * pre-projection behavior. The §3.1 caption "n / total" reads the same fields.
+ */
+private fun ChatMessage.withSiblingProjection(group: VariantGroupState): ChatMessage {
+    val meta = companionTurnMeta ?: return this
+    val siblingCount = group.siblingMessageIds.size
+    val siblingActiveIndex = group.activeIndex
+    if (meta.siblingCount == siblingCount && meta.siblingActiveIndex == siblingActiveIndex) {
+        return this
+    }
+    return copy(
+        companionTurnMeta = meta.copy(
+            siblingCount = siblingCount,
+            siblingActiveIndex = siblingActiveIndex,
+        ),
+    )
 }
