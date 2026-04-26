@@ -3407,3 +3407,31 @@ Upload
   - Branch: `feature/chat-tree-runtime-wireup`
   - Push: `origin/feature/chat-tree-runtime-wireup`
 - Result: `accepted`
+
+### Task 2.1 (chat-tree-runtime-wireup): Extend `DefaultCompanionTurnRepository.resolveActivePath` so each rendered `ChatMessage` whose `companionTurnMeta != null` carries `siblingCount = variantGroups[meta.variantGroupId].siblingMessageIds.size` and `siblingActiveIndex = variantGroups[meta.variantGroupId].activeIndex`. (commit `05d38ea`)
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.CompanionTurnRepositorySiblingProjectionTest` — `BUILD SUCCESSFUL`, `CompanionTurnRepositorySiblingProjectionTest tests="5" skipped="0" failures="0" errors="0"` (5/5: single-sibling-projects-1 / two-sibling-after-regenerate / three-sibling-after-multiple-regenerates / selectVariant-rollback-reprojects / independent-groups-in-same-conversation).
+  - Full `:app:testDebugUnitTest` BUILD SUCCESSFUL with 0 failures — the projection is additive (every prior fixture had single-sibling groups where the projection emits the same data-class defaults the prior code already produced), so no regression surfaced.
+- Review:
+  - Score: `95/100`
+  - Findings: `§2.1 closes the production-rendering gap that suppressed §3.1 chevrons. The repository's existing variantGroups state (per-conversation Map<variantGroupId, VariantGroupState>) had been tracking siblingMessageIds + activeIndex from the start of llm-text-companion-chat, but resolveActivePath did not project those numbers onto each rendered ChatMessage.companionTurnMeta — so §3.1's chevron-rendering path read the data-class defaults (siblingCount = 1 / siblingActiveIndex = 0) on every bubble in production, suppressing chevrons even after a regenerate created multiple siblings. Three design choices defended: (1) the projection is a single ChatMessage extension (`withSiblingProjection`) rather than a refactor of the existing resolveActivePath body — keeps the diff minimal and the change reviewable as "what does emission look like now" rather than "the whole resolveActivePath got rewritten". (2) the projection short-circuits when meta.siblingCount + siblingActiveIndex are already correct, so the StateFlow's reference equality holds across no-op recomputes (downstream collectors don't re-render unnecessarily). (3) single-sibling groups continue to project siblingCount = 1, matching the §3.1 chevron-suppression rule by construction (no bubble that has only one variant ever shows chevrons). The 5-point deduction reflects that the projection runs on every emit (an O(messages) extra map traversal); for very long conversations this could be cached, but the existing emit cadence (1 emit per repository mutation, not per render) means the cost is bounded by the number of edits / regenerates / submits a user makes — not by the timeline length.`
+- Upload:
+  - Commit: `05d38ea`
+  - Branch: `feature/chat-tree-runtime-wireup`
+  - Push: `origin/feature/chat-tree-runtime-wireup`
+- Result: `accepted`
+
+### Task 2.2 (chat-tree-runtime-wireup): Add `CompanionTurnRepository.selectVariantByGroup(conversationId, variantGroupId, newIndex)` (interface + Default impl + Live forwarder) that mutates the matching `variantGroups` entry's `activeIndex` directly (idempotent + clamped). (commit `5ed6812`)
+
+- Verification:
+  - `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.CompanionTurnRepositorySelectVariantByGroupTest` — `BUILD SUCCESSFUL`, `CompanionTurnRepositorySelectVariantByGroupTest tests="7" skipped="0" failures="0" errors="0"` (7/7: flips-to-requested / idempotent-via-tree-ref-equality / clamp-upper / clamp-lower / unknown-group-noop / unknown-conv-noop / projection-re-runs-on-mutation).
+  - Full `:app:testDebugUnitTest` BUILD SUCCESSFUL with 0 failures.
+- Review:
+  - Score: `95/100`
+  - Findings: `§2.2 lands the variantGroupId-keyed mutation path the §3.1 onSelectVariantAt callback needs. Three design choices defended: (1) the new method is additive — selectVariant(turnId, variantIndex) stays for back-compat (the mvp slice's tests + any other caller continue to work). The two methods share semantics but differ in lookup key; the new path is shorter (no turnId → messageId → variantGroupId hops). (2) idempotency rides on the existing mutateTree short-circuit (`if (updated === existing) return`); when the requested newIndex equals the current activeIndex, the mutation function returns the original tree reference and the StateFlow does not emit. (3) clamping (`coerceIn(0, size - 1)`) silently absorbs out-of-bounds inputs rather than throwing — defensive against fast-tap UI edge cases where a chevron tap might race with a regenerate that's appending a new sibling, briefly shrinking the index range. The §2.1 projection re-runs on every successful mutation (resolveActivePath is called by mutateTree) so the rendered companionTurnMeta.siblingActiveIndex updates in lock-step with the chevron tap. The 5-point deduction reflects that the method's no-op-on-unknown-group / no-op-on-unknown-conv branches silently absorb the call rather than returning a Result that the caller could surface — the §3.1 chevron callback is fire-and-forget by design, but a future slice that needs error visibility on chevron taps would need to extend the contract.`
+- Upload:
+  - Commit: `5ed6812`
+  - Branch: `feature/chat-tree-runtime-wireup`
+  - Push: `origin/feature/chat-tree-runtime-wireup`
+- Result: `accepted`
