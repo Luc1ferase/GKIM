@@ -3567,7 +3567,7 @@ Upload
   - Push: `origin/feature/relationship-reset-runtime-wireup`
 - Result: `accepted`
 
-### Task 6.1 / 6.2 (relationship-reset-runtime-wireup): Verification roll-up + archive — apply spec deltas to `openspec/specs/{core/im-app, llm-text-companion-chat}`, move change to `openspec/changes/archive/2026-04-26-relationship-reset-runtime-wireup/`. (commit `<TBD>`)
+### Task 6.1 / 6.2 (relationship-reset-runtime-wireup): Verification roll-up + archive — apply spec deltas to `openspec/specs/{core/im-app, llm-text-companion-chat}`, move change to `openspec/changes/archive/2026-04-26-relationship-reset-runtime-wireup/`. (commit `d50d13a`)
 
 - Verification:
   - `openspec validate --specs --strict` (post-archive) — all 16 capabilities valid.
@@ -3576,7 +3576,7 @@ Upload
   - Score: `95/100`
   - Findings: `§6 closes the third wire-up slice. The diff against feature/ai-companion-im is bounded: 1 new feature/tavern/RelationshipResetUi.kt (~210 lines) + 1 new test in feature/tavern/RelationshipResetButtonInstrumentationTest.kt + 1 new test in data/repository/LiveMessagingRepositoryResetRelationshipTest.kt + 1 modified data/repository/Repositories.kt (interface method + LiveMessagingRepository impl + remapResetError) + 1 modified feature/tavern/CharacterDetailRoute.kt (slot + section). The §1-§5 design rationale is preserved verbatim in archive/ and the spec deltas merge cleanly into core/im-app + llm-text-companion-chat (1 ADDED Requirement each, totaling 9 Scenarios — 5 in core/im-app for the affordance + retry behaviors, 4 in llm-text-companion-chat for the repository method's success + failure + cache-reconciliation mappings). The 5-point deduction reflects that the slice's deploy verification is "endpoint reachable on chat.lastxuans.sbs returns 401 unauthenticated" rather than a real authenticated end-to-end against the actual emulator (which would need a logged-in session); the §5.1 instrumentation against a fake repo and the §4.1 unit tests against fake HTTP failures cover the production paths.`
 - Upload:
-  - Commit: `<TBD>`
+  - Commit: `d50d13a`
   - Branch: `feature/relationship-reset-runtime-wireup`
   - Push: `origin/feature/relationship-reset-runtime-wireup`
 - Result: `accepted`
