@@ -3664,3 +3664,104 @@ Upload
   - Branch: `feature/relationship-reset-runtime-wireup`
   - Push: `origin/feature/relationship-reset-runtime-wireup`
 - Result: `accepted`
+
+## companion-turn-character-prompt-context delivery evidence
+
+### Task §1.1 (companion-turn-character-prompt-context): Author proposal + tasks list + the spec delta on `llm-text-companion-chat`. (commit `6edc786`)
+
+- Verification:
+  - `openspec validate companion-turn-character-prompt-context --strict` → `Change 'companion-turn-character-prompt-context' is valid`.
+  - Scaffold contents: `proposal.md` (Why + What Changes 6 bullets + Capabilities + Impact + 4 non-goals), `tasks.md` (6 sections: §1 scaffold + §2 DTO + §3 resolver + §4 repository + §5 ChatViewModel + §6 verification), `specs/llm-text-companion-chat/spec.md` (2 ADDED Requirements + 6 Scenarios covering submit/edit/regenerate-at parity, missing-card omission, missing-persona localized default, retry replay).
+  - Branch base: `feature/ai-companion-im` HEAD `30eddaf` (post-tavern-experience-polish merge).
+  - Paired backend slice: `companion-turn-backend-llm-bridge` opened on `feature/companion-turn-backend-llm-bridge` in the sibling `GKIM-Backend` repo at `669c927` (verified separately with `openspec validate --strict`).
+- Review:
+  - Score: `95/100`
+  - Findings: `§1.1 opens the paired-PR client slice for the S2 LLM bridge. The slice's scope is deliberately narrow — it does NOT introduce a new ChatViewModel handler, a new repository method, or a new UI surface; it threads a paired-DTO field through three existing dispatch paths (submit / edit / regenerate-at) and adds one pure resolver helper. Three design choices defended: (1) the optional CharacterPromptContextDto field is added on the wire DTOs rather than persisted server-side because the S4 slice (companion-backend-persona-memory-preset) owns durable card storage; until S4 lands, the client remains the source of truth and ferries the resolved fields per-turn. (2) macros ({{user}} / {{char}}) survive un-substituted on the wire — substitution lives exclusively in the paired backend slice's prompt-assembly module so a single audit log row reflects the substituted prompt. (3) the field is optional + default-elided when null, so the deployed S1 backend continues to accept the request unchanged and the contract is forward-compatible. The 5-point deduction reflects (a) the slice does NOT verify the on-disk fixtures byte-mirror the backend repo via a CI check — the paired-PR convention is enforced manually via git diff --no-index. (b) the slice does NOT add an end-to-end emulator smoke against a real LLM-bridged backend; that's owned by the paired backend slice's §6.1.`
+- Upload:
+  - Commit: `6edc786` (scaffold), `0734662` (§1.1 SHA fill)
+  - Branch: `feature/companion-turn-character-prompt-context`
+  - Push: `origin/feature/companion-turn-character-prompt-context`
+- Result: `accepted`
+
+### Task §2.1 (companion-turn-character-prompt-context): Add `@Serializable data class CharacterPromptContextDto` to `data/remote/im/ImBackendModels.kt`. (commit `d5b9fd9`)
+
+- Verification:
+  - `JAVA_HOME=/c/Program Files/Java/jdk-17 ./gradlew.bat --no-daemon :app:compileDebugKotlin` BUILD SUCCESSFUL — six String fields (`systemPrompt`, `personality`, `scenario`, `exampleDialogue`, `userPersonaName`, `companionDisplayName`) with implicit camelCase keys matching the wire convention used by every other `*RequestDto` in the file.
+  - Round-trip assertion deferred to §2.3's serialization test which exercises the full DTO graph against on-disk fixtures.
+- Review:
+  - Score: `95/100`
+  - Findings: `§2.1 introduces the new DTO immediately above CompanionTurnSubmitRequestDto so the three call sites that adopt it in §2.2 sit close to the source of truth. No mapper to a domain type — the DTO carries already-resolved strings only; the resolver helper (§3.1) builds the DTO directly from CompanionCharacterCard.resolve(language) + UserPersona.displayName.resolve(language) without an intermediate domain model. The 5-point deduction reflects that the DTO uses kotlinx.serialization's implicit field-name → JSON-key mapping (camelCase) rather than an explicit @SerialName per field; the existing wire model uses the same convention so this matches house style, but a future preset-store slice that needs to evolve field names could benefit from explicit annotations.`
+- Upload:
+  - Commit: `d5b9fd9`
+  - Branch: `feature/companion-turn-character-prompt-context`
+  - Push: `origin/feature/companion-turn-character-prompt-context`
+- Result: `accepted`
+
+### Task §2.2 (companion-turn-character-prompt-context): Append `characterPromptContext: CharacterPromptContextDto? = null` to `CompanionTurnSubmitRequestDto`, `EditUserTurnRequestDto`, `RegenerateAtRequestDto`. (commit `81b8645`)
+
+- Verification:
+  - `JAVA_HOME=/c/Program Files/Java/jdk-17 ./gradlew.bat --no-daemon :app:compileDebugKotlin :app:compileDebugUnitTestKotlin` BUILD SUCCESSFUL with zero existing call-site changes.
+  - Default-`null` keeps every internal call site source-compatible; old serialized payloads continue to deserialize because kotlinx.serialization treats absent optional fields as the constructor default.
+- Review:
+  - Score: `95/100`
+  - Findings: `§2.2 adds the field to all three request DTOs in lockstep so the contract is uniformly available across submit / edit / regenerate-at paths. The field is the LAST constructor parameter on every DTO so existing positional construction at any call site stays valid; the kotlinx.serialization @Serializable plugin generates the wire-key list in declaration order so adding a trailing field doesn't reorder existing keys (verified by §2.3's round-trip). The 5-point deduction reflects that the field is added in three separate places rather than via a shared mixin/interface — Kotlin's data-class composition does not cleanly support that pattern (no inheritance for data classes), so the duplication is structural rather than incidental.`
+- Upload:
+  - Commit: `81b8645`
+  - Branch: `feature/companion-turn-character-prompt-context`
+  - Push: `origin/feature/companion-turn-character-prompt-context`
+- Result: `accepted`
+
+### Task §2.3 (companion-turn-character-prompt-context): Author paired fixtures `submit-request-{with,without}-character-context.json` + `CompanionTurnSubmitRequestDtoSerializationTest`. (client commit `271e6ce`, paired backend mirror `5f4089a`)
+
+- Verification:
+  - `JAVA_HOME=/c/Program Files/Java/jdk-17 ./gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.remote.im.CompanionTurnSubmitRequestDtoSerializationTest` BUILD SUCCESSFUL — 4 tests green: field-present fixture deserializes with all six fields populated and macros literal; field-present DTO survives encode-decode round-trip; field-absent fixture deserializes with `characterPromptContext == null`; field-absent DTO encodes WITHOUT the `characterPromptContext` key when `encodeDefaults = false` (asserts default-elision is applied to the new field consistently with `parentMessageId`).
+  - `git diff --no-index X:/Repos/GKIM/contract/fixtures/companion-turns/submit-request-with-character-context.json X:/Repos/GKIM-Backend/contract/fixtures/companion-turns/submit-request-with-character-context.json` returns empty — paired-PR byte-mirror invariant holds; same for the without-character-context fixture.
+- Review:
+  - Score: `95/100`
+  - Findings: `§2.3 lands the contract test layer + the cross-repo fixture mirror. Three design choices defended: (1) the fixtures keep the macros as literal {{user}} / {{char}} placeholders inside the systemPrompt / exampleDialogue strings — proves the spec scenario "macros remain literal on the wire" at the byte level. (2) the fixture's userPersonaName is a non-default value ("Aria") so the test catches regressions where a future change might silently fall back to "User"; the field-absent fixture has parentMessageId: null so the test asserts the encoder elides default-null fields uniformly (not just the new one). (3) the round-trip test uses encodeDefaults = false to match the project's default Json instance behavior, locking the wire shape against accidental encoder-config drift in shared modules. The 5-point deduction reflects that the test inlines the fixture JSON rather than reading from disk via the test resources path — matches the existing CompanionTurnsContractFixturesTest convention but means a future fixture-only edit on disk wouldn't auto-fail this test; the cross-repo git diff check is the manual compensating control.`
+- Upload:
+  - Client commit: `271e6ce`
+  - Backend mirror commit: `5f4089a` (on `feature/companion-turn-backend-llm-bridge` in `GKIM-Backend`)
+  - Branch: `feature/companion-turn-character-prompt-context`
+  - Push: `origin/feature/companion-turn-character-prompt-context` + paired `origin/feature/companion-turn-backend-llm-bridge` in `GKIM-Backend`
+- Result: `accepted`
+
+### Task §3.1 (companion-turn-character-prompt-context): New `feature/chat/CharacterPromptContextResolver.kt` + `CharacterPromptContextResolverTest` (5 tests). (commit `03283ad`)
+
+- Verification:
+  - `JAVA_HOME=/c/Program Files/Java/jdk-17 ./gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.CharacterPromptContextResolverTest` BUILD SUCCESSFUL — 5 tests green: null-card returns null; full card + active persona produces all six fields with macros un-substituted (asserts {{user}} / {{char}} survive in systemPrompt + exampleDialogue); null persona falls through to "User" in English; null persona falls through to "用户" in Chinese (also covers the language-branch projection by asserting all four LocalizedText fields pick the Chinese branch); blank persona display name (whitespace-only) falls through to the localized default per the `?.takeIf { it.isNotBlank() }` guard.
+- Review:
+  - Score: `95/100`
+  - Findings: `§3.1 adds the only new pure helper in the slice. Three design choices defended: (1) the helper returns null when card is null so callers can short-circuit before the wire call — matches the existing ChatViewModel.sendMessage companion-only gate, no extra branch needed. (2) the helper does NOT macro-substitute — substitution lives exclusively in the paired backend slice's prompt-assembly module so a single source-of-truth governs {{user}}/{{char}} expansion; this avoids the failure mode where client and backend race on substitution rules and produce divergent prompts. (3) the persona-name fallback uses `?.takeIf { it.isNotBlank() }` rather than `?.orEmpty()` so a whitespace-only display name (e.g., a placeholder persona the user never customized) falls through to the localized default — the test pins this behavior so a future "trim before resolve" refactor can't silently regress it. The 5-point deduction reflects that the helper is internal (package-private) — a public visibility could let other slices (e.g., a future preset-export feature) reuse the resolver, but exposing it publicly would also commit to its signature; deferred until a second consumer needs it.`
+- Upload:
+  - Commit: `03283ad`
+  - Branch: `feature/companion-turn-character-prompt-context`
+  - Push: `origin/feature/companion-turn-character-prompt-context`
+- Result: `accepted`
+
+### Task §4.1 / §4.2 (companion-turn-character-prompt-context): `CompanionTurnRepository` interface + `LiveCompanionTurnRepository` thread the new parameter; `FailedCompanionSubmission` retains it for retry replay; six new repo tests. (commit `8136b5d`)
+
+- Verification:
+  - `JAVA_HOME=/c/Program Files/Java/jdk-17 ./gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.LiveCompanionTurnRepository* --tests com.gkim.im.android.data.repository.LiveCompanionTurnRepositoryEditUserTurnTest --tests com.gkim.im.android.data.repository.LiveCompanionTurnRepositoryRegenerateAtTest` BUILD SUCCESSFUL — 6 new tests green: `LiveCompanionTurnRepositoryTest` adds (a) submitUserTurn forwards a non-null ctx onto the outbound DTO, (b) submitUserTurn defaults ctx to null when omitted, (c) retrySubmitUserTurn replays the captured ctx byte-equivalently across the failed + retry call pair; `LiveCompanionTurnRepositoryEditUserTurnTest` adds editUserTurn forwards-ctx + defaults-null; `LiveCompanionTurnRepositoryRegenerateAtTest` adds regenerateCompanionTurnAtTarget forwards-ctx + defaults-null.
+  - Three test-fake updates in `ChatViewModelCompanionDispatchTest` / `ChatViewModelEditUserTurnTest` / `ChatViewModelRegenerateFromHereTest` track the trait signature change without semantic drift in their existing assertions.
+- Review:
+  - Score: `95/100`
+  - Findings: `§4.1 + §4.2 thread the new parameter through every wire path while preserving every internal call-site through default-null. Three design choices defended: (1) the trait method signatures gain the parameter as the LAST argument with a default so positional-construction call sites still compile — matches the §2.2 DTO change pattern. (2) FailedCompanionSubmission gains the field as `characterPromptContext: CharacterPromptContextDto? = null` so retrySubmitUserTurn replays the ctx captured at original-submit time WITHOUT re-resolving against the live card/persona — this matches the spec scenario "Retry replays the original character prompt context" which guards against the failure mode where a user's persona/card changes between the failed submit and the retry, and the retry would otherwise carry inconsistent state. (3) the fake test ImBackendClient's existing captured-DTO assertion pattern is reused as-is (submit/edit/regenerate-at all already had recordCalls + DTO capture); the new tests assert on the ctx field of the captured DTO, no new fake infrastructure needed. The 5-point deduction reflects that DefaultCompanionTurnRepository keeps the trait-default-throw path for the new methods — the offline default-throw is consistent with how the trait already signals "no live wire" but means the field is structurally exposed without being read at the default level; a future no-throw default impl that ignores the parameter could be an alternative.`
+- Upload:
+  - Commit: `8136b5d`
+  - Branch: `feature/companion-turn-character-prompt-context`
+  - Push: `origin/feature/companion-turn-character-prompt-context`
+- Result: `accepted`
+
+### Task §5.1 / §5.2 (companion-turn-character-prompt-context): `ChatViewModel.sendMessage` / `.editUserTurn` / `.regenerateFromHere` resolve and forward the context; constructor gains `companionRosterRepository`; two new dispatch-test assertions. (commit `ed57bd4`)
+
+- Verification:
+  - `JAVA_HOME=/c/Program Files/Java/jdk-17 ./gradlew.bat --no-daemon :app:testDebugUnitTest` BUILD SUCCESSFUL (full sweep — no regressions). Two new ChatViewModelCompanionDispatchTest assertions: (a) sendMessage forwards a fully-resolved ctx (all six DTO fields verbatim, macros un-substituted) when card + persona are in scope; (b) sendMessage forwards null when the roster has no card registered (matches spec scenario "Missing card omits the payload"). Six existing test sites updated to pass `companionRosterRepository = stubCompanionRosterRepository()` via the new helper added to `ChatViewModelTestStubs.kt`.
+- Review:
+  - Score: `95/100`
+  - Findings: `§5.1 + §5.2 connect the helper to the three call sites that actually dispatch over the wire. Three design choices defended: (1) the ViewModel collects observeActivePersona() into a private MutableStateFlow<UserPersona?> via an init-block coroutine so call-site reads are synchronous — avoids the "suspend inside launch inside launch" pattern that would otherwise be needed if call sites resolved the persona via flow.first() at submit time. (2) regenerateFromHere gains an optional activeLanguage: AppLanguage parameter (route passes LocalAppLanguage.current) — the existing signature took only messageId because the backend resolved language from the conversation; with the prompt context now flowing client-side, the client must pin the language at dispatch time, and adding a default-English parameter keeps every existing test call site source-compatible. (3) the new test passes a CompanionCharacterCard with macros literally embedded ({{char}}, {{user}}) and asserts those survive into the DTO — exercises the spec's "macros remain literal on the wire" invariant end-to-end through the resolver + the repository forwarding. The 5-point deduction reflects (a) the route's new lambda for onRegenerateFromHere replaces what was previously a method reference (viewModel::regenerateFromHere) — a small loss of compactness in exchange for routing appLanguage; the alternative would be threading appLanguage into ChatViewModel via a StateFlow<AppLanguage>, which is heavier. (b) the §5 wire-up tests assert against a DefaultCompanionRosterRepository seeded with one preset card; the production BackendAwareCompanionRosterRepository is not exercised here — its own test coverage in BackendAwareCompanionRosterRepositoryTest is unchanged and covers the lookup contract.`
+- Upload:
+  - Commit: `ed57bd4`
+  - Branch: `feature/companion-turn-character-prompt-context`
+  - Push: `origin/feature/companion-turn-character-prompt-context`
+- Result: `accepted`
