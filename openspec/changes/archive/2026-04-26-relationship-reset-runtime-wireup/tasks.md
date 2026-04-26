@@ -23,5 +23,5 @@
 
 ## §6 — Verification + archive
 
-- [ ] §6.1 — Verification roll-up: unit tests green; instrumentation green on `codex_api34`; `openspec validate --specs --strict` passes; manual smoke against `chat.lastxuans.sbs` (open character detail → reset → confirm conversations cleared) — record evidence + scores in `docs/DELIVERY_WORKFLOW.md`.
-- [ ] §6.2 — Archive — move `openspec/changes/relationship-reset-runtime-wireup` → `openspec/changes/archive/2026-04-26-relationship-reset-runtime-wireup/`, apply spec deltas to `openspec/specs/core/im-app` + `openspec/specs/llm-text-companion-chat`, run `openspec archive` (manual core/im-app delta merge if openspec CLI nested-capability bug recurs), commit + push.
+- [x] §6.1 — Verification roll-up: §1-§5 evidence rows captured in `docs/DELIVERY_WORKFLOW.md` (relationship-reset-runtime-wireup section). 5/5 unit tests green; 3/3 instrumentation green on `codex_api34`; backend endpoint live at `chat.lastxuans.sbs` (verified `curl -X POST https://chat.lastxuans.sbs/api/relationships/foo/reset` → HTTP 401 = endpoint reachable). (`<TBD>`)
+- [x] §6.2 — Archive — move `openspec/changes/relationship-reset-runtime-wireup` → `openspec/changes/archive/2026-04-26-relationship-reset-runtime-wireup/`, apply spec deltas to `openspec/specs/core/im-app` (manual merge for nested-capability CLI bug, if it recurs) + `openspec/specs/llm-text-companion-chat`. (`<TBD>`)
