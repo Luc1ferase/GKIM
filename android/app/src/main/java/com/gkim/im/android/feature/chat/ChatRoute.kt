@@ -929,7 +929,6 @@ internal fun ChatMessageRow(
     isMostRecentCompanionVariant: Boolean = false,
     onBubbleAvatarTap: (() -> Unit)? = null,
     onSelectVariantAt: (variantGroupId: String, newIndex: Int) -> Unit = { _, _ -> },
-    onRegenerate: () -> Unit = {},
     onRetrySubmission: () -> Unit = {},
     onComposeNewMessage: () -> Unit = {},
     onLearnMorePolicy: () -> Unit = {},
@@ -1117,16 +1116,6 @@ internal fun ChatMessageRow(
                                     .testTag("chat-companion-variant-next-${message.id}"),
                             )
                         }
-                    }
-                    if (companionPresentation.showRegenerate) {
-                        Text(
-                            text = "Regenerate",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = AetherColors.Primary,
-                            modifier = Modifier
-                                .clickable(onClick = onRegenerate)
-                                .testTag("chat-companion-regenerate-${message.id}"),
-                        )
                     }
                     if (showRegenerateFromHere) {
                         Text(

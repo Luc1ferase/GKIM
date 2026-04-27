@@ -65,7 +65,6 @@ class ChatFailureAndSafetyBubbleInstrumentationTest {
         composeRule.onNodeWithTag("chat-companion-compose-new-${message.id}").assertIsDisplayed()
         composeRule.onNodeWithTag("chat-companion-learn-more-policy-${message.id}").assertIsDisplayed()
         composeRule.onNodeWithTag("chat-companion-retry-${message.id}").assertIsNotDisplayed()
-        composeRule.onNodeWithTag("chat-companion-regenerate-${message.id}").assertIsNotDisplayed()
     }
 
     @Test
