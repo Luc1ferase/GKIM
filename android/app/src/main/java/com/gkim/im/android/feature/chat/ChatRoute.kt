@@ -442,6 +442,11 @@ fun ChatRoute(
         } else {
             null
         },
+        onOpenSettings = if (uiState.conversation?.companionCardId != null) {
+            { navController.navigate("settings") }
+        } else {
+            null
+        },
     )
 
     if (showExportDialog) {
@@ -478,6 +483,7 @@ private fun ChatScreen(
     onRegenerateFromHere: (messageId: String) -> Unit = { _ -> },
     onDismissTreeAffordanceError: () -> Unit = {},
     onOpenExportDialog: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
 ) {
     val appLanguage = LocalAppLanguage.current
     val timelineMessages = uiState.companionMessages ?: uiState.conversation?.messages.orEmpty()
@@ -508,6 +514,7 @@ private fun ChatScreen(
             onPersonaPillTap = onPersonaPillTap,
             onHeaderAvatarTap = headerPortraitRoute?.let { route -> { onOpenPortrait(route) } },
             onOpenExportDialog = onOpenExportDialog,
+            onOpenSettings = onOpenSettings,
         )
         chatChromePersonaFooter(uiState.activePersona, LocalAppLanguage.current)?.let { footer ->
             Text(
@@ -820,13 +827,14 @@ private fun LatestGenerationCard(
 }
 
 @Composable
-private fun ChatTopBar(
+internal fun ChatTopBar(
     conversation: Conversation?,
     activePersona: UserPersona?,
     onBack: () -> Unit,
     onPersonaPillTap: () -> Unit,
     onHeaderAvatarTap: (() -> Unit)? = null,
     onOpenExportDialog: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
 ) {
     val language = LocalAppLanguage.current
     val personaPill = chatChromePersonaPill(activePersona, language)
@@ -916,6 +924,21 @@ private fun ChatTopBar(
                         },
                         modifier = Modifier.testTag("chat-top-overflow-export"),
                     )
+                    if (onOpenSettings != null) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = if (language == AppLanguage.English) "Settings" else "设置",
+                                    modifier = Modifier.testTag("chat-top-overflow-settings-text"),
+                                )
+                            },
+                            onClick = {
+                                overflowOpen = false
+                                onOpenSettings()
+                            },
+                            modifier = Modifier.testTag("chat-top-overflow-settings"),
+                        )
+                    }
                 }
             }
         }
