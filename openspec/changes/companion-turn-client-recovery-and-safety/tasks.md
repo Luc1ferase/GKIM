@@ -2,7 +2,7 @@
 
 ## §0 — OpenSpec scaffold
 
-- [ ] §0.1 — `proposal.md` / `tasks.md` / `specs/core/im-app/spec.md` + `specs/llm-text-companion-chat/spec.md` deltas committed on branch `feature/companion-turn-client-recovery-and-safety` off `feature/ai-companion-im`. Scaffold commit pushed to `origin/feature/companion-turn-client-recovery-and-safety`. `openspec validate companion-turn-client-recovery-and-safety --strict` returns valid.
+- [x] §0.1 — `proposal.md` / `tasks.md` / `specs/core/im-app/spec.md` + `specs/llm-text-companion-chat/spec.md` deltas committed on branch `feature/companion-turn-client-recovery-and-safety` off `feature/ai-companion-im`. Scaffold commit `8d9b257`, pushed to `origin/feature/companion-turn-client-recovery-and-safety`. `openspec validate companion-turn-client-recovery-and-safety --strict` returns valid.
 
 ## §1 — Three UX papercuts (the user-flagged trio from 2026-04-27)
 
