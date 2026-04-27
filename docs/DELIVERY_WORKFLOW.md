@@ -3664,3 +3664,53 @@ Upload
   - Branch: `feature/relationship-reset-runtime-wireup`
   - Push: `origin/feature/relationship-reset-runtime-wireup`
 - Result: `accepted`
+
+## companion-turn-client-recovery-and-safety delivery evidence
+
+### Task §1.1 (companion-turn-client-recovery-and-safety): Remove the legacy English-only "Regenerate" affordance on the most-recent companion bubble in `feature/chat/ChatRoute.kt`. The bilingual "Regenerate from here / 从这里重新生成" entry remains as the single regenerate affordance for ALL companion bubbles. The `showRegenerate` boolean on `CompanionLifecyclePresentation` is RETAINED (multiple existing presentation tests assert it's false on Failed/Blocked/Timeout bubbles). Drive-by: removed the now-orphaned `chat-companion-regenerate-${message.id}` testTag assertion from `ChatFailureAndSafetyBubbleInstrumentationTest`. (commit `33c712a`)
+
+- Verification:
+  - `:app:compileDebugKotlin` BUILD SUCCESSFUL
+  - `:app:testDebugUnitTest --tests ChatPresentationTest --tests ChatBlockedBubbleTest --tests ChatFailedBubbleTest --tests ChatTimeoutBubbleTest` BUILD SUCCESSFUL
+- Branch: `feature/companion-turn-client-recovery-and-safety`
+- Push: `origin/feature/companion-turn-client-recovery-and-safety`
+
+### Task §1.2 (companion-turn-client-recovery-and-safety): Add a "Settings / 设置" entry to the `ChatTopBar` overflow dropdown in `ChatRoute.kt::ChatTopBar` (after the existing "Export chat / 导出对话" `DropdownMenuItem`). New `onOpenSettings: (() -> Unit)?` parameter on `ChatTopBar` + `ChatScreen`, bound in `ChatRoute` to `navController.navigate("settings")` when `uiState.conversation?.companionCardId != null` (companion-conversation gate). Bilingual copy via `LocalAppLanguage`. `ChatTopBar` visibility raised from `private` to `internal`. (commit `81aa5f5`)
+
+- Verification:
+  - `:app:compileDebugKotlin` / `:app:compileDebugAndroidTestKotlin` BUILD SUCCESSFUL
+  - `:app:testDebugUnitTest --tests "*chat.*"` BUILD SUCCESSFUL
+  - New `ChatTopBarOverflowInstrumentationTest` with two cases (English + Chinese) asserts both items findable by their `testTag` and that tapping Settings invokes `onOpenSettings`.
+- Branch: `feature/companion-turn-client-recovery-and-safety`
+- Push: `origin/feature/companion-turn-client-recovery-and-safety`
+
+### Task §1.3 (companion-turn-client-recovery-and-safety): Drop the `"Ready"` literal from the Completed lifecycle's `statusLine` fallback. Made `CompanionLifecyclePresentation.statusLine` nullable; Completed branch is now `statusLine = modelBadge?.let { "Model · $it" }` (no fallback string); render-side wrapped in `?.let { line -> Text(text = line, ...) }` so a null status line skips the row entirely. Two `.statusLine.startsWith(...)` test callsites adjusted to `?.startsWith(...) == true` for the nullable type. (commit `1b69f02`)
+
+- Verification:
+  - `:app:compileDebugKotlin` / `:app:compileDebugUnitTestKotlin` BUILD SUCCESSFUL
+  - New `companion lifecycle completed state hides status line when no model badge is available` test asserts `statusLine == null` when `model = null`; the existing `Model · gpt-4o-mini` case is preserved.
+  - Full `:app:testDebugUnitTest` sweep BUILD SUCCESSFUL — no regressions.
+- Branch: `feature/companion-turn-client-recovery-and-safety`
+- Push: `origin/feature/companion-turn-client-recovery-and-safety`
+
+### Task §2.1 / §2.2 / §2.3 (companion-turn-client-recovery-and-safety): Mirror three new event fixtures byte-equivalent from `GKIM-Backend feature/companion-turn-backend-recovery-and-safety` SHA `c283298` (paired-PR convention); extend the wire model to support the full taxonomy; add the round-trip + repository-projection test suites. (commit `28ea30c`)
+
+- Wire-model extensions in `ImBackendModels.kt`:
+  - `CompanionTurnFailed` gains optional `completedAt` field.
+  - `CompanionTurnBlocked` gains optional `completedAt` field.
+  - New `CompanionTurnTimeout { turnId, conversationId, messageId, elapsedMs, completedAt }` variant.
+  - `ImGatewayEventParser` dispatches `companion_turn.timeout` to it.
+  - `CompanionTurnMeta` gains `timeoutElapsedMs: Long? = null`.
+  - `CompanionTurnRepository` interface gains `handleTurnTimeout(event)`; `DefaultCompanionTurnRepository` projects to `MessageStatus.Timeout` with `canRegenerate=true`. `LiveCompanionTurnRepository.handleGatewayEvent` routes the new variant; `Repositories.kt` exhaustive-when extended.
+- Verification:
+  - `diff -q` of all three fixture pairs returned `ALL_MIRRORS_BYTE_EQUIVALENT`.
+  - `CompanionTurnEventSerializationTest` — 4 cases (one per terminal + a six-value FailedSubtype taxonomy round-trip + a dispatch-routing smoke).
+  - `CompanionTurnRepositoryRecoveryEventTest` — 3 cases exercising parser → handler → ChatMessage end-to-end.
+  - `:app:compileDebugKotlin` / `:app:compileDebugUnitTestKotlin` / `:app:compileDebugAndroidTestKotlin` BUILD SUCCESSFUL.
+  - `:app:testDebugUnitTest --tests "*.CompanionTurnEventSerializationTest"` and `--tests "*.CompanionTurnRepositoryRecoveryEventTest"` both BUILD SUCCESSFUL.
+  - Full `:app:testDebugUnitTest` sweep BUILD SUCCESSFUL.
+- Branch: `feature/companion-turn-client-recovery-and-safety`
+- Push: `origin/feature/companion-turn-client-recovery-and-safety`
+- Paired backend slice: `companion-turn-backend-recovery-and-safety` SHA `c283298` on `feature/companion-turn-backend-recovery-and-safety`, pushed to `origin/feature/companion-turn-backend-recovery-and-safety`.
+
+### Task §3.1 (companion-turn-client-recovery-and-safety): Verification roll-up — §1 + §2 evidence rows recorded above. All new unit tests green; full `:app:testDebugUnitTest` sweep BUILD SUCCESSFUL with no regressions. Paired backend slice `companion-turn-backend-recovery-and-safety` exists at SHA `c283298`; the byte-equivalent fixture mirror is asserted at §2.1.
