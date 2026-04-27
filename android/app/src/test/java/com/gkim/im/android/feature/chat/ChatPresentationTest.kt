@@ -132,6 +132,23 @@ class ChatPresentationTest {
     }
 
     @Test
+    fun `companion lifecycle completed state hides status line when no model badge is available`() {
+        val presentation = companionLifecyclePresentation(
+            message = companionMessage(
+                status = MessageStatus.Completed,
+                body = "Hello there.",
+                canRegenerate = true,
+                model = null,
+            ),
+            isMostRecentCompanionVariant = true,
+        )!!
+        assertEquals(CompanionLifecycleTone.Completed, presentation.tone)
+        assertEquals(null, presentation.statusLine)
+        assertEquals("Hello there.", presentation.body)
+        assertTrue(presentation.showBody)
+    }
+
+    @Test
     fun `companion lifecycle completed state hides regenerate on older variants`() {
         val presentation = companionLifecyclePresentation(
             message = companionMessage(
@@ -165,7 +182,7 @@ class ChatPresentationTest {
             isMostRecentCompanionVariant = true,
         )!!
         assertEquals(CompanionLifecycleTone.Timeout, presentation.tone)
-        assertTrue(presentation.statusLine.startsWith("Timed out"))
+        assertTrue(presentation.statusLine?.startsWith("Timed out") == true)
         assertTrue(presentation.showRetry)
     }
 

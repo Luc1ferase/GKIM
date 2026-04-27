@@ -119,7 +119,7 @@ class ChatTimeoutBubbleTest {
         val p = timeoutPresentation(activePresetMaxReplyTokens = null)
         assertTrue(
             "Timeout status line keeps the 'Timed out' prefix for glanceability",
-            p.statusLine.startsWith("Timed out"),
+            p.statusLine?.startsWith("Timed out") == true,
         )
     }
 

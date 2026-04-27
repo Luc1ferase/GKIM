@@ -1049,12 +1049,14 @@ internal fun ChatMessageRow(
                 horizontalAlignment = if (isOutgoing) Alignment.End else Alignment.Start,
             ) {
                 if (companionPresentation != null) {
-                    Text(
-                        text = companionPresentation.statusLine,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = AetherColors.OnSurfaceVariant,
-                        modifier = Modifier.testTag("chat-companion-status-${message.id}"),
-                    )
+                    companionPresentation.statusLine?.let { line ->
+                        Text(
+                            text = line,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = AetherColors.OnSurfaceVariant,
+                            modifier = Modifier.testTag("chat-companion-status-${message.id}"),
+                        )
+                    }
                     if (companionPresentation.showBody) {
                         Text(
                             text = companionPresentation.body,
@@ -1428,7 +1430,7 @@ internal fun resolveVariantSelection(
 }
 
 internal data class CompanionLifecyclePresentation(
-    val statusLine: String,
+    val statusLine: String?,
     val body: String,
     val showBody: Boolean,
     val showRegenerate: Boolean,
@@ -1477,7 +1479,7 @@ internal fun companionLifecyclePresentation(
             tone = CompanionLifecycleTone.Streaming,
         )
         MessageStatus.Completed -> CompanionLifecyclePresentation(
-            statusLine = modelBadge?.let { "Model · $it" } ?: "Ready",
+            statusLine = modelBadge?.let { "Model · $it" },
             body = message.body,
             showBody = message.body.isNotBlank(),
             showRegenerate = meta.canRegenerate && isMostRecentCompanionVariant,
