@@ -1,0 +1,8 @@
+{
+  "type": "companion_turn.blocked",
+  "turnId": "turn-blocked-recovery-smoke-01",
+  "conversationId": "conversation-recovery-smoke",
+  "messageId": "companion-turn-blocked-recovery-smoke-01",
+  "reason": "self_harm",
+  "completedAt": "2026-04-27T12:00:01.500Z"
+}

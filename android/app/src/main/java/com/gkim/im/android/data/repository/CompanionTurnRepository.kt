@@ -74,6 +74,7 @@ interface CompanionTurnRepository {
     fun handleTurnCompleted(event: ImGatewayEvent.CompanionTurnCompleted)
     fun handleTurnFailed(event: ImGatewayEvent.CompanionTurnFailed)
     fun handleTurnBlocked(event: ImGatewayEvent.CompanionTurnBlocked)
+    fun handleTurnTimeout(event: ImGatewayEvent.CompanionTurnTimeout)
 
     fun selectVariant(turnId: String, variantIndex: Int)
     fun selectVariantByGroup(conversationId: String, variantGroupId: String, newIndex: Int)
@@ -288,6 +289,25 @@ class DefaultCompanionTurnRepository : CompanionTurnRepository {
             )
             tree.copy(
                 messagesById = tree.messagesById + (messageId to blocked),
+            )
+        }
+    }
+
+    override fun handleTurnTimeout(event: ImGatewayEvent.CompanionTurnTimeout) {
+        mutateTree(event.conversationId) { tree ->
+            val messageId = tree.turnToMessageId[event.turnId] ?: event.messageId
+            val existing = tree.messagesById[messageId] ?: return@mutateTree tree
+            val updatedMeta = existing.companionTurnMeta?.copy(
+                isEditable = false,
+                canRegenerate = true,
+                timeoutElapsedMs = event.elapsedMs,
+            )
+            val timed = existing.copy(
+                status = MessageStatus.Timeout,
+                companionTurnMeta = updatedMeta,
+            )
+            tree.copy(
+                messagesById = tree.messagesById + (messageId to timed),
             )
         }
     }

@@ -1,0 +1,9 @@
+{
+  "type": "companion_turn.failed",
+  "turnId": "turn-failed-recovery-smoke-01",
+  "conversationId": "conversation-recovery-smoke",
+  "messageId": "companion-turn-failed-recovery-smoke-01",
+  "subtype": "provider_unavailable",
+  "errorMessage": "upstream provider returned 503",
+  "completedAt": "2026-04-27T12:00:01.500Z"
+}

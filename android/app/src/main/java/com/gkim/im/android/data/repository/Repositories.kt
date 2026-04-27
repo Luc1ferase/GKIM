@@ -1201,7 +1201,8 @@ class LiveMessagingRepository(
             is com.gkim.im.android.data.remote.im.ImGatewayEvent.CompanionTurnDelta,
             is com.gkim.im.android.data.remote.im.ImGatewayEvent.CompanionTurnCompleted,
             is com.gkim.im.android.data.remote.im.ImGatewayEvent.CompanionTurnFailed,
-            is com.gkim.im.android.data.remote.im.ImGatewayEvent.CompanionTurnBlocked -> Unit
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.CompanionTurnBlocked,
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.CompanionTurnTimeout -> Unit
         }
     }
 

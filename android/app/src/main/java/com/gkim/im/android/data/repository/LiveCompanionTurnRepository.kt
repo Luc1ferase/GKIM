@@ -364,6 +364,9 @@ class LiveCompanionTurnRepository(
     override fun handleTurnBlocked(event: ImGatewayEvent.CompanionTurnBlocked) =
         default.handleTurnBlocked(event)
 
+    override fun handleTurnTimeout(event: ImGatewayEvent.CompanionTurnTimeout) =
+        default.handleTurnTimeout(event)
+
     override fun selectVariant(turnId: String, variantIndex: Int) =
         default.selectVariant(turnId, variantIndex)
 
@@ -401,6 +404,7 @@ class LiveCompanionTurnRepository(
             is ImGatewayEvent.CompanionTurnCompleted -> default.handleTurnCompleted(event)
             is ImGatewayEvent.CompanionTurnFailed -> default.handleTurnFailed(event)
             is ImGatewayEvent.CompanionTurnBlocked -> default.handleTurnBlocked(event)
+            is ImGatewayEvent.CompanionTurnTimeout -> default.handleTurnTimeout(event)
             else -> Unit
         }
     }

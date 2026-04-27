@@ -1243,6 +1243,7 @@ sealed interface ImGatewayEvent {
         val messageId: String,
         val subtype: String,
         val errorMessage: String? = null,
+        val completedAt: String? = null,
     ) : ImGatewayEvent {
         val subtypeAsFailedSubtype: FailedSubtype
             get() = FailedSubtype.fromWireKey(subtype)
@@ -1254,10 +1255,20 @@ sealed interface ImGatewayEvent {
         val conversationId: String,
         val messageId: String,
         val reason: String,
+        val completedAt: String? = null,
     ) : ImGatewayEvent {
         val reasonAsBlockReason: BlockReason
             get() = BlockReason.fromWireKey(reason)
     }
+
+    @Serializable
+    data class CompanionTurnTimeout(
+        val turnId: String,
+        val conversationId: String,
+        val messageId: String,
+        val elapsedMs: Long,
+        val completedAt: String? = null,
+    ) : ImGatewayEvent
 }
 
 object ImGatewayEventParser {
@@ -1281,6 +1292,7 @@ object ImGatewayEventParser {
             "companion_turn.completed" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnCompleted>(element)
             "companion_turn.failed" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnFailed>(element)
             "companion_turn.blocked" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnBlocked>(element)
+            "companion_turn.timeout" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnTimeout>(element)
             else -> throw IllegalArgumentException("Unsupported gateway event type")
         }
     }

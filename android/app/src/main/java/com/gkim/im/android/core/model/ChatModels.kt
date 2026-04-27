@@ -36,6 +36,7 @@ data class CompanionTurnMeta(
     val canRegenerate: Boolean = false,
     val blockReasonKey: String? = null,
     val failedSubtypeKey: String? = null,
+    val timeoutElapsedMs: Long? = null,
     val siblingCount: Int = 1,
     val siblingActiveIndex: Int = 0,
 )

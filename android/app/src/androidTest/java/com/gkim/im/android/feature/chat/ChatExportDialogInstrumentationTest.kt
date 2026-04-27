@@ -202,6 +202,7 @@ class ChatExportDialogInstrumentationTest {
         override fun handleTurnCompleted(event: ImGatewayEvent.CompanionTurnCompleted) = Unit
         override fun handleTurnFailed(event: ImGatewayEvent.CompanionTurnFailed) = Unit
         override fun handleTurnBlocked(event: ImGatewayEvent.CompanionTurnBlocked) = Unit
+        override fun handleTurnTimeout(event: ImGatewayEvent.CompanionTurnTimeout) = Unit
         override fun selectVariant(turnId: String, variantIndex: Int) = Unit
         override fun selectVariantByGroup(conversationId: String, variantGroupId: String, newIndex: Int) = Unit
         override fun applyRecord(record: CompanionTurnRecordDto) = Unit
