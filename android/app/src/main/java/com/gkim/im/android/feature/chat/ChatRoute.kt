@@ -914,20 +914,14 @@ internal fun ChatTopBar(
             ) {
                 Text(text = "<", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
             }
-            Box(
+            com.gkim.im.android.core.ui.AvatarFallbackSilhouette(
                 modifier = Modifier
-                    .size(40.dp)
-                    .background(AetherColors.Primary.copy(alpha = 0.18f), CircleShape)
                     .let { if (onHeaderAvatarTap != null) it.clickable(onClick = onHeaderAvatarTap) else it }
                     .testTag("chat-header-avatar"),
-                contentAlignment = androidx.compose.ui.Alignment.Center,
-            ) {
-                Text(
-                    text = conversation?.avatarText ?: "",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = AetherColors.Primary,
-                )
-            }
+                size = 40.dp,
+                shape = com.gkim.im.android.core.ui.ChatAvatarShape,
+                contentDescription = conversation?.contactName,
+            )
             Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
                 Text(
                     text = conversation?.contactName ?: "Chat",
@@ -1073,12 +1067,22 @@ internal fun ChatMessageRow(
     ) {
         if (isOutgoing) {
             Box(modifier = Modifier.weight(1f))
+        } else if (message.direction == MessageDirection.Incoming) {
+            com.gkim.im.android.core.ui.AvatarFallbackSilhouette(
+                modifier = Modifier
+                    .let { if (onBubbleAvatarTap != null) it.clickable(onClick = onBubbleAvatarTap) else it }
+                    .testTag("chat-message-avatar-${message.id}"),
+                size = 40.dp,
+                shape = com.gkim.im.android.core.ui.ChatAvatarShape,
+                contentDescription = authorName,
+            )
         } else {
+            // System messages keep a label-style chip rather than a silhouette;
+            // they represent app-emitted metadata, not a companion identity.
             Box(
                 modifier = Modifier
                     .size(40.dp)
                     .background(avatarBackground, CircleShape)
-                    .let { if (onBubbleAvatarTap != null && message.direction == MessageDirection.Incoming) it.clickable(onClick = onBubbleAvatarTap) else it }
                     .testTag("chat-message-avatar-${message.id}"),
                 contentAlignment = Alignment.Center,
             ) {

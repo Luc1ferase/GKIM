@@ -583,21 +583,14 @@ private fun CharacterCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Box(
+                com.gkim.im.android.core.ui.AvatarFallbackSilhouette(
                     modifier = Modifier
                         .padding(end = 14.dp)
-                        .size(44.dp)
-                        .background(AetherColors.Primary.copy(alpha = 0.18f), androidx.compose.foundation.shape.CircleShape)
                         .clickable(onClick = onAvatarTap)
                         .testTag("$testTag-avatar"),
-                    contentAlignment = androidx.compose.ui.Alignment.Center,
-                ) {
-                    Text(
-                        text = character.avatarText,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = AetherColors.Primary,
-                    )
-                }
+                    shape = com.gkim.im.android.core.ui.TavernCardAvatarShape,
+                    contentDescription = character.displayName,
+                )
                 Column(
                     modifier = Modifier.weight(1f).clickable(onClick = onClick),
                     verticalArrangement = Arrangement.spacedBy(4.dp),

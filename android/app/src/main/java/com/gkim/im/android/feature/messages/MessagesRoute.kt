@@ -162,14 +162,11 @@ private fun MessagesScreen(
 private fun ConversationRow(conversation: Conversation, onClick: () -> Unit) {
     GlassCard(modifier = Modifier.testTag("conversation-row-${conversation.id}").clickable(onClick = onClick)) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .background(AetherColors.Primary.copy(alpha = 0.14f), CircleShape)
-                    .padding(horizontal = 18.dp, vertical = 14.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(text = conversation.avatarText, color = AetherColors.Primary, style = MaterialTheme.typography.titleLarge)
-            }
+            com.gkim.im.android.core.ui.AvatarFallbackSilhouette(
+                modifier = Modifier.testTag("conversation-avatar-${conversation.id}"),
+                shape = com.gkim.im.android.core.ui.ChatAvatarShape,
+                contentDescription = conversation.contactName,
+            )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
