@@ -120,7 +120,15 @@ interface CompanionTurnRepository {
         throw NotImplementedError("export path requires a live repository")
 }
 
-class DefaultCompanionTurnRepository : CompanionTurnRepository {
+class DefaultCompanionTurnRepository(
+    /**
+     * Wall-clock source for computing absolute retry deadlines from the
+     * relative `retryAfterMs` carried by `companion_turn.failed` events.
+     * Defaults to `System.currentTimeMillis`; tests can pin a deterministic
+     * instant via constructor injection.
+     */
+    private val clockMillis: () -> Long = ::defaultClockMillis,
+) : CompanionTurnRepository {
     private val treeState = MutableStateFlow<Map<String, ConversationTurnTree>>(emptyMap())
     private val activePathState = MutableStateFlow<Map<String, List<ChatMessage>>>(emptyMap())
     private val failedSubmissionsState =
@@ -257,10 +265,12 @@ class DefaultCompanionTurnRepository : CompanionTurnRepository {
             } else {
                 MessageStatus.Failed
             }
+            val retryAfterEpochMs = event.retryAfterMs?.let { clockMillis() + it }
             val updatedMeta = existing.companionTurnMeta?.copy(
                 isEditable = false,
                 canRegenerate = true,
                 failedSubtypeKey = event.subtype,
+                retryAfterEpochMs = retryAfterEpochMs,
             )
             val failed = existing.copy(
                 status = status,
@@ -474,3 +484,11 @@ private fun ChatMessage.withSiblingProjection(group: VariantGroupState): ChatMes
         ),
     )
 }
+
+/**
+ * Default wall-clock source used by [DefaultCompanionTurnRepository] when
+ * the caller doesn't inject a deterministic clock. Pulled out as a free
+ * function so the production constructor doesn't need to capture
+ * `::System.currentTimeMillis` (which would compile but reads as noise).
+ */
+internal fun defaultClockMillis(): Long = System.currentTimeMillis()

@@ -3714,3 +3714,52 @@ Upload
 - Paired backend slice: `companion-turn-backend-recovery-and-safety` SHA `c283298` on `feature/companion-turn-backend-recovery-and-safety`, pushed to `origin/feature/companion-turn-backend-recovery-and-safety`.
 
 ### Task §3.1 (companion-turn-client-recovery-and-safety): Verification roll-up — §1 + §2 evidence rows recorded above. All new unit tests green; full `:app:testDebugUnitTest` sweep BUILD SUCCESSFUL with no regressions. Paired backend slice `companion-turn-backend-recovery-and-safety` exists at SHA `c283298`; the byte-equivalent fixture mirror is asserted at §2.1.
+
+## companion-turn-client-retry-after-countdown delivery evidence
+
+### Task 0.1 (companion-turn-client-retry-after-countdown): OpenSpec scaffold
+- Branch: `feature/companion-turn-client-retry-after-countdown`; commit `47d4803`; push `origin/feature/companion-turn-client-retry-after-countdown`.
+- Closes the loop on F2's backend Retry-After parsing (already shipped on prod via `companion-turn-backend-recovery-followups` 2026-04-28). The Kotlin client previously dropped the `retryAfterMs` field silently; this slice consumes it onto a new `CompanionTurnMeta.retryAfterEpochMs` and renders a disabled-countdown Retry button on the Failed bubble.
+- Spec delta: 1 MODIFIED Requirement on `llm-text-companion-chat`'s "Companion reply lifecycle is explicit and bounded" — adds two Scenarios (parse+persist + render). `openspec validate --strict` returns valid.
+
+### Task 1.1 (companion-turn-client-retry-after-countdown): Wire model parses retryAfterMs
+- Branch: `feature/companion-turn-client-retry-after-countdown`; commit `75eea08`; push `origin/feature/companion-turn-client-retry-after-countdown`.
+- `ImGatewayEvent.CompanionTurnFailed` data class gains `retryAfterMs: Long? = null`. kotlinx-serialization treats absent + default-valued as the same case → existing `event-failed.json` fixture (no `retryAfterMs` key) decodes to `null` for back-compat.
+- Verification: `tests/CompanionTurnEventSerializationTest` grew from 5 → 7 cases. New `companion_turn failed payload with retryAfterMs round-trips into CompanionTurnFailed retryAfterMs` asserts `12_000L` parses correctly; `companion_turn failed payload without retryAfterMs decodes to null retryAfterMs` is the back-compat regression guard. `:app:testDebugUnitTest --tests "*CompanionTurnEventSerializationTest"` BUILD SUCCESSFUL.
+
+### Task 2.1+2.2 (companion-turn-client-retry-after-countdown): Repository persists retryAfterEpochMs
+- Branch: `feature/companion-turn-client-retry-after-countdown`; commit `f90d9c0`; push `origin/feature/companion-turn-client-retry-after-countdown`.
+- `CompanionTurnMeta` gains `retryAfterEpochMs: Long? = null` — stored as absolute wall-clock epoch (NOT relative ms) so reconnect-replay computes the correct remaining countdown without drift.
+- `DefaultCompanionTurnRepository` constructor gains optional `clockMillis: () -> Long = ::defaultClockMillis` (the new top-level `defaultClockMillis()` returns `System.currentTimeMillis()`). Back-compat: existing no-arg construction still compiles.
+- `handleTurnFailed` computes `event.retryAfterMs?.let { clockMillis() + it }` and threads it onto the meta.
+- Verification: `tests/CompanionTurnRepositoryRecoveryEventTest` grew from 3 → 5 cases. New `parsed event-failed with retryAfterMs is persisted as retryAfterEpochMs against fixed clock` uses frozen `clockMillis = { 1_777_377_600_000L }` + retryAfterMs=12_000 → asserts persisted deadline is `1_777_377_612_000L`. `parsed event-failed without retryAfterMs leaves retryAfterEpochMs null` is the absent-field regression. `:app:compileDebugKotlin` BUILD SUCCESSFUL; `:app:testDebugUnitTest --tests "*CompanionTurnRepositoryRecoveryEventTest"` BUILD SUCCESSFUL.
+
+### Task 3.1+3.2 (companion-turn-client-retry-after-countdown): ChatRoute Failed-bubble countdown render
+- Branch: `feature/companion-turn-client-retry-after-countdown`; commit `84e2cc2`; push `origin/feature/companion-turn-client-retry-after-countdown`.
+- `CompanionLifecyclePresentation` gains `retryAfterEpochMs: Long? = null`; `companionLifecyclePresentation()`'s `MessageStatus.Failed` branch reads `meta.retryAfterEpochMs` and propagates it. Other branches leave it null.
+- `ChatMessageRow`'s Retry render branches on `deadline != null && now < deadline`:
+  - Counting down: `Text("Retry in Ns / N 秒后重试")` in `OnSurfaceVariant` color, no `clickable`, testTag `chat-companion-retry-countdown-${message.id}`. A `LaunchedEffect(deadline)` ticks every 500ms; the loop self-terminates when `now >= deadline`.
+  - Otherwise: existing clickable Retry Text with testTag `chat-companion-retry-${message.id}`.
+- Remaining seconds: `ceil((deadline - now) / 1000).coerceAtLeast(1L)` — keeps the countdown from blipping to "Retry in 0s" before flipping to clickable Retry.
+- Verification: `:app:compileDebugKotlin` BUILD SUCCESSFUL.
+
+### Task 4.1 (companion-turn-client-retry-after-countdown): Spec delta strict-valid
+- Spec delta authored at scaffold time `47d4803`. Modifies the existing "Companion reply lifecycle is explicit and bounded" Requirement on `llm-text-companion-chat`: extended top description with the retryAfterMs → retryAfterEpochMs translation invariant, plus two new Scenarios:
+  - `companion_turn.failed event with retryAfterMs is persisted as absolute retryAfterEpochMs` (parse + repository persist)
+  - `Failed bubble Retry affordance renders disabled countdown while retryAfterEpochMs is in the future` (render branching)
+- `openspec validate companion-turn-client-retry-after-countdown --strict` returns valid.
+
+### Task 4.2 (companion-turn-client-retry-after-countdown): Presentation propagation tests
+- Branch: `feature/companion-turn-client-retry-after-countdown`; commit `c15852f`; push `origin/feature/companion-turn-client-retry-after-countdown`.
+- `tests/ChatPresentationTest` grew from 14 → 17 cases:
+  - `companion lifecycle failed state propagates retryAfterEpochMs onto presentation when meta carries it`
+  - `companion lifecycle failed state has null retryAfterEpochMs when meta does not carry it`
+  - `non-failed lifecycle states never carry retryAfterEpochMs even when meta is set` (defensive — only Failed propagates)
+- Drive-by: `companionMessage()` helper gains `failedSubtypeKey` + `retryAfterEpochMs` optional params with sensible defaults.
+- Full `:app:testDebugUnitTest` sweep BUILD SUCCESSFUL.
+
+### Task 4.3 (companion-turn-client-retry-after-countdown): DEFERRED — Compose instrumentation
+- Compose instrumentation test (`ChatFailureRetryCountdownInstrumentationTest`) needs an emulator and would advance `composeRule.mainClock` past the deadline to verify the live tag transition. Deferred because the wire→repository→presentation chain is fully pinned by §1.1 / §2.2 / §4.2 unit tests, and the §3.2 render branch is mechanical (one if-else over `now < deadline`); the marginal value of an instrumentation test is small relative to the emulator setup cost. Re-open when the next emulator-driven sweep runs and add the case alongside the existing `Chat*InstrumentationTest` files.
+
+### Task 4.4 (companion-turn-client-retry-after-countdown): Archive applied; post-archive specs strict-valid
+- Ran `openspec archive companion-turn-client-retry-after-countdown --yes` after §4.2 evidence landed. The archive moves the slice to `openspec/changes/archive/2026-04-28-companion-turn-client-retry-after-countdown/` and applies the spec delta onto `openspec/specs/llm-text-companion-chat/spec.md` (1 modified Requirement). Post-archive `openspec validate --specs --strict` returns clean across all 16 client capabilities.

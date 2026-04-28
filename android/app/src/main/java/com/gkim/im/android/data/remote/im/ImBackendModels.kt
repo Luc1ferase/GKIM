@@ -1244,6 +1244,18 @@ sealed interface ImGatewayEvent {
         val subtype: String,
         val errorMessage: String? = null,
         val completedAt: String? = null,
+        /**
+         * Optional retry hint in milliseconds — populated server-side from
+         * the upstream `Retry-After` header on HTTP 429 responses (per the
+         * paired backend slice `companion-turn-backend-recovery-followups`
+         * §1). Absent for non-rate-limit failures or when the header is
+         * missing / unparseable; older payloads that omit the field still
+         * decode (kotlinx-serialization treats absent + default-valued as
+         * the same case). The repository converts this relative ms into an
+         * absolute `retryAfterEpochMs` on `CompanionTurnMeta` so the bubble
+         * countdown survives reconnects without drift.
+         */
+        val retryAfterMs: Long? = null,
     ) : ImGatewayEvent {
         val subtypeAsFailedSubtype: FailedSubtype
             get() = FailedSubtype.fromWireKey(subtype)

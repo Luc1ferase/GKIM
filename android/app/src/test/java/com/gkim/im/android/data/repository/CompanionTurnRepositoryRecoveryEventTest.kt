@@ -125,4 +125,60 @@ class CompanionTurnRepositoryRecoveryEventTest {
         // canRegenerate stays true so the bubble can offer Retry.
         assertTrue(terminal.companionTurnMeta?.canRegenerate == true)
     }
+
+    @Test
+    fun `parsed event-failed with retryAfterMs is persisted as retryAfterEpochMs against fixed clock`() {
+        // Pinned wall-clock so the absolute deadline arithmetic is deterministic.
+        // Reference: 2026-04-28 12:00:00 UTC = 1_777_377_600_000 ms.
+        val frozenClockMs = 1_777_377_600_000L
+        val repo = DefaultCompanionTurnRepository(clockMillis = { frozenClockMs })
+        seedStartedTurn(repo, "turn-rate-limited-smoke-01", "companion-turn-rate-limited-smoke-01")
+
+        val payload = """
+            {
+              "type": "companion_turn.failed",
+              "turnId": "turn-rate-limited-smoke-01",
+              "conversationId": "conversation-recovery-smoke",
+              "messageId": "companion-turn-rate-limited-smoke-01",
+              "subtype": "transient",
+              "errorMessage": "upstream returned HTTP 429",
+              "retryAfterMs": 12000,
+              "completedAt": "2026-04-28T12:00:00.000Z"
+            }
+        """.trimIndent()
+        val event = ImGatewayEventParser.parse(payload)
+        repo.handleTurnFailed(event as ImGatewayEvent.CompanionTurnFailed)
+
+        val path = repo.activePathByConversation.value[conversationId].orEmpty()
+        val terminal = path.last()
+        assertEquals(MessageStatus.Failed, terminal.status)
+        assertEquals("transient", terminal.companionTurnMeta?.failedSubtypeKey)
+        // Absolute deadline = clock + retryAfterMs (= 1_777_377_612_000 ms).
+        assertEquals(frozenClockMs + 12_000L, terminal.companionTurnMeta?.retryAfterEpochMs)
+    }
+
+    @Test
+    fun `parsed event-failed without retryAfterMs leaves retryAfterEpochMs null`() {
+        val repo = DefaultCompanionTurnRepository(clockMillis = { 1_777_377_600_000L })
+        seedStartedTurn(repo, "turn-failed-no-retry-after-smoke-01", "companion-turn-failed-no-retry-after-smoke-01")
+
+        val payload = """
+            {
+              "type": "companion_turn.failed",
+              "turnId": "turn-failed-no-retry-after-smoke-01",
+              "conversationId": "conversation-recovery-smoke",
+              "messageId": "companion-turn-failed-no-retry-after-smoke-01",
+              "subtype": "provider_unavailable",
+              "errorMessage": "upstream returned HTTP 503"
+            }
+        """.trimIndent()
+        val event = ImGatewayEventParser.parse(payload)
+        repo.handleTurnFailed(event as ImGatewayEvent.CompanionTurnFailed)
+
+        val path = repo.activePathByConversation.value[conversationId].orEmpty()
+        val terminal = path.last()
+        assertEquals(MessageStatus.Failed, terminal.status)
+        assertEquals("provider_unavailable", terminal.companionTurnMeta?.failedSubtypeKey)
+        assertEquals(null, terminal.companionTurnMeta?.retryAfterEpochMs)
+    }
 }

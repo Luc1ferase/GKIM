@@ -176,6 +176,65 @@ class ChatPresentationTest {
     }
 
     @Test
+    fun `companion lifecycle failed state propagates retryAfterEpochMs onto presentation when meta carries it`() {
+        val deadline = 1_777_377_612_000L
+        val presentation = companionLifecyclePresentation(
+            message = companionMessage(
+                status = MessageStatus.Failed,
+                body = "rate limited",
+                failedSubtypeKey = "transient",
+                retryAfterEpochMs = deadline,
+            ),
+            isMostRecentCompanionVariant = true,
+        )!!
+        assertEquals(deadline, presentation.retryAfterEpochMs)
+        // Field presence MUST NOT toggle showRetry — the bubble still wants
+        // a Retry affordance; the render-time logic decides whether it's
+        // clickable or counting down.
+        assertTrue(presentation.showRetry)
+    }
+
+    @Test
+    fun `companion lifecycle failed state has null retryAfterEpochMs when meta does not carry it`() {
+        val presentation = companionLifecyclePresentation(
+            message = companionMessage(
+                status = MessageStatus.Failed,
+                body = "rate limited",
+                failedSubtypeKey = "transient",
+                retryAfterEpochMs = null,
+            ),
+            isMostRecentCompanionVariant = true,
+        )!!
+        assertEquals(null, presentation.retryAfterEpochMs)
+        assertTrue(presentation.showRetry)
+    }
+
+    @Test
+    fun `non-failed lifecycle states never carry retryAfterEpochMs even when meta is set`() {
+        // Defensive: only the Failed branch propagates the field. Streaming /
+        // Completed / Timeout / Blocked / Thinking all leave it null.
+        val streaming = companionLifecyclePresentation(
+            message = companionMessage(
+                status = MessageStatus.Streaming,
+                body = "partial",
+                retryAfterEpochMs = 1_777_377_612_000L,
+            ),
+            isMostRecentCompanionVariant = true,
+        )!!
+        assertEquals(null, streaming.retryAfterEpochMs)
+
+        val timeout = companionLifecyclePresentation(
+            message = companionMessage(
+                status = MessageStatus.Timeout,
+                body = "elapsed",
+                retryAfterEpochMs = 1_777_377_612_000L,
+            ),
+            isMostRecentCompanionVariant = true,
+        )!!
+        assertEquals(null, timeout.retryAfterEpochMs)
+    }
+
+    @Test
     fun `companion lifecycle timeout state uses distinct wording from failed`() {
         val presentation = companionLifecyclePresentation(
             message = companionMessage(status = MessageStatus.Timeout, body = "upstream slow"),
@@ -310,6 +369,8 @@ class ChatPresentationTest {
         body: String,
         canRegenerate: Boolean = false,
         model: String? = null,
+        failedSubtypeKey: String? = null,
+        retryAfterEpochMs: Long? = null,
     ): ChatMessage = ChatMessage(
         id = "companion-1",
         direction = MessageDirection.Incoming,
@@ -324,6 +385,8 @@ class ChatPresentationTest {
             providerId = "openai",
             model = model,
             canRegenerate = canRegenerate,
+            failedSubtypeKey = failedSubtypeKey,
+            retryAfterEpochMs = retryAfterEpochMs,
         ),
     )
 }

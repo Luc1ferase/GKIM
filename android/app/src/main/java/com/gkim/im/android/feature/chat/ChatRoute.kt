@@ -78,6 +78,7 @@ import com.gkim.im.android.data.repository.MessagingRepository
 import com.gkim.im.android.data.repository.UserPersonaRepository
 import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.feature.shared.simpleViewModelFactory
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -1153,14 +1154,50 @@ internal fun ChatMessageRow(
                         )
                     }
                     if (companionPresentation.showRetry) {
-                        Text(
-                            text = if (language == AppLanguage.English) "Retry" else "重试",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = AetherColors.Primary,
-                            modifier = Modifier
-                                .clickable(onClick = onRetryCompanionTurn)
-                                .testTag("chat-companion-retry-${message.id}"),
-                        )
+                        val deadline = companionPresentation.retryAfterEpochMs
+                        var nowMs by remember(deadline) {
+                            mutableStateOf(System.currentTimeMillis())
+                        }
+                        // Drive countdown recomposition while the deadline is in
+                        // the future. The LaunchedEffect rekeys on `deadline` so
+                        // the loop tears down + restarts cleanly when a fresh
+                        // 429 with a new Retry-After lands on the same bubble.
+                        if (deadline != null && nowMs < deadline) {
+                            LaunchedEffect(deadline) {
+                                while (true) {
+                                    val now = System.currentTimeMillis()
+                                    nowMs = now
+                                    if (now >= deadline) break
+                                    delay(500)
+                                }
+                            }
+                        }
+                        if (deadline != null && nowMs < deadline) {
+                            val remainingSeconds = ((deadline - nowMs + 999) / 1000)
+                                .coerceAtLeast(1L)
+                            val countdownText = if (language == AppLanguage.English) {
+                                "Retry in ${remainingSeconds}s"
+                            } else {
+                                "${remainingSeconds} 秒后重试"
+                            }
+                            Text(
+                                text = countdownText,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = AetherColors.OnSurfaceVariant,
+                                modifier = Modifier.testTag(
+                                    "chat-companion-retry-countdown-${message.id}"
+                                ),
+                            )
+                        } else {
+                            Text(
+                                text = if (language == AppLanguage.English) "Retry" else "重试",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = AetherColors.Primary,
+                                modifier = Modifier
+                                    .clickable(onClick = onRetryCompanionTurn)
+                                    .testTag("chat-companion-retry-${message.id}"),
+                            )
+                        }
                     }
                     if (companionPresentation.showEditUserTurn) {
                         Text(
@@ -1444,6 +1481,14 @@ internal data class CompanionLifecyclePresentation(
     val showEditUserTurn: Boolean = false,
     val showCheckConnectionHint: Boolean = false,
     val showSwitchPresetHint: Boolean = false,
+    /**
+     * Absolute wall-clock millis at which the Retry button becomes tappable
+     * again; populated by F2-backend's parsed `Retry-After` header on a 429
+     * upstream rejection. Null when the WS event omitted the field — the
+     * Retry button renders as immediately tappable, matching pre-F2c behavior.
+     * Only meaningful when [tone] == [CompanionLifecycleTone.Failed].
+     */
+    val retryAfterEpochMs: Long? = null,
 )
 
 internal const val TIMEOUT_PRESET_HINT_MAX_REPLY_TOKENS_CAP: Int = 1024
@@ -1512,6 +1557,7 @@ internal fun companionLifecyclePresentation(
                 failedSubtype = subtype,
                 showEditUserTurn = needsEdit,
                 showCheckConnectionHint = needsConnectionHint,
+                retryAfterEpochMs = meta.retryAfterEpochMs,
             )
         }
         MessageStatus.Timeout -> {
