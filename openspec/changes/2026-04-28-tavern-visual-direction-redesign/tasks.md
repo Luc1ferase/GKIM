@@ -1,0 +1,50 @@
+# Tasks — tavern-visual-direction-redesign
+
+Each task is a single DELIVERY_WORKFLOW unit (verify → review ≥ 95 → commit + push → tick). Numbered by sub-slice (`R1.x` etc.).
+
+## R1. Foundation — palette + typography swap (no layout edits)
+
+- [ ] R1.1 Replace `AetherTheme.kt` `DarkAetherPalette` and `LightAetherPalette` with the Tavern Dark + Tavern Light palettes specified in `design.md` (`#1A0F0A` espresso surface + `#E0A04D` brass primary; aged-paper `#F1E7D2` light variant). Token names stay identical (`surface`, `primary`, etc.) so all call sites continue to compile. Verification: `$env:JAVA_HOME='C:\Program Files\Java\jdk-17'; .\gradlew.bat --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest --tests com.gkim.im.android.core.designsystem.AetherPaletteContractTest` covers each token reading the new hex from both Dark and Light palettes.
+
+- [ ] R1.2 Add packaged font assets under `app/src/main/res/font/`: `newsreader_regular.ttf`, `newsreader_semibold.ttf`, `newsreader_bold.ttf`, `inter_regular.ttf`, `inter_medium.ttf`, `noto_serif_cjk_sc_regular.otf`, `noto_serif_cjk_sc_semibold.otf`, `noto_sans_cjk_sc_regular.otf`. Bundle the OFL.txt license alongside under `app/src/main/assets/licenses/` and link from the existing about / settings screen credits. Add a new `core/designsystem/AetherFonts.kt` exposing `AetherFonts.DisplaySerif` (Newsreader + Noto Serif CJK SC fallback) and `AetherFonts.UiSans` (Inter + Noto Sans CJK SC fallback) as bilingual `FontFamily` chains. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.core.designsystem.AetherFontsAssetsTest` asserts each declared `FontFamily` resolves to a packaged asset for every weight referenced by `AetherTypography`.
+
+- [ ] R1.3 Update `AetherTypography` so `headlineLarge` / `headlineMedium` / `titleLarge` map to `AetherFonts.DisplaySerif` and `bodyLarge` / `bodyMedium` / `labelLarge` map to `AetherFonts.UiSans`. Preserve existing sp / lineHeight values from the design doc. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.core.designsystem.AetherTypographyContractTest` covers each typography role's `fontFamily` and the bilingual fallback chain.
+
+- [ ] R1.4 Capture before/after screenshots of the four chrome surfaces (tavern home, messages list, chat screen with at least one Streaming and one Completed bubble, character-detail) on `codex_api34` and check them into `docs/visual-direction/r1/` so the palette + typography shift is reviewable. The capture script lives at `tools/visual-direction/capture_chrome.ps1` (added in this task). Verification: `pwsh tools/visual-direction/capture_chrome.ps1 -OutDir docs/visual-direction/r1` produces 4 PNGs ≥ 200 KB each, all under the new palette (sampled `surface` pixel hex must equal Tavern Dark `#1A0F0A` ± 1).
+
+## R2. Information architecture — tavern as home, fold contacts
+
+- [ ] R2.1 Change the authenticated startup default route in `feature/navigation/GkimRootApp.kt` from `messages` to `tavern`. Add a Compose-Nav graph test asserting the start destination after a fresh authenticated session is `tavern`. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.navigation.RootNavStartDestinationTest` covers the start destination + back-handler behavior.
+
+- [ ] R2.2 Reduce the bottom nav from three tabs (`消息 / 联系人 / 酒馆`) to two (`酒馆 / 消息`). The `联系人` tab's existing screen content moves into Tavern as a folded "All companions" section reachable from the tavern home; no companion-list affordance is lost. Update bilingual labels (`Tavern / Messages`). Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.navigation.BottomNavTwoTabContractTest` covers tab count + ordering + bilingual labels, and `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.TavernAllCompanionsSectionTest` covers the integrated companion-list section.
+
+- [ ] R2.3 Rewrite IM-residue empty-state copy to in-character bilingual strings on three surfaces: messages list (`还没有人来过你的酒馆。挑一张角色牌坐下，让对话开始。` / `The bar is empty. Pull up a stool and pick a card to start a conversation.`), contact-search no-results, post-relationship-reset state. Add the strings to `core/strings/CompanionStrings.kt` with `english` / `chinese` accessors. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.core.strings.TavernEmptyStateCopyTest` covers all three surfaces × both languages.
+
+## R3. Component-pattern pruning
+
+- [ ] R3.1 Pill-discipline pass on the tavern home (`TavernRoute.kt:192-194`) and the chat top-bar overflow trigger. Demote `设置` and `导入卡` to rectangular containers (8 dp radius, `surfaceContainerHigh` background, no pill); promote `抽卡` to remain the sole pill, slightly larger and using `primary` (brass). Apply the same rule on the chat top-bar: `⋮` overflow becomes a 36 dp rectangular icon button, `导出对话` and `设置` rows in the dropdown stay text-with-icon (already non-pill, just verify). Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.TavernPillDisciplineTest` and `com.gkim.im.android.feature.chat.ChatTopBarPillDisciplineTest` each assert pill count == 1 and identify which action holds the pill.
+
+- [ ] R3.2 Replace the letter-monogram avatar fallback with a thematic silhouette placeholder. Add `core/ui/AvatarFallback.kt` rendering a generic upper-body silhouette in `surfaceContainerHighest` with a 1 dp `primary`-tinted stroke; the existing rounded-square shape is preserved for tavern cards and the round shape for chat avatars. Wire all current letter-monogram call sites (`TavernRoute`, `MessagesRoute`, chat header, chat bubble) through it. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.core.ui.AvatarFallbackTest` covers shape + tint per call site, and `.\gradlew.bat --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gkim.im.android.feature.tavern.AvatarFallbackInstrumentationTest` confirms a card without an uploaded portrait renders the silhouette on the live tavern home.
+
+- [ ] R3.3 Reframe the new-conversation FAB on the messages list. Replace the Material `FloatingActionButton` `+` with a 48 dp rectangular tap target (`surfaceContainerHigh` background, 12 dp radius, brass-tinted `primary` icon — door-bell or quill SVG asset added under `res/drawable/`). Keep the `testTag("messages-new-conversation-trigger")` for existing instrumentation. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.messages.MessagesNewConversationFabTest` covers shape + tint + tap-routing parity.
+
+- [ ] R3.4 Replace the Material default bottom-nav active-state pill with a 2 dp `primary` underline anchored at the icon's bottom edge. Render via a `Box` with `Modifier.drawBehind { drawLine(...) }` rather than Material's `NavigationBarItemDefaults.colors(...)`, so the visual contract is explicit. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.navigation.BottomNavActiveUnderlineTest` covers underline-only-on-active and color = palette `primary`.
+
+## R4. Ambient layer — restrained texture + candle-light glow
+
+- [ ] R4.1 Add `core/designsystem/AmbientLayer.kt` exposing `Modifier.tavernGrain()` (≤ 8 % overlay of a packaged `raw/tavern_grain.png` 1024 × 1024 noise PNG) and `Modifier.candleGlow(anchor: Alignment)` (single `Brush.radialGradient` ≤ 5 % opacity, `primaryContainer` core fading to transparent, anchored at the supplied alignment). Both modifiers are pure draw — no recomposition triggers. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.core.designsystem.AmbientLayerContractTest` covers grain opacity ceiling, glow opacity ceiling, and idempotency under recomposition.
+
+- [ ] R4.2 Apply `tavernGrain()` + `candleGlow(Alignment.TopEnd)` to the Tavern home outer column and `candleGlow(Alignment.TopStart)` to the chat header surface. No other surface gets the ambient layer in this slice. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.TavernAmbientApplicationTest` and `com.gkim.im.android.feature.chat.ChatHeaderAmbientApplicationTest` cover modifier application on the named surfaces and absence on every other named surface.
+
+- [ ] R4.3 Re-tone the gacha result animation accent from the current high-saturation lavender / pink to the new palette's `primary` (brass) and `tertiary` (ember red). Touch only color references; animation timing stays. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.GachaAccentPaletteTest` covers the animation's color references against the palette tokens.
+
+- [ ] R4.4 Capture after-screenshots of the same four chrome surfaces from R1.4 plus the gacha result, save under `docs/visual-direction/r4/`, and write a short comparative note (`docs/visual-direction/r4/README.md`) summarizing the visible R1 → R4 progression. Verification: `pwsh tools/visual-direction/capture_chrome.ps1 -OutDir docs/visual-direction/r4` produces the same 4 PNGs plus `gacha-result.png` ≥ 200 KB each, and the README references all five.
+
+## Acceptance gates per slice
+
+- R1 is shippable on its own: palette + typography land, no layout / IA / behavior change.
+- R2 builds on R1: nav reduces to two tabs, Tavern is the landing page, IM-residue copy is gone.
+- R3 builds on R1 + R2: pill noise, monogram avatars, default FAB, default bottom-nav active-state are replaced.
+- R4 builds on R1–R3: ambient texture + candle-glow + gacha re-tone, screenshots prove the journey.
+
+Per `docs/DELIVERY_WORKFLOW.md`, every checkbox is ticked **only after** verification passes, review scores ≥ 95, and the change is committed and pushed.
