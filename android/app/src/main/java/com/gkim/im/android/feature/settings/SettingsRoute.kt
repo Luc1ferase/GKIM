@@ -911,6 +911,27 @@ private fun SettingsMenuScreen(
                 }
             }
         }
+
+        Column(
+            modifier = Modifier.testTag("settings-menu-credits"),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = appLanguage.pick("Open-source fonts", "开源字体致谢"),
+                style = MaterialTheme.typography.labelLarge,
+                color = AetherColors.Primary,
+                modifier = Modifier.testTag("settings-menu-credits-label"),
+            )
+            Text(
+                text = appLanguage.pick(
+                    "Newsreader (OFL) and Inter (OFL) ship under the SIL Open Font License v1.1; full texts under assets/licenses/.",
+                    "Newsreader（OFL）与 Inter（OFL）均遵循 SIL 开源字体许可 v1.1，完整文本位于 assets/licenses/。",
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = AetherColors.OnSurfaceVariant,
+                modifier = Modifier.testTag("settings-menu-credits-body"),
+            )
+        }
     }
 }
 
