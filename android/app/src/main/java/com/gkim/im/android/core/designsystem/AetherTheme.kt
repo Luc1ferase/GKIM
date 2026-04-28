@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 @Immutable
-private data class AetherPalette(
+internal data class AetherPalette(
     val surface: Color,
     val surfaceContainerLow: Color,
     val surfaceContainerHigh: Color,
@@ -35,38 +35,38 @@ private data class AetherPalette(
     val danger: Color,
 )
 
-private val DarkAetherPalette = AetherPalette(
-    surface = Color(0xFF091328),
-    surfaceContainerLow = Color(0xFF1A2338),
-    surfaceContainerHigh = Color(0xFF2A3550),
-    surfaceContainerHighest = Color(0xFF344262),
-    surfaceLowest = Color(0xFF050B16),
-    primary = Color(0xFFC3C0FF),
-    primaryContainer = Color(0xFF4F46E5),
-    secondary = Color(0xFFD5E3FD),
-    tertiary = Color(0xFFFF9DD1),
-    onSurface = Color(0xFFFFFFFF),
-    onSurfaceVariant = Color(0xFFA3AAC4),
-    outlineVariant = Color(0xFF464555),
-    success = Color(0xFF49D39D),
-    danger = Color(0xFFFF6E84),
+internal val DarkAetherPalette = AetherPalette(
+    surface = Color(0xFF1A0F0A),
+    surfaceContainerLow = Color(0xFF271812),
+    surfaceContainerHigh = Color(0xFF3A2419),
+    surfaceContainerHighest = Color(0xFF4D2E1F),
+    surfaceLowest = Color(0xFF0E0805),
+    primary = Color(0xFFE0A04D),
+    primaryContainer = Color(0xFFA06135),
+    secondary = Color(0xFF8B5E3C),
+    tertiary = Color(0xFFB85450),
+    onSurface = Color(0xFFF4ECDD),
+    onSurfaceVariant = Color(0xFFB8A78D),
+    outlineVariant = Color(0xFF4A382C),
+    success = Color(0xFF7BA05B),
+    danger = Color(0xFFC24644),
 )
 
-private val LightAetherPalette = AetherPalette(
-    surface = Color(0xFFF8FAFC),
-    surfaceContainerLow = Color(0xFFFFFFFF),
-    surfaceContainerHigh = Color(0xFFE9EEF7),
-    surfaceContainerHighest = Color(0xFFD9E2F2),
-    surfaceLowest = Color(0xFFF2F5FA),
-    primary = Color(0xFF4F46E5),
-    primaryContainer = Color(0xFFC7D2FE),
-    secondary = Color(0xFF355C7D),
-    tertiary = Color(0xFFD946EF),
-    onSurface = Color(0xFF101828),
-    onSurfaceVariant = Color(0xFF5C667A),
-    outlineVariant = Color(0xFFB6C0D4),
-    success = Color(0xFF15803D),
-    danger = Color(0xFFDC2626),
+internal val LightAetherPalette = AetherPalette(
+    surface = Color(0xFFF1E7D2),
+    surfaceContainerLow = Color(0xFFF8F0DD),
+    surfaceContainerHigh = Color(0xFFE5D5B6),
+    surfaceContainerHighest = Color(0xFFD8C49B),
+    surfaceLowest = Color(0xFFEBDFC4),
+    primary = Color(0xFF8B4513),
+    primaryContainer = Color(0xFFC28E5A),
+    secondary = Color(0xFF705033),
+    tertiary = Color(0xFF9B3C30),
+    onSurface = Color(0xFF2A1810),
+    onSurfaceVariant = Color(0xFF705943),
+    outlineVariant = Color(0xFFB19877),
+    success = Color(0xFF5E7E3F),
+    danger = Color(0xFFA33A35),
 )
 
 private val LocalAetherPalette = staticCompositionLocalOf { DarkAetherPalette }
