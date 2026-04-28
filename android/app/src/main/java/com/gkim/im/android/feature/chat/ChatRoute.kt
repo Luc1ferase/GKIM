@@ -21,6 +21,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -492,6 +493,19 @@ private fun ChatScreen(
     val visibleModes = visibleAigcModes(uiState.activeProvider)
     val readyModes = readyAigcModes(uiState.activeProvider, generationSourceMedia?.type)
 
+    // Ephemeral notice surfaced when the user taps Retry on a Failed bubble
+    // whose cooldown (`retryAfterEpochMs`, derived from the upstream
+    // `Retry-After` header) hasn't elapsed yet. The Retry button itself
+    // stays clickable + visually unchanged; this banner is the only visual
+    // signal of the rate-limit window. 3-second auto-dismiss.
+    var cooldownNotice by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(cooldownNotice) {
+        if (cooldownNotice != null) {
+            delay(3000)
+            cooldownNotice = null
+        }
+    }
+
     LaunchedEffect(timelineMessages.size, uiState.latestTask?.id) {
         val totalItems = timelineMessages.size + if (uiState.latestTask != null) 1 else 0
         if (totalItems > 0) {
@@ -528,6 +542,24 @@ private fun ChatScreen(
                     .semantics { contentDescription = footer.contentDescription }
                     .testTag("chat-persona-footer"),
             )
+        }
+
+        cooldownNotice?.let { notice ->
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .testTag("chat-retry-cooldown-notice"),
+                shape = RoundedCornerShape(12.dp),
+                color = AetherColors.SurfaceContainerLow,
+            ) {
+                Text(
+                    text = notice,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                )
+            }
         }
 
         val treeLifecycle = uiState.treeAffordanceLifecycle
@@ -588,6 +620,9 @@ private fun ChatScreen(
                         onSelectVariantAt = onSelectVariantAt,
                         onEditUserBubble = onEditUserBubble,
                         onRegenerateFromHere = onRegenerateFromHere,
+                        onTooEarlyRetry = { remainingSeconds ->
+                            cooldownNotice = formatRetryCooldownNotice(remainingSeconds, appLanguage)
+                        },
                     )
                 }
                 uiState.latestTask?.let { task ->
@@ -957,6 +992,17 @@ internal fun ChatMessageRow(
     onComposeNewMessage: () -> Unit = {},
     onLearnMorePolicy: () -> Unit = {},
     onRetryCompanionTurn: () -> Unit = {},
+    /**
+     * Invoked when the user taps the Retry affordance during the cooldown
+     * window dictated by `companionTurnMeta.retryAfterEpochMs`. The
+     * `remainingSeconds` is computed at click time as
+     * `ceil((deadline - now) / 1000)` clamped to >= 1L. The screen-level
+     * binding surfaces an ephemeral notice; the row itself does NOT render
+     * any countdown or disabled styling — see the
+     * `companion-turn-client-retry-after-snackbar` slice for the
+     * superseding-decision rationale.
+     */
+    onTooEarlyRetry: (remainingSeconds: Long) -> Unit = {},
     onEditUserTurn: () -> Unit = {},
     onEditUserBubble: (messageId: String, draftText: String) -> Unit = { _, _ -> },
     onRegenerateFromHere: (messageId: String) -> Unit = { _ -> },
@@ -1154,50 +1200,33 @@ internal fun ChatMessageRow(
                         )
                     }
                     if (companionPresentation.showRetry) {
-                        val deadline = companionPresentation.retryAfterEpochMs
-                        var nowMs by remember(deadline) {
-                            mutableStateOf(System.currentTimeMillis())
-                        }
-                        // Drive countdown recomposition while the deadline is in
-                        // the future. The LaunchedEffect rekeys on `deadline` so
-                        // the loop tears down + restarts cleanly when a fresh
-                        // 429 with a new Retry-After lands on the same bubble.
-                        if (deadline != null && nowMs < deadline) {
-                            LaunchedEffect(deadline) {
-                                while (true) {
+                        // Retry button always renders as a clickable affordance
+                        // — the cooldown is enforced at click time, not render
+                        // time, so the button itself never carries a visible
+                        // countdown or disabled styling. When `retryAfterEpochMs`
+                        // is in the future, taps are intercepted and surface an
+                        // ephemeral notice via `onTooEarlyRetry`; outside the
+                        // cooldown, taps dispatch `onRetryCompanionTurn` as
+                        // they did before this slice.
+                        Text(
+                            text = if (language == AppLanguage.English) "Retry" else "重试",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.Primary,
+                            modifier = Modifier
+                                .clickable {
+                                    val deadline = companionPresentation.retryAfterEpochMs
                                     val now = System.currentTimeMillis()
-                                    nowMs = now
-                                    if (now >= deadline) break
-                                    delay(500)
+                                    if (deadline != null && now < deadline) {
+                                        val remainingSeconds =
+                                            ((deadline - now + 999) / 1000)
+                                                .coerceAtLeast(1L)
+                                        onTooEarlyRetry(remainingSeconds)
+                                    } else {
+                                        onRetryCompanionTurn()
+                                    }
                                 }
-                            }
-                        }
-                        if (deadline != null && nowMs < deadline) {
-                            val remainingSeconds = ((deadline - nowMs + 999) / 1000)
-                                .coerceAtLeast(1L)
-                            val countdownText = if (language == AppLanguage.English) {
-                                "Retry in ${remainingSeconds}s"
-                            } else {
-                                "${remainingSeconds} 秒后重试"
-                            }
-                            Text(
-                                text = countdownText,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = AetherColors.OnSurfaceVariant,
-                                modifier = Modifier.testTag(
-                                    "chat-companion-retry-countdown-${message.id}"
-                                ),
-                            )
-                        } else {
-                            Text(
-                                text = if (language == AppLanguage.English) "Retry" else "重试",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = AetherColors.Primary,
-                                modifier = Modifier
-                                    .clickable(onClick = onRetryCompanionTurn)
-                                    .testTag("chat-companion-retry-${message.id}"),
-                            )
-                        }
+                                .testTag("chat-companion-retry-${message.id}"),
+                        )
                     }
                     if (companionPresentation.showEditUserTurn) {
                         Text(
@@ -1492,6 +1521,19 @@ internal data class CompanionLifecyclePresentation(
 )
 
 internal const val TIMEOUT_PRESET_HINT_MAX_REPLY_TOKENS_CAP: Int = 1024
+
+/**
+ * Bilingual copy for the ephemeral cooldown notice surfaced when the user
+ * taps Retry on a Failed bubble whose `retryAfterEpochMs` deadline hasn't
+ * elapsed. Pulled into a top-level helper so the unit test can pin both
+ * locale variants without spinning up a Compose scope.
+ */
+internal fun formatRetryCooldownNotice(remainingSeconds: Long, language: AppLanguage): String =
+    if (language == AppLanguage.English) {
+        "Retry available in ${remainingSeconds}s"
+    } else {
+        "${remainingSeconds} 秒后才能重试"
+    }
 
 internal enum class CompanionLifecycleTone {
     Thinking, Streaming, Completed, Failed, Timeout, Blocked,
