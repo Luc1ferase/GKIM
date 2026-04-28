@@ -37,6 +37,17 @@ data class CompanionTurnMeta(
     val blockReasonKey: String? = null,
     val failedSubtypeKey: String? = null,
     val timeoutElapsedMs: Long? = null,
+    /**
+     * Absolute wall-clock millis at which the Retry affordance becomes
+     * tappable again. Computed by `DefaultCompanionTurnRepository.handleTurnFailed`
+     * as `clockMillis() + event.retryAfterMs` when the upstream returned HTTP
+     * 429 with a parseable `Retry-After` header (per the F2 backend slice).
+     * Stored as an absolute timestamp (NOT relative ms) so a reconnecting
+     * client that re-receives the same event after a long gap still
+     * computes the correct remaining countdown without drift. Null when
+     * the WS event omitted the field, leaving Retry immediately tappable.
+     */
+    val retryAfterEpochMs: Long? = null,
     val siblingCount: Int = 1,
     val siblingActiveIndex: Int = 0,
 )
