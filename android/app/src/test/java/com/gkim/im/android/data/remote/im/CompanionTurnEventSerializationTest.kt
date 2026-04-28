@@ -139,4 +139,45 @@ class CompanionTurnEventSerializationTest {
         assertNotNull(blocked as? ImGatewayEvent.CompanionTurnBlocked)
         assertNotNull(timeout as? ImGatewayEvent.CompanionTurnTimeout)
     }
+
+    @Test
+    fun `companion_turn failed payload with retryAfterMs round-trips into CompanionTurnFailed retryAfterMs`() {
+        val payload = """
+            {
+              "type": "companion_turn.failed",
+              "turnId": "turn-rate-limited-smoke-01",
+              "conversationId": "conversation-rate-limited-smoke",
+              "messageId": "companion-turn-rate-limited-smoke-01",
+              "subtype": "transient",
+              "errorMessage": "upstream returned HTTP 429",
+              "retryAfterMs": 12000,
+              "completedAt": "2026-04-28T12:00:00.000Z"
+            }
+        """.trimIndent()
+        val parsed = ImGatewayEventParser.parse(payload)
+        assertEquals(ImGatewayEvent.CompanionTurnFailed::class.java, parsed.javaClass)
+        val failed = parsed as ImGatewayEvent.CompanionTurnFailed
+        assertEquals("transient", failed.subtype)
+        assertEquals(12_000L, failed.retryAfterMs)
+    }
+
+    @Test
+    fun `companion_turn failed payload without retryAfterMs decodes to null retryAfterMs`() {
+        // Backwards-compat: pre-F2 payloads omit the key. The kotlinx-serialization
+        // contract is `serial-defaults`, so an absent key matches the default null.
+        val payload = """
+            {
+              "type": "companion_turn.failed",
+              "turnId": "turn-failed-recovery-smoke-01",
+              "conversationId": "conversation-recovery-smoke",
+              "messageId": "companion-turn-failed-recovery-smoke-01",
+              "subtype": "provider_unavailable",
+              "errorMessage": "upstream provider returned 503",
+              "completedAt": "2026-04-27T12:00:01.500Z"
+            }
+        """.trimIndent()
+        val parsed = ImGatewayEventParser.parse(payload) as ImGatewayEvent.CompanionTurnFailed
+        assertEquals("provider_unavailable", parsed.subtype)
+        assertEquals(null, parsed.retryAfterMs)
+    }
 }
