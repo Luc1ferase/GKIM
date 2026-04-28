@@ -18,9 +18,9 @@ class TavernPillDisciplineTest {
     }
 
     @Test
-    fun `settings is demoted to a rectangular container`() {
-        val settings = TavernHeaderActions.single { it.testTag == "tavern-settings-trigger" }
-        assertEquals(HeaderActionKind.Rectangle, settings.kind)
+    fun `create is rendered as a rectangular container`() {
+        val create = TavernHeaderActions.single { it.testTag == "tavern-create-trigger" }
+        assertEquals(HeaderActionKind.Rectangle, create.kind)
     }
 
     @Test
@@ -30,10 +30,10 @@ class TavernPillDisciplineTest {
     }
 
     @Test
-    fun `header action manifest covers the three R1 trio`() {
+    fun `header action manifest covers the three-action row trio`() {
         val tags = TavernHeaderActions.map { it.testTag }.toSet()
         assertEquals(
-            setOf("tavern-settings-trigger", "tavern-draw-trigger", "tavern-import-entry"),
+            setOf("tavern-create-trigger", "tavern-draw-trigger", "tavern-import-entry"),
             tags,
         )
     }

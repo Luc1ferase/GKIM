@@ -11,8 +11,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -75,7 +78,7 @@ internal data class HeaderActionSpec(val testTag: String, val kind: HeaderAction
 // composable below reads from this list so the rendered layout cannot
 // drift from the contract test without updating both.
 internal val TavernHeaderActions: List<HeaderActionSpec> = listOf(
-    HeaderActionSpec("tavern-settings-trigger", HeaderActionKind.Rectangle),
+    HeaderActionSpec("tavern-create-trigger", HeaderActionKind.Rectangle),
     HeaderActionSpec("tavern-draw-trigger", HeaderActionKind.Pill),
     HeaderActionSpec("tavern-import-entry", HeaderActionKind.Rectangle),
 )
@@ -212,8 +215,9 @@ private fun TavernScreen(
         item {
             PageHeader(
                 title = appLanguage.pick("Tavern", "酒馆"),
-                actionLabel = appLanguage.pick("Create", "新建"),
-                onAction = onCreateCharacter,
+                actionLabel = appLanguage.pick("Settings", "设置"),
+                onAction = onOpenSettings,
+                actionIcon = Icons.Outlined.Settings,
             )
         }
         item {
@@ -229,9 +233,9 @@ private fun TavernScreen(
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 RectangularAction(
-                    label = appLanguage.pick("Settings", "设置"),
-                    onClick = onOpenSettings,
-                    testTag = "tavern-settings-trigger",
+                    label = appLanguage.pick("Create", "新建"),
+                    onClick = onCreateCharacter,
+                    testTag = "tavern-create-trigger",
                 )
                 PrimaryActionPill(
                     label = appLanguage.pick("Pour a drink", "抽卡"),
@@ -380,15 +384,14 @@ internal fun RectangularAction(
     onClick: () -> Unit,
     testTag: String,
 ) {
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
     Text(
         text = label,
         style = MaterialTheme.typography.labelLarge,
         color = AetherColors.OnSurface,
         modifier = Modifier
-            .background(
-                AetherColors.SurfaceContainerHigh,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-            )
+            .clip(shape)
+            .background(AetherColors.SurfaceContainerHigh, shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp)
             .testTag(testTag),
@@ -401,17 +404,16 @@ internal fun PrimaryActionPill(
     onClick: () -> Unit,
     testTag: String,
 ) {
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
     Text(
         text = label,
         style = MaterialTheme.typography.labelLarge,
         color = AetherColors.OnSurface,
         modifier = Modifier
-            .background(
-                AetherColors.Primary,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-            )
+            .clip(shape)
+            .background(AetherColors.Primary, shape)
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
             .testTag(testTag),
     )
 }

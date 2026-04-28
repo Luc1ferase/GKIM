@@ -9,14 +9,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -49,6 +53,7 @@ fun PageHeader(
     onLeading: (() -> Unit)? = null,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    actionIcon: ImageVector? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if ((leadingLabel != null && onLeading != null) || !eyebrow.isNullOrBlank()) {
@@ -64,7 +69,7 @@ fun PageHeader(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Text(text = title, style = MaterialTheme.typography.headlineLarge, color = AetherColors.OnSurface, modifier = Modifier.weight(1f))
             if (actionLabel != null && onAction != null) {
-                PillAction(label = actionLabel, onClick = onAction)
+                PillAction(label = actionLabel, onClick = onAction, leadingIcon = actionIcon)
             }
         }
         if (!description.isNullOrBlank()) {
@@ -97,16 +102,31 @@ fun PrimaryShellHeader(
 }
 
 @Composable
-fun PillAction(label: String, onClick: () -> Unit) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelLarge,
-        color = AetherColors.OnSurface,
+fun PillAction(label: String, leadingIcon: ImageVector? = null, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(999.dp)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier
-            .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(999.dp))
+            .clip(shape)
+            .background(AetherColors.SurfaceContainerHigh, shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
-    )
+    ) {
+        if (leadingIcon != null) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = AetherColors.OnSurface,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = AetherColors.OnSurface,
+        )
+    }
 }
 
 @Composable
