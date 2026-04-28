@@ -13,7 +13,6 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
@@ -157,13 +156,13 @@ object AetherMotion {
     val standard: FiniteAnimationSpec<Float> = tween(durationMillis = 300)
 }
 
-private val AetherTypography = Typography(
-    headlineLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 38.sp),
-    headlineMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 28.sp, lineHeight = 32.sp),
-    titleLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 26.sp),
-    bodyLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 24.sp),
-    bodyMedium = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 20.sp),
-    labelLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium, fontSize = 12.sp, letterSpacing = 1.4.sp),
+internal val AetherTypography = Typography(
+    headlineLarge = TextStyle(fontFamily = AetherFonts.DisplaySerif, fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 38.sp),
+    headlineMedium = TextStyle(fontFamily = AetherFonts.DisplaySerif, fontWeight = FontWeight.SemiBold, fontSize = 28.sp, lineHeight = 32.sp),
+    titleLarge = TextStyle(fontFamily = AetherFonts.DisplaySerif, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 26.sp),
+    bodyLarge = TextStyle(fontFamily = AetherFonts.UiSans, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 24.sp),
+    bodyMedium = TextStyle(fontFamily = AetherFonts.UiSans, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 20.sp),
+    labelLarge = TextStyle(fontFamily = AetherFonts.UiSans, fontWeight = FontWeight.Medium, fontSize = 12.sp, letterSpacing = 1.4.sp),
 )
 
 @Composable
