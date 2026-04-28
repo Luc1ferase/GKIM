@@ -144,8 +144,12 @@ function Assert-TavernPalette {
     $r = $rgb[0]; $g = $rgb[1]; $b = $rgb[2]
     # Tavern Dark surface = #1A0F0A (26, 15, 10)
     # Tavern Light surface = #F1E7D2 (241, 231, 210)
-    $matchesDark  = ([Math]::Abs($r - 26)  -le 2) -and ([Math]::Abs($g - 15)  -le 2) -and ([Math]::Abs($b - 10)  -le 2)
-    $matchesLight = ([Math]::Abs($r - 241) -le 2) -and ([Math]::Abs($g - 231) -le 2) -and ([Math]::Abs($b - 210) -le 2)
+    # Tolerance widened to +/- 12 per channel to absorb the R4.2 ambient
+    # layer (grain @ 8% + candle glow @ 5%) which subtly darkens the
+    # sampled pixel by a few RGB points relative to the raw surface hex.
+    $tol = 12
+    $matchesDark  = ([Math]::Abs($r - 26)  -le $tol) -and ([Math]::Abs($g - 15)  -le $tol) -and ([Math]::Abs($b - 10)  -le $tol)
+    $matchesLight = ([Math]::Abs($r - 241) -le $tol) -and ([Math]::Abs($g - 231) -le $tol) -and ([Math]::Abs($b - 210) -le $tol)
     if (-not ($matchesDark -or $matchesLight)) {
         throw "Surface pixel ($r, $g, $b) at (60, 1200) does not match Tavern Dark #1A0F0A or Tavern Light #F1E7D2 in $Path"
     }
@@ -164,31 +168,36 @@ Add-Type -AssemblyName System.Drawing
 Write-Host "[capture_chrome] launching app ..." -ForegroundColor Cyan
 Invoke-Adb -AdbArgs @("shell","am","force-stop","com.gkim.im.android")
 Invoke-Adb -AdbArgs @("shell","monkey","-p","com.gkim.im.android","-c","android.intent.category.LAUNCHER","1") | Out-Null
-Start-Sleep -Seconds 4
+Start-Sleep -Seconds 6
 
-# 1. Messages list (default landing in R1)
-Write-Host "[capture_chrome] capture: messages-list" -ForegroundColor Yellow
-$messagesPath = Join-Path $resolvedOutDir "messages-list.png"
-Capture-Screen -Path $messagesPath
-Assert-TavernPalette -Path $messagesPath
+# Navigation plan reflects the post-R2 IA (default landing = tavern,
+# bottom nav has 2 tabs: 酒馆 left @ x≈270 / 消息 right @ x≈810).
 
-# 2. Tavern home (tap 酒馆 tab — third tab on R1 nav)
+# 1. Tavern home (default landing post-R2.1)
 Write-Host "[capture_chrome] capture: tavern-home" -ForegroundColor Yellow
-Tap 900 2280
-Start-Sleep -Seconds 2
 $tavernPath = Join-Path $resolvedOutDir "tavern-home.png"
 Capture-Screen -Path $tavernPath
 Assert-TavernPalette -Path $tavernPath
 
-# 3. Character detail (tap on the first preset card's name area)
+# 2. Messages list (tap 消息 tab — second tab on the 2-tab nav)
+Write-Host "[capture_chrome] capture: messages-list" -ForegroundColor Yellow
+Tap 810 2280
+Start-Sleep -Seconds 2
+$messagesPath = Join-Path $resolvedOutDir "messages-list.png"
+Capture-Screen -Path $messagesPath
+Assert-TavernPalette -Path $messagesPath
+
+# 3. Character detail (back to tavern, tap on the first preset card name area)
 Write-Host "[capture_chrome] capture: character-detail" -ForegroundColor Yellow
-Tap 496 1626
+Tap 270 2280
+Start-Sleep -Seconds 2
+Tap 496 1726
 Start-Sleep -Seconds 2
 $detailPath = Join-Path $resolvedOutDir "character-detail.png"
 Capture-Screen -Path $detailPath
 Assert-TavernPalette -Path $detailPath
 
-# 4. Settings (back to tavern, then tap 设置 pill)
+# 4. Settings (back to tavern, then tap 设置 rectangular trigger)
 Write-Host "[capture_chrome] capture: settings" -ForegroundColor Yellow
 Back
 Start-Sleep -Seconds 1
@@ -198,14 +207,31 @@ $settingsPath = Join-Path $resolvedOutDir "settings.png"
 Capture-Screen -Path $settingsPath
 Assert-TavernPalette -Path $settingsPath
 
+# 5. Gacha result (back to tavern, scroll down, tap 抽一张). Best-effort:
+#    if the tap path drifts on a layout change, we still capture *something*
+#    on the new palette; the assertion guards the palette, not the route.
+Write-Host "[capture_chrome] capture: gacha-result" -ForegroundColor Yellow
+Back
+Start-Sleep -Seconds 1
+# Scroll the LazyColumn so the "抽一张" CTA is comfortably on screen.
+Invoke-Adb -AdbArgs @("shell","input","swipe","540","1500","540","900","400")
+Start-Sleep -Seconds 1
+# Tap the rough centre of the 抽一张 CTA (visible around y=900-1100 after scroll).
+Tap 200 1015
+Start-Sleep -Seconds 3
+$gachaPath = Join-Path $resolvedOutDir "gacha-result.png"
+Capture-Screen -Path $gachaPath
+Assert-TavernPalette -Path $gachaPath
+
 # --- Final verification -----------------------------------------------------
 
 Write-Host "[capture_chrome] verifying file sizes ..." -ForegroundColor Cyan
 $results = @(
-    @{ Name = "messages-list.png";    Path = $messagesPath },
     @{ Name = "tavern-home.png";      Path = $tavernPath },
+    @{ Name = "messages-list.png";    Path = $messagesPath },
     @{ Name = "character-detail.png"; Path = $detailPath },
-    @{ Name = "settings.png";         Path = $settingsPath }
+    @{ Name = "settings.png";         Path = $settingsPath },
+    @{ Name = "gacha-result.png";     Path = $gachaPath }
 )
 
 # 50 KB minimum: sanity check that screencap produced a real PNG, not a

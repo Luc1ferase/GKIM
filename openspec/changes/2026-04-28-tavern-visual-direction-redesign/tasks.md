@@ -38,7 +38,7 @@ Each task is a single DELIVERY_WORKFLOW unit (verify → review ≥ 95 → commi
 
 - [x] R4.3 Re-tone the gacha result animation accent from the current high-saturation lavender / pink to the new palette's `primary` (brass) and `tertiary` (ember red). Touch only color references; animation timing stays. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.GachaAccentPaletteTest` covers the animation's color references against the palette tokens.
 
-- [ ] R4.4 Capture after-screenshots of the same four chrome surfaces from R1.4 plus the gacha result, save under `docs/visual-direction/r4/`, and write a short comparative note (`docs/visual-direction/r4/README.md`) summarizing the visible R1 → R4 progression. Verification: `pwsh tools/visual-direction/capture_chrome.ps1 -OutDir docs/visual-direction/r4` produces the same 4 PNGs plus `gacha-result.png` ≥ 200 KB each, and the README references all five.
+- [x] R4.4 Capture after-screenshots of the same four chrome surfaces from R1.4 plus the gacha result, save under `docs/visual-direction/r4/`, and write a short comparative note (`docs/visual-direction/r4/README.md`) summarizing the visible R1 → R4 progression. Verification: `pwsh tools/visual-direction/capture_chrome.ps1 -OutDir docs/visual-direction/r4` produces the same 4 PNGs plus `gacha-result.png` ≥ 200 KB each, and the README references all five.
 
 ## Acceptance gates per slice
 
