@@ -275,16 +275,30 @@ fun GkimRootApp(
     }
 }
 
+internal data class RootBottomNavTab(
+    val route: String,
+    val englishLabel: String,
+    val chineseLabel: String,
+)
+
+internal val RootBottomNavTabs: List<RootBottomNavTab> = listOf(
+    RootBottomNavTab(route = "tavern", englishLabel = "Tavern", chineseLabel = "酒馆"),
+    RootBottomNavTab(route = "messages", englishLabel = "Messages", chineseLabel = "消息"),
+)
+
 @Composable
 private fun RootBottomBar(navController: NavHostController) {
     val appLanguage = LocalAppLanguage.current
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val primaryDestinations = listOf(
-        RootDestination("messages", appLanguage.pick("Messages", "消息")) { Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null) },
-        RootDestination("contacts", appLanguage.pick("Contacts", "联系人")) { Icon(Icons.Outlined.PeopleAlt, contentDescription = null) },
-        RootDestination("tavern", appLanguage.pick("Tavern", "酒馆")) { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
-    )
+    val primaryDestinations = RootBottomNavTabs.map { tab ->
+        val icon: @Composable () -> Unit = when (tab.route) {
+            "tavern" -> { -> Icon(Icons.Outlined.AutoAwesome, contentDescription = null) }
+            "messages" -> { -> Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null) }
+            else -> { -> Icon(Icons.Outlined.PeopleAlt, contentDescription = null) }
+        }
+        RootDestination(tab.route, appLanguage.pick(tab.englishLabel, tab.chineseLabel), icon)
+    }
     val showBottomBar = primaryDestinations.any { it.route == currentRoute }
     if (!showBottomBar) return
 

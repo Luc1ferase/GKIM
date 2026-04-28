@@ -47,6 +47,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
 
+internal const val TavernAllCompanionsSectionTestTag = "tavern-all-companions-section"
+
 private data class TavernUiState(
     val presetCharacters: List<CompanionCharacterCard> = emptyList(),
     val ownedCharacters: List<CompanionCharacterCard> = emptyList(),
@@ -220,6 +222,12 @@ private fun TavernScreen(
                 onDraw = onDraw,
                 onOpenCharacter = { result -> onOpenCharacter(result.card.id) },
                 onBonusAwarded = onBonusAwarded,
+            )
+        }
+        item {
+            SectionTitle(
+                title = appLanguage.pick("All companions", "全部陪伴"),
+                testTag = TavernAllCompanionsSectionTestTag,
             )
         }
         item {
