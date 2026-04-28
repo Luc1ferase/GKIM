@@ -49,6 +49,7 @@ import com.gkim.im.android.core.designsystem.AetherColors
 import com.gkim.im.android.core.designsystem.BlockReasonCopy
 import com.gkim.im.android.core.designsystem.GlassCard
 import com.gkim.im.android.core.designsystem.SafetyCopy
+import com.gkim.im.android.core.designsystem.candleGlow
 import com.gkim.im.android.core.media.GeneratedImageSaveResult
 import com.gkim.im.android.core.media.GeneratedImageSaver
 import com.gkim.im.android.core.designsystem.PillAction
@@ -87,6 +88,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+
+// R4.2 — chat header carries the candle-glow ambient highlight (TopStart),
+// no grain. Other surfaces opt out per spec.
 
 // R3.1 — chat top-bar pill discipline. The header reserves no rounded-pill;
 // the overflow trigger is a 36 dp rectangular icon button (corner radius
@@ -892,9 +896,14 @@ internal fun ChatTopBar(
     val language = LocalAppLanguage.current
     val personaPill = chatChromePersonaPill(activePersona, language)
     var overflowOpen by remember { mutableStateOf(false) }
+    val primaryContainer = AetherColors.PrimaryContainer
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .candleGlow(
+                anchor = androidx.compose.ui.Alignment.TopStart,
+                primaryContainer = primaryContainer,
+            )
             .testTag("chat-top-bar"),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,

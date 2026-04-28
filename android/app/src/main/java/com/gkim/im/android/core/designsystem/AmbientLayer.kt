@@ -19,6 +19,34 @@ import com.gkim.im.android.R
 const val TavernGrainOpacityCeiling: Float = 0.08f
 const val CandleGlowOpacityCeiling: Float = 0.05f
 
+// R4.2 — ambient application manifest. The tavern home outer column applies
+// both grain AND a TopEnd glow; the chat top-bar applies a TopStart glow
+// only. No other surface in this slice opts in. The composables in
+// feature/tavern/TavernRoute.kt and feature/chat/ChatRoute.kt apply these
+// modifiers directly; this manifest exists so the unit-test contract can
+// pin the application without spinning up Compose.
+data class AmbientApplication(
+    val surfaceTestTag: String,
+    val grain: Boolean,
+    val glowAnchor: AmbientGlowAnchor?,
+)
+
+enum class AmbientGlowAnchor { TopStart, TopEnd, TopCenter, CenterStart, CenterEnd, BottomStart, BottomCenter, BottomEnd, Center }
+
+val TavernHomeAmbient: AmbientApplication = AmbientApplication(
+    surfaceTestTag = "tavern-screen",
+    grain = true,
+    glowAnchor = AmbientGlowAnchor.TopEnd,
+)
+
+val ChatHeaderAmbient: AmbientApplication = AmbientApplication(
+    surfaceTestTag = "chat-top-bar",
+    grain = false,
+    glowAnchor = AmbientGlowAnchor.TopStart,
+)
+
+val ChromeSurfacesWithAmbient: List<AmbientApplication> = listOf(TavernHomeAmbient, ChatHeaderAmbient)
+
 /**
  * Paints the packaged `raw/tavern_grain.png` as an Overlay-blended layer
  * on top of the modified surface, capped at [TavernGrainOpacityCeiling].

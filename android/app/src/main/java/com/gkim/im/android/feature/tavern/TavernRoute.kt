@@ -27,6 +27,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.gkim.im.android.core.designsystem.AetherColors
+import com.gkim.im.android.core.designsystem.candleGlow
+import com.gkim.im.android.core.designsystem.tavernGrain
 import com.gkim.im.android.core.designsystem.GlassCard
 import com.gkim.im.android.core.designsystem.LocalAppLanguage
 import com.gkim.im.android.core.designsystem.PageHeader
@@ -180,9 +182,15 @@ private fun TavernScreen(
     onActivateCharacter: (String) -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
+    val primaryContainerColor = AetherColors.PrimaryContainer
     LazyColumn(
         modifier = Modifier
             .background(AetherColors.Surface)
+            .tavernGrain()
+            .candleGlow(
+                anchor = androidx.compose.ui.Alignment.TopEnd,
+                primaryContainer = primaryContainerColor,
+            )
             .padding(horizontal = 24.dp, vertical = 24.dp)
             .testTag("tavern-screen"),
         verticalArrangement = Arrangement.spacedBy(18.dp),
