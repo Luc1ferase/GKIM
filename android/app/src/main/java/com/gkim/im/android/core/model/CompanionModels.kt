@@ -46,7 +46,17 @@ data class CompanionCharacterCard(
     val source: CompanionCharacterSource,
     val extensions: JsonObject = JsonObject(emptyMap()),
     val characterPresetId: String? = null,
-)
+    // R2.4 — companion-skin-gacha. Identifies which of this character's
+    // skins is currently active for this user. Defaults to "default" so
+    // every existing seeded card resolves to the v1 default skin until
+    // the user owns and activates an alternate. Drives the avatar / chat
+    // header URL construction via skinAssetUrl(...).
+    val activeSkinId: String = DEFAULT_SKIN_ID,
+) {
+    companion object {
+        const val DEFAULT_SKIN_ID: String = "default"
+    }
+}
 
 data class ResolvedCompanionCharacterCard(
     val id: String,
@@ -68,6 +78,10 @@ data class ResolvedCompanionCharacterCard(
     val accent: AccentTone,
     val source: CompanionCharacterSource,
     val characterPresetId: String?,
+    // R2.4 — propagated from CompanionCharacterCard.activeSkinId so UI
+    // surfaces (tavern card, chat header) can construct the correct
+    // skinAssetUrl without re-resolving against the unprojected card.
+    val activeSkinId: String,
 )
 
 fun CompanionCharacterCard.resolve(language: AppLanguage): ResolvedCompanionCharacterCard =
@@ -91,6 +105,7 @@ fun CompanionCharacterCard.resolve(language: AppLanguage): ResolvedCompanionChar
         accent = accent,
         source = source,
         characterPresetId = characterPresetId,
+        activeSkinId = activeSkinId,
     )
 
 val CompanionCharacterCard.isEditable: Boolean
