@@ -81,7 +81,19 @@ fun RelationshipResetButton(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         when (state.phase) {
-            RelationshipResetPhase.Idle, RelationshipResetPhase.Completed -> {
+            RelationshipResetPhase.Idle -> {
+                ResetTriggerButton(englishLocale = englishLocale, enabled = true) {
+                    state = state.arm()
+                }
+            }
+
+            RelationshipResetPhase.Completed -> {
+                Text(
+                    text = com.gkim.im.android.core.strings.CompanionStrings.PostRelationshipReset.pick(appLanguage),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                    modifier = Modifier.testTag("relationship-reset-completed-copy"),
+                )
                 ResetTriggerButton(englishLocale = englishLocale, enabled = true) {
                     state = state.arm()
                 }

@@ -112,6 +112,15 @@ fun UserSearchRoute(container: AppContainer, onBack: () -> Unit) {
             )
         }
 
+        if (query.isNotBlank() && results.isEmpty() && !isSearching) {
+            Text(
+                text = com.gkim.im.android.core.strings.CompanionStrings.ContactSearchNoResults.pick(appLanguage),
+                style = MaterialTheme.typography.bodyMedium,
+                color = AetherColors.OnSurfaceVariant,
+                modifier = Modifier.testTag("user-search-no-results"),
+            )
+        }
+
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.testTag("user-search-results")) {
             items(results, key = { it.id }) { user ->
                 SearchResultCard(

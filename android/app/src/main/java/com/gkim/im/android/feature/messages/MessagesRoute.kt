@@ -133,15 +133,12 @@ private fun MessagesScreen(
         if (uiState.conversations.isEmpty()) {
             GlassCard(modifier = Modifier.testTag("messages-empty")) {
                 Text(
-                    text = appLanguage.pick("No active rooms yet", "还没有活跃会话"),
+                    text = appLanguage.pick("The bar is empty.", "还没有人来过你的酒馆。"),
                     style = MaterialTheme.typography.headlineMedium,
                     color = AetherColors.OnSurface,
                 )
                 Text(
-                    text = appLanguage.pick(
-                        "Your conversations will appear here after you sign in and start chatting with contacts.",
-                        "登录后开始和联系人聊天，这里就会出现你的会话。",
-                    ),
+                    text = com.gkim.im.android.core.strings.CompanionStrings.MessagesListEmpty.pick(appLanguage),
                     style = MaterialTheme.typography.bodyLarge,
                     color = AetherColors.OnSurfaceVariant,
                 )
