@@ -607,7 +607,11 @@ private fun CharacterCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                com.gkim.im.android.core.ui.AvatarFallbackSilhouette(
+                com.gkim.im.android.core.ui.SkinAvatar(
+                    characterId = character.id,
+                    skinId = "default",
+                    version = 1,
+                    variant = com.gkim.im.android.core.assets.SkinVariant.Thumb,
                     modifier = Modifier
                         .padding(end = 14.dp)
                         .clickable(onClick = onAvatarTap)
