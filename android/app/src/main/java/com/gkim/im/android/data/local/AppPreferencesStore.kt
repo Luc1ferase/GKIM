@@ -1,7 +1,9 @@
 package com.gkim.im.android.data.local
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.gkim.im.android.core.model.AppLanguage
@@ -23,6 +25,9 @@ interface PreferencesStore {
     val imDevUserExternalId: Flow<String>
     val appLanguage: Flow<AppLanguage>
     val appThemeMode: Flow<AppThemeMode>
+    val blockReasonVerbosity: Flow<Boolean>
+    val contentPolicyAcknowledgedAtMillis: Flow<Long?>
+    val contentPolicyAcknowledgedVersion: Flow<String>
 
     suspend fun setContactSortMode(mode: ContactSortMode)
     suspend fun setActiveProviderId(value: String)
@@ -34,6 +39,9 @@ interface PreferencesStore {
     suspend fun setImDevUserExternalId(value: String)
     suspend fun setAppLanguage(value: AppLanguage)
     suspend fun setAppThemeMode(value: AppThemeMode)
+    suspend fun setBlockReasonVerbosity(value: Boolean)
+    suspend fun setContentPolicyAcknowledgment(acceptedAtMillis: Long, version: String)
+    suspend fun clearContentPolicyAcknowledgment()
 }
 
 class AppPreferencesStore(private val context: Context) : PreferencesStore {
@@ -47,6 +55,9 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
     private val imDevUserExternalIdKey = stringPreferencesKey("im_dev_user_external_id")
     private val appLanguageKey = stringPreferencesKey("app_language")
     private val appThemeModeKey = stringPreferencesKey("app_theme_mode")
+    private val blockReasonVerbosityKey = booleanPreferencesKey("content_safety_block_reason_verbosity")
+    private val contentPolicyAcceptedAtKey = longPreferencesKey("content_policy_accepted_at_millis")
+    private val contentPolicyVersionKey = stringPreferencesKey("content_policy_accepted_version")
 
     private fun presetModelKey(providerId: String) = stringPreferencesKey("preset_provider_${providerId}_model")
 
@@ -95,6 +106,18 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
         AppThemeMode.valueOf(prefs[appThemeModeKey] ?: AppThemeMode.Light.name)
     }
 
+    override val blockReasonVerbosity: Flow<Boolean> = context.preferencesStore.data.map { prefs ->
+        prefs[blockReasonVerbosityKey] ?: true
+    }
+
+    override val contentPolicyAcknowledgedAtMillis: Flow<Long?> = context.preferencesStore.data.map { prefs ->
+        prefs[contentPolicyAcceptedAtKey]
+    }
+
+    override val contentPolicyAcknowledgedVersion: Flow<String> = context.preferencesStore.data.map { prefs ->
+        prefs[contentPolicyVersionKey].orEmpty()
+    }
+
     override suspend fun setContactSortMode(mode: ContactSortMode) {
         context.preferencesStore.edit { it[sortKey] = mode.name }
     }
@@ -138,5 +161,23 @@ class AppPreferencesStore(private val context: Context) : PreferencesStore {
 
     override suspend fun setAppThemeMode(value: AppThemeMode) {
         context.preferencesStore.edit { it[appThemeModeKey] = value.name }
+    }
+
+    override suspend fun setBlockReasonVerbosity(value: Boolean) {
+        context.preferencesStore.edit { it[blockReasonVerbosityKey] = value }
+    }
+
+    override suspend fun setContentPolicyAcknowledgment(acceptedAtMillis: Long, version: String) {
+        context.preferencesStore.edit { prefs ->
+            prefs[contentPolicyAcceptedAtKey] = acceptedAtMillis
+            prefs[contentPolicyVersionKey] = version
+        }
+    }
+
+    override suspend fun clearContentPolicyAcknowledgment() {
+        context.preferencesStore.edit { prefs ->
+            prefs.remove(contentPolicyAcceptedAtKey)
+            prefs.remove(contentPolicyVersionKey)
+        }
     }
 }

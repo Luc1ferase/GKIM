@@ -3,8 +3,18 @@
 node_modules/
 dist/
 .temp/
+.private/
 .env.local
 .env.*.local
 coverage/
 .hbuilderx/
 ca.pem
+
+# Local debug captures: emulator screenshots/uidumps, deploy tarballs,
+# logcat tails, anything we scribble during a session. Should never be
+# committed; the F1 cleanup also globally ignores any `tmp_<name>` file
+# (e.g. credential drops like tmp_aliyun_key). If you need to keep one
+# of these for evidence, copy it under docs/evidence/ which is tracked.
+tmp-*
+tmp_*
+android/tmp-*

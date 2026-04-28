@@ -26,6 +26,9 @@ class FakePreferencesStore(
     initialImDevUserExternalId: String = "nox-dev",
     initialLanguage: AppLanguage = AppLanguage.Chinese,
     initialThemeMode: AppThemeMode = AppThemeMode.Light,
+    initialBlockReasonVerbosity: Boolean = true,
+    initialContentPolicyAcceptedAtMillis: Long? = null,
+    initialContentPolicyVersion: String = "",
 ) : PreferencesStore {
     private val contactSortModeState = MutableStateFlow(initialSortMode)
     private val activeProviderIdState = MutableStateFlow(initialProviderId)
@@ -44,6 +47,9 @@ class FakePreferencesStore(
     private val imDevUserExternalIdState = MutableStateFlow(initialImDevUserExternalId)
     private val appLanguageState = MutableStateFlow(initialLanguage)
     private val appThemeModeState = MutableStateFlow(initialThemeMode)
+    private val blockReasonVerbosityState = MutableStateFlow(initialBlockReasonVerbosity)
+    private val contentPolicyAcceptedAtState = MutableStateFlow(initialContentPolicyAcceptedAtMillis)
+    private val contentPolicyVersionState = MutableStateFlow(initialContentPolicyVersion)
 
     override val contactSortMode: Flow<ContactSortMode> = contactSortModeState.asStateFlow()
     override val activeProviderId: Flow<String> = activeProviderIdState.asStateFlow()
@@ -56,6 +62,9 @@ class FakePreferencesStore(
     override val imDevUserExternalId: Flow<String> = imDevUserExternalIdState.asStateFlow()
     override val appLanguage: Flow<AppLanguage> = appLanguageState.asStateFlow()
     override val appThemeMode: Flow<AppThemeMode> = appThemeModeState.asStateFlow()
+    override val blockReasonVerbosity: Flow<Boolean> = blockReasonVerbosityState.asStateFlow()
+    override val contentPolicyAcknowledgedAtMillis: Flow<Long?> = contentPolicyAcceptedAtState.asStateFlow()
+    override val contentPolicyAcknowledgedVersion: Flow<String> = contentPolicyVersionState.asStateFlow()
 
     val currentSortMode: ContactSortMode
         get() = contactSortModeState.value
@@ -83,6 +92,15 @@ class FakePreferencesStore(
 
     val currentThemeMode: AppThemeMode
         get() = appThemeModeState.value
+
+    val currentBlockReasonVerbosity: Boolean
+        get() = blockReasonVerbosityState.value
+
+    val currentContentPolicyAcceptedAtMillis: Long?
+        get() = contentPolicyAcceptedAtState.value
+
+    val currentContentPolicyVersion: String
+        get() = contentPolicyVersionState.value
 
     override suspend fun setContactSortMode(mode: ContactSortMode) {
         contactSortModeState.value = mode
@@ -118,6 +136,20 @@ class FakePreferencesStore(
 
     override suspend fun setAppThemeMode(value: AppThemeMode) {
         appThemeModeState.value = value
+    }
+
+    override suspend fun setBlockReasonVerbosity(value: Boolean) {
+        blockReasonVerbosityState.value = value
+    }
+
+    override suspend fun setContentPolicyAcknowledgment(acceptedAtMillis: Long, version: String) {
+        contentPolicyAcceptedAtState.value = acceptedAtMillis
+        contentPolicyVersionState.value = version
+    }
+
+    override suspend fun clearContentPolicyAcknowledgment() {
+        contentPolicyAcceptedAtState.value = null
+        contentPolicyVersionState.value = ""
     }
 }
 

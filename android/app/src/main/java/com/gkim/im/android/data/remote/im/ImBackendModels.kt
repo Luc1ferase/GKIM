@@ -1,15 +1,36 @@
 package com.gkim.im.android.data.remote.im
 
+import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.ChatMessage
 import com.gkim.im.android.core.model.Contact
 import com.gkim.im.android.core.model.Conversation
+import com.gkim.im.android.core.model.CompanionCharacterCard
+import com.gkim.im.android.core.model.CompanionCharacterSource
+import com.gkim.im.android.core.model.CompanionDrawResult
+import com.gkim.im.android.core.model.CompanionMemory
+import com.gkim.im.android.core.model.CompanionMemoryPin
+import com.gkim.im.android.core.model.CompanionMemoryResetScope
 import com.gkim.im.android.core.model.AttachmentType
+import com.gkim.im.android.core.model.AccentTone
+import com.gkim.im.android.core.model.BlockReason
+import com.gkim.im.android.core.model.FailedSubtype
+import com.gkim.im.android.core.model.LocalizedText
+import com.gkim.im.android.core.model.Lorebook
+import com.gkim.im.android.core.model.LorebookBinding
+import com.gkim.im.android.core.model.LorebookEntry
 import com.gkim.im.android.core.model.MessageAttachment
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
+import com.gkim.im.android.core.model.Preset
+import com.gkim.im.android.core.model.PresetParams
+import com.gkim.im.android.core.model.PresetTemplate
+import com.gkim.im.android.core.model.SecondaryGate
+import com.gkim.im.android.core.model.UserPersona
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -157,6 +178,7 @@ data class BootstrapBundleDto(
     val user: BackendUserDto,
     val contacts: List<ContactProfileDto>,
     val conversations: List<ConversationSummaryDto>,
+    val lorebookSummaries: List<LorebookSummaryDto> = emptyList(),
 ) {
     fun toBootstrapState(
         activeUserExternalId: String,
@@ -224,6 +246,872 @@ data class MessageHistoryPageDto(
             authToken = authToken,
         )
     }
+}
+
+@Serializable
+data class LocalizedTextDto(
+    val english: String,
+    val chinese: String,
+) {
+    fun toLocalizedText(): LocalizedText = LocalizedText(
+        english = english,
+        chinese = chinese,
+    )
+}
+
+@Serializable
+data class CharacterBookEntryDto(
+    val keys: List<String> = emptyList(),
+    val content: String = "",
+    val enabled: Boolean = true,
+    val insertionOrder: Int = 0,
+    val caseSensitive: Boolean = false,
+    val constant: Boolean = false,
+    val name: String = "",
+    val comment: String = "",
+    val selective: Boolean = false,
+    val secondaryKeys: List<String> = emptyList(),
+    val extensions: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
+data class CharacterBookDto(
+    val name: String = "",
+    val description: String = "",
+    val scanDepth: Int? = null,
+    val tokenBudget: Int? = null,
+    val recursiveScanning: Boolean = false,
+    val entries: List<CharacterBookEntryDto> = emptyList(),
+    val extensions: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
+data class CompanionCharacterCardDto(
+    val id: String,
+    val displayName: LocalizedTextDto,
+    val roleLabel: LocalizedTextDto,
+    val summary: LocalizedTextDto,
+    val firstMes: LocalizedTextDto? = null,
+    val openingLine: LocalizedTextDto? = null,
+    val alternateGreetings: List<LocalizedTextDto> = emptyList(),
+    val systemPrompt: LocalizedTextDto? = null,
+    val personality: LocalizedTextDto? = null,
+    val scenario: LocalizedTextDto? = null,
+    val exampleDialogue: LocalizedTextDto? = null,
+    val tags: List<String> = emptyList(),
+    val creator: String = "",
+    val creatorNotes: String = "",
+    val characterVersion: String = "",
+    val avatarText: String,
+    val avatarUri: String? = null,
+    val accent: String,
+    val source: String,
+    val extensions: JsonObject = JsonObject(emptyMap()),
+    val characterBook: CharacterBookDto? = null,
+) {
+    fun toCompanionCharacterCard(): CompanionCharacterCard {
+        val resolvedFirstMes = firstMes?.toLocalizedText()
+            ?: openingLine?.toLocalizedText()
+            ?: LocalizedText("", "")
+        return CompanionCharacterCard(
+            id = id,
+            displayName = displayName.toLocalizedText(),
+            roleLabel = roleLabel.toLocalizedText(),
+            summary = summary.toLocalizedText(),
+            firstMes = resolvedFirstMes,
+            alternateGreetings = alternateGreetings.map { it.toLocalizedText() },
+            systemPrompt = systemPrompt?.toLocalizedText() ?: LocalizedText("", ""),
+            personality = personality?.toLocalizedText() ?: LocalizedText("", ""),
+            scenario = scenario?.toLocalizedText() ?: LocalizedText("", ""),
+            exampleDialogue = exampleDialogue?.toLocalizedText() ?: LocalizedText("", ""),
+            tags = tags,
+            creator = creator,
+            creatorNotes = creatorNotes,
+            characterVersion = characterVersion,
+            avatarText = avatarText,
+            avatarUri = avatarUri,
+            accent = when (accent.lowercase()) {
+                "secondary" -> AccentTone.Secondary
+                "tertiary" -> AccentTone.Tertiary
+                else -> AccentTone.Primary
+            },
+            source = when (source.lowercase()) {
+                "drawn" -> CompanionCharacterSource.Drawn
+                "userauthored", "user_authored", "user-authored" -> CompanionCharacterSource.UserAuthored
+                else -> CompanionCharacterSource.Preset
+            },
+            extensions = extensions,
+            characterPresetId = readCharPresetIdFromStExtensions(extensions),
+        )
+    }
+
+    companion object {
+        fun fromCompanionCharacterCard(card: CompanionCharacterCard): CompanionCharacterCardDto =
+            CompanionCharacterCardDto(
+                id = card.id,
+                displayName = LocalizedTextDto(card.displayName.english, card.displayName.chinese),
+                roleLabel = LocalizedTextDto(card.roleLabel.english, card.roleLabel.chinese),
+                summary = LocalizedTextDto(card.summary.english, card.summary.chinese),
+                firstMes = LocalizedTextDto(card.firstMes.english, card.firstMes.chinese),
+                openingLine = LocalizedTextDto(card.firstMes.english, card.firstMes.chinese),
+                alternateGreetings = card.alternateGreetings.map {
+                    LocalizedTextDto(it.english, it.chinese)
+                },
+                systemPrompt = LocalizedTextDto(card.systemPrompt.english, card.systemPrompt.chinese),
+                personality = LocalizedTextDto(card.personality.english, card.personality.chinese),
+                scenario = LocalizedTextDto(card.scenario.english, card.scenario.chinese),
+                exampleDialogue = LocalizedTextDto(
+                    card.exampleDialogue.english,
+                    card.exampleDialogue.chinese,
+                ),
+                tags = card.tags,
+                creator = card.creator,
+                creatorNotes = card.creatorNotes,
+                characterVersion = card.characterVersion,
+                avatarText = card.avatarText,
+                avatarUri = card.avatarUri,
+                accent = when (card.accent) {
+                    AccentTone.Secondary -> "secondary"
+                    AccentTone.Tertiary -> "tertiary"
+                    AccentTone.Primary -> "primary"
+                },
+                source = when (card.source) {
+                    CompanionCharacterSource.Drawn -> "drawn"
+                    CompanionCharacterSource.UserAuthored -> "user_authored"
+                    CompanionCharacterSource.Preset -> "preset"
+                },
+                extensions = mergeCharPresetIdIntoStExtensions(
+                    extensions = card.extensions,
+                    charPresetId = card.characterPresetId,
+                ),
+            )
+    }
+}
+
+private fun readCharPresetIdFromStExtensions(extensions: JsonObject): String? {
+    val st = extensions["st"] as? JsonObject ?: return null
+    return (st["charPresetId"] as? JsonPrimitive)?.contentOrNull?.takeUnless { it.isBlank() }
+}
+
+private fun mergeCharPresetIdIntoStExtensions(
+    extensions: JsonObject,
+    charPresetId: String?,
+): JsonObject {
+    val existingSt = extensions["st"] as? JsonObject
+    if (charPresetId == null && existingSt?.containsKey("charPresetId") != true) {
+        return extensions
+    }
+    val newSt: JsonObject? = when {
+        charPresetId != null -> {
+            val baseStMap: Map<String, kotlinx.serialization.json.JsonElement> = existingSt ?: emptyMap()
+            JsonObject(baseStMap + ("charPresetId" to JsonPrimitive(charPresetId)))
+        }
+        else -> {
+            val pruned = existingSt!! - "charPresetId"
+            if (pruned.isEmpty()) null else JsonObject(pruned)
+        }
+    }
+    return when (newSt) {
+        null -> JsonObject(extensions - "st")
+        else -> JsonObject(extensions + ("st" to newSt))
+    }
+}
+
+@Serializable
+data class CompanionRosterDto(
+    val presetCharacters: List<CompanionCharacterCardDto>,
+    val ownedCharacters: List<CompanionCharacterCardDto>,
+    val activeCharacterId: String? = null,
+)
+
+@Serializable
+data class CompanionDrawResultDto(
+    val card: CompanionCharacterCardDto,
+    val wasNew: Boolean,
+) {
+    fun toCompanionDrawResult(): CompanionDrawResult = CompanionDrawResult(
+        card = card.toCompanionCharacterCard(),
+        wasNew = wasNew,
+    )
+}
+
+@Serializable
+data class SelectCompanionCharacterRequestDto(
+    val characterId: String,
+)
+
+@Serializable
+data class ActiveCompanionSelectionDto(
+    val characterId: String,
+)
+
+@Serializable
+data class CompanionTurnSubmitRequestDto(
+    val conversationId: String,
+    val activeCompanionId: String,
+    val userTurnBody: String,
+    val activeLanguage: String,
+    val clientTurnId: String,
+    val parentMessageId: String? = null,
+)
+
+@Serializable
+data class CompanionTurnRecordDto(
+    val turnId: String,
+    val conversationId: String,
+    val messageId: String,
+    val variantGroupId: String,
+    val variantIndex: Int,
+    val parentMessageId: String? = null,
+    val status: String,
+    val accumulatedBody: String,
+    val lastDeltaSeq: Int,
+    val providerId: String? = null,
+    val model: String? = null,
+    val startedAt: String,
+    val completedAt: String? = null,
+    val failureSubtype: String? = null,
+    val errorMessage: String? = null,
+    val blockReason: String? = null,
+)
+
+@Serializable
+data class CompanionTurnPendingListDto(
+    val turns: List<CompanionTurnRecordDto>,
+)
+
+@Serializable
+data class CompanionTurnRegenerateRequestDto(
+    val clientTurnId: String,
+)
+
+@Serializable
+data class EditUserTurnRequestDto(
+    val parentMessageId: String,
+    val newUserText: String,
+    val clientTurnId: String,
+    val activeCompanionId: String,
+    val activeLanguage: String,
+)
+
+@Serializable
+data class NewUserMessageRecordDto(
+    val messageId: String,
+    val variantGroupId: String,
+    val variantIndex: Int,
+    val parentMessageId: String? = null,
+    val role: String,
+)
+
+@Serializable
+data class EditUserTurnResponseDto(
+    val userMessage: NewUserMessageRecordDto,
+    val companionTurn: CompanionTurnRecordDto,
+)
+
+@Serializable
+data class RegenerateAtRequestDto(
+    val clientTurnId: String,
+    val targetMessageId: String? = null,
+)
+
+@Serializable
+data class ConversationExportLineDto(
+    val messageId: String,
+    val parentMessageId: String? = null,
+    val variantGroupId: String,
+    val variantIndex: Int,
+    val role: String,
+    val timestamp: String,
+    val content: String,
+    val extensions: kotlinx.serialization.json.JsonElement? = null,
+)
+
+@Serializable
+data class RelationshipResetResponseDto(
+    val ok: Boolean,
+)
+
+@Serializable
+data class CardImportUploadRequestDto(
+    val filename: String,
+    val contentBase64: String,
+    val claimedFormat: String,
+)
+
+@Serializable
+data class CardImportWarningDto(
+    val code: String,
+    val field: String? = null,
+    val detail: String? = null,
+)
+
+@Serializable
+data class LorebookImportSummaryDto(
+    val entryCount: Int,
+    val totalTokenEstimate: Int = 0,
+    val hasConstantEntries: Boolean = false,
+)
+
+@Serializable
+data class CardImportPreviewDto(
+    val previewToken: String,
+    val card: CompanionCharacterCardDto,
+    val detectedLanguage: String,
+    val warnings: List<CardImportWarningDto> = emptyList(),
+    val stExtensionKeys: List<String> = emptyList(),
+    val lorebookSummary: LorebookImportSummaryDto? = null,
+)
+
+@Serializable
+data class CardImportCommitRequestDto(
+    val previewToken: String,
+    val card: CompanionCharacterCardDto,
+    val languageOverride: String? = null,
+)
+
+@Serializable
+data class CardExportRequestDto(
+    val format: String,
+    val language: String,
+    val includeTranslationAlt: Boolean = false,
+)
+
+@Serializable
+data class CardExportWarningDto(
+    val code: String,
+    val field: String? = null,
+    val detail: String? = null,
+)
+
+@Serializable
+data class CardExportResponseDto(
+    val format: String,
+    val filename: String,
+    val contentType: String,
+    val encoding: String,
+    val payload: String,
+    val warnings: List<CardExportWarningDto> = emptyList(),
+)
+
+@Serializable
+data class UserPersonaDto(
+    val id: String,
+    val displayName: LocalizedTextDto,
+    val description: LocalizedTextDto,
+    val isBuiltIn: Boolean = false,
+    val isActive: Boolean = false,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
+    val extensions: JsonObject = JsonObject(emptyMap()),
+) {
+    fun toUserPersona(): UserPersona = UserPersona(
+        id = id,
+        displayName = displayName.toLocalizedText(),
+        description = description.toLocalizedText(),
+        isBuiltIn = isBuiltIn,
+        isActive = isActive,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        extensions = extensions,
+    )
+
+    companion object {
+        fun fromUserPersona(persona: UserPersona): UserPersonaDto = UserPersonaDto(
+            id = persona.id,
+            displayName = LocalizedTextDto(
+                persona.displayName.english,
+                persona.displayName.chinese,
+            ),
+            description = LocalizedTextDto(
+                persona.description.english,
+                persona.description.chinese,
+            ),
+            isBuiltIn = persona.isBuiltIn,
+            isActive = persona.isActive,
+            createdAt = persona.createdAt,
+            updatedAt = persona.updatedAt,
+            extensions = persona.extensions,
+        )
+    }
+}
+
+@Serializable
+data class UserPersonaListDto(
+    val personas: List<UserPersonaDto>,
+    val activePersonaId: String? = null,
+)
+
+@Serializable
+data class UserPersonaActivateRequestDto(
+    val personaId: String,
+)
+
+@Serializable
+data class PerLanguageStringListDto(
+    val english: List<String> = emptyList(),
+    val chinese: List<String> = emptyList(),
+) {
+    fun toLanguageMap(): Map<AppLanguage, List<String>> {
+        val map = mutableMapOf<AppLanguage, List<String>>()
+        if (english.isNotEmpty()) map[AppLanguage.English] = english
+        if (chinese.isNotEmpty()) map[AppLanguage.Chinese] = chinese
+        return map
+    }
+
+    companion object {
+        fun fromLanguageMap(map: Map<AppLanguage, List<String>>): PerLanguageStringListDto =
+            PerLanguageStringListDto(
+                english = map[AppLanguage.English].orEmpty(),
+                chinese = map[AppLanguage.Chinese].orEmpty(),
+            )
+    }
+}
+
+@Serializable
+data class LorebookDto(
+    val id: String,
+    val ownerId: String,
+    val displayName: LocalizedTextDto,
+    val description: LocalizedTextDto = LocalizedTextDto("", ""),
+    val isGlobal: Boolean = false,
+    val isBuiltIn: Boolean = false,
+    val tokenBudget: Int = Lorebook.DefaultTokenBudget,
+    val extensions: JsonObject = JsonObject(emptyMap()),
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
+) {
+    fun toLorebook(): Lorebook = Lorebook(
+        id = id,
+        ownerId = ownerId,
+        displayName = displayName.toLocalizedText(),
+        description = description.toLocalizedText(),
+        isGlobal = isGlobal,
+        isBuiltIn = isBuiltIn,
+        tokenBudget = tokenBudget,
+        extensions = extensions,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
+
+    companion object {
+        fun fromLorebook(lorebook: Lorebook): LorebookDto = LorebookDto(
+            id = lorebook.id,
+            ownerId = lorebook.ownerId,
+            displayName = LocalizedTextDto(
+                lorebook.displayName.english,
+                lorebook.displayName.chinese,
+            ),
+            description = LocalizedTextDto(
+                lorebook.description.english,
+                lorebook.description.chinese,
+            ),
+            isGlobal = lorebook.isGlobal,
+            isBuiltIn = lorebook.isBuiltIn,
+            tokenBudget = lorebook.tokenBudget,
+            extensions = lorebook.extensions,
+            createdAt = lorebook.createdAt,
+            updatedAt = lorebook.updatedAt,
+        )
+    }
+}
+
+@Serializable
+data class LorebookListDto(
+    val lorebooks: List<LorebookDto>,
+)
+
+@Serializable
+data class LorebookSummaryDto(
+    val id: String,
+    val displayName: LocalizedTextDto,
+    val entryCount: Int,
+    val isGlobal: Boolean = false,
+    val isBuiltIn: Boolean = false,
+)
+
+@Serializable
+data class CreateLorebookRequestDto(
+    val displayName: LocalizedTextDto,
+    val description: LocalizedTextDto = LocalizedTextDto("", ""),
+    val isGlobal: Boolean = false,
+    val tokenBudget: Int = Lorebook.DefaultTokenBudget,
+    val extensions: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
+data class UpdateLorebookRequestDto(
+    val displayName: LocalizedTextDto? = null,
+    val description: LocalizedTextDto? = null,
+    val isGlobal: Boolean? = null,
+    val tokenBudget: Int? = null,
+    val extensions: JsonObject? = null,
+)
+
+@Serializable
+data class LorebookEntryDto(
+    val id: String,
+    val lorebookId: String,
+    val name: LocalizedTextDto,
+    val keysByLang: PerLanguageStringListDto = PerLanguageStringListDto(),
+    val secondaryKeysByLang: PerLanguageStringListDto = PerLanguageStringListDto(),
+    val secondaryGate: String = "NONE",
+    val content: LocalizedTextDto = LocalizedTextDto("", ""),
+    val enabled: Boolean = true,
+    val constant: Boolean = false,
+    val caseSensitive: Boolean = false,
+    val scanDepth: Int = LorebookEntry.DefaultScanDepth,
+    val insertionOrder: Int = 0,
+    val comment: String = "",
+    val extensions: JsonObject = JsonObject(emptyMap()),
+) {
+    fun toLorebookEntry(): LorebookEntry = LorebookEntry(
+        id = id,
+        lorebookId = lorebookId,
+        name = name.toLocalizedText(),
+        keysByLang = keysByLang.toLanguageMap(),
+        secondaryKeysByLang = secondaryKeysByLang.toLanguageMap(),
+        secondaryGate = secondaryGate.toSecondaryGate(),
+        content = content.toLocalizedText(),
+        enabled = enabled,
+        constant = constant,
+        caseSensitive = caseSensitive,
+        scanDepth = scanDepth,
+        insertionOrder = insertionOrder,
+        comment = comment,
+        extensions = extensions,
+    )
+
+    companion object {
+        fun fromLorebookEntry(entry: LorebookEntry): LorebookEntryDto = LorebookEntryDto(
+            id = entry.id,
+            lorebookId = entry.lorebookId,
+            name = LocalizedTextDto(entry.name.english, entry.name.chinese),
+            keysByLang = PerLanguageStringListDto.fromLanguageMap(entry.keysByLang),
+            secondaryKeysByLang = PerLanguageStringListDto.fromLanguageMap(
+                entry.secondaryKeysByLang,
+            ),
+            secondaryGate = entry.secondaryGate.toWireName(),
+            content = LocalizedTextDto(entry.content.english, entry.content.chinese),
+            enabled = entry.enabled,
+            constant = entry.constant,
+            caseSensitive = entry.caseSensitive,
+            scanDepth = entry.scanDepth,
+            insertionOrder = entry.insertionOrder,
+            comment = entry.comment,
+            extensions = entry.extensions,
+        )
+    }
+}
+
+@Serializable
+data class LorebookEntryListDto(
+    val entries: List<LorebookEntryDto>,
+)
+
+@Serializable
+data class CreateLorebookEntryRequestDto(
+    val name: LocalizedTextDto,
+    val keysByLang: PerLanguageStringListDto = PerLanguageStringListDto(),
+    val secondaryKeysByLang: PerLanguageStringListDto = PerLanguageStringListDto(),
+    val secondaryGate: String = "NONE",
+    val content: LocalizedTextDto = LocalizedTextDto("", ""),
+    val enabled: Boolean = true,
+    val constant: Boolean = false,
+    val caseSensitive: Boolean = false,
+    val scanDepth: Int = LorebookEntry.DefaultScanDepth,
+    val insertionOrder: Int = 0,
+    val comment: String = "",
+    val extensions: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
+data class UpdateLorebookEntryRequestDto(
+    val name: LocalizedTextDto? = null,
+    val keysByLang: PerLanguageStringListDto? = null,
+    val secondaryKeysByLang: PerLanguageStringListDto? = null,
+    val secondaryGate: String? = null,
+    val content: LocalizedTextDto? = null,
+    val enabled: Boolean? = null,
+    val constant: Boolean? = null,
+    val caseSensitive: Boolean? = null,
+    val scanDepth: Int? = null,
+    val insertionOrder: Int? = null,
+    val comment: String? = null,
+    val extensions: JsonObject? = null,
+)
+
+@Serializable
+data class LorebookBindingDto(
+    val lorebookId: String,
+    val characterId: String,
+    val isPrimary: Boolean = false,
+) {
+    fun toLorebookBinding(): LorebookBinding = LorebookBinding(
+        lorebookId = lorebookId,
+        characterId = characterId,
+        isPrimary = isPrimary,
+    )
+
+    companion object {
+        fun fromLorebookBinding(binding: LorebookBinding): LorebookBindingDto = LorebookBindingDto(
+            lorebookId = binding.lorebookId,
+            characterId = binding.characterId,
+            isPrimary = binding.isPrimary,
+        )
+    }
+}
+
+@Serializable
+data class LorebookBindingListDto(
+    val bindings: List<LorebookBindingDto>,
+)
+
+@Serializable
+data class CreateLorebookBindingRequestDto(
+    val characterId: String,
+    val isPrimary: Boolean = false,
+)
+
+@Serializable
+data class UpdateLorebookBindingRequestDto(
+    val isPrimary: Boolean,
+)
+
+@Serializable
+data class WorldInfoDebugScanRequestDto(
+    val characterId: String,
+    val scanText: String,
+)
+
+@Serializable
+data class WorldInfoDebugMatchDto(
+    val entryId: String,
+    val lorebookId: String,
+    val insertionOrder: Int,
+    val constant: Boolean = false,
+    val matchedKey: String? = null,
+    val language: String? = null,
+)
+
+@Serializable
+data class WorldInfoDebugScanResponseDto(
+    val matches: List<WorldInfoDebugMatchDto> = emptyList(),
+)
+
+@Serializable
+data class CompanionMemoryDto(
+    val userId: String,
+    val companionCardId: String,
+    val summary: LocalizedTextDto = LocalizedTextDto("", ""),
+    val summaryUpdatedAt: Long = 0L,
+    val summaryTurnCursor: Int = 0,
+    val tokenBudgetHint: Int? = null,
+) {
+    fun toCompanionMemory(): CompanionMemory = CompanionMemory(
+        userId = userId,
+        companionCardId = companionCardId,
+        summary = summary.toLocalizedText(),
+        summaryUpdatedAt = summaryUpdatedAt,
+        summaryTurnCursor = summaryTurnCursor,
+        tokenBudgetHint = tokenBudgetHint,
+    )
+
+    companion object {
+        fun fromCompanionMemory(memory: CompanionMemory): CompanionMemoryDto = CompanionMemoryDto(
+            userId = memory.userId,
+            companionCardId = memory.companionCardId,
+            summary = LocalizedTextDto(memory.summary.english, memory.summary.chinese),
+            summaryUpdatedAt = memory.summaryUpdatedAt,
+            summaryTurnCursor = memory.summaryTurnCursor,
+            tokenBudgetHint = memory.tokenBudgetHint,
+        )
+    }
+}
+
+@Serializable
+data class CompanionMemoryPinDto(
+    val id: String,
+    val sourceMessageId: String? = null,
+    val text: LocalizedTextDto = LocalizedTextDto("", ""),
+    val createdAt: Long = 0L,
+    val pinnedByUser: Boolean = true,
+) {
+    fun toCompanionMemoryPin(): CompanionMemoryPin = CompanionMemoryPin(
+        id = id,
+        sourceMessageId = sourceMessageId,
+        text = text.toLocalizedText(),
+        createdAt = createdAt,
+        pinnedByUser = pinnedByUser,
+    )
+
+    companion object {
+        fun fromCompanionMemoryPin(pin: CompanionMemoryPin): CompanionMemoryPinDto = CompanionMemoryPinDto(
+            id = pin.id,
+            sourceMessageId = pin.sourceMessageId,
+            text = LocalizedTextDto(pin.text.english, pin.text.chinese),
+            createdAt = pin.createdAt,
+            pinnedByUser = pin.pinnedByUser,
+        )
+    }
+}
+
+@Serializable
+data class CompanionMemoryPinListDto(
+    val pins: List<CompanionMemoryPinDto> = emptyList(),
+)
+
+@Serializable
+data class CompanionMemoryResetRequestDto(
+    val scope: String,
+) {
+    fun toCompanionMemoryResetScope(): CompanionMemoryResetScope = when (scope.lowercase()) {
+        "summary" -> CompanionMemoryResetScope.Summary
+        "all" -> CompanionMemoryResetScope.All
+        else -> CompanionMemoryResetScope.Pins
+    }
+
+    companion object {
+        fun fromCompanionMemoryResetScope(
+            scope: CompanionMemoryResetScope,
+        ): CompanionMemoryResetRequestDto = CompanionMemoryResetRequestDto(
+            scope = scope.toWireKey(),
+        )
+    }
+}
+
+@Serializable
+data class PresetParamsDto(
+    val temperature: Double? = null,
+    val topP: Double? = null,
+    val maxReplyTokens: Int? = null,
+) {
+    fun toPresetParams(): PresetParams = PresetParams(
+        temperature = temperature,
+        topP = topP,
+        maxReplyTokens = maxReplyTokens,
+    )
+
+    companion object {
+        fun fromPresetParams(params: PresetParams): PresetParamsDto = PresetParamsDto(
+            temperature = params.temperature,
+            topP = params.topP,
+            maxReplyTokens = params.maxReplyTokens,
+        )
+    }
+}
+
+@Serializable
+data class PresetTemplateDto(
+    val systemPrefix: LocalizedTextDto = LocalizedTextDto("", ""),
+    val systemSuffix: LocalizedTextDto = LocalizedTextDto("", ""),
+    val formatInstructions: LocalizedTextDto = LocalizedTextDto("", ""),
+    val postHistoryInstructions: LocalizedTextDto = LocalizedTextDto("", ""),
+) {
+    fun toPresetTemplate(): PresetTemplate = PresetTemplate(
+        systemPrefix = systemPrefix.toLocalizedText(),
+        systemSuffix = systemSuffix.toLocalizedText(),
+        formatInstructions = formatInstructions.toLocalizedText(),
+        postHistoryInstructions = postHistoryInstructions.toLocalizedText(),
+    )
+
+    companion object {
+        fun fromPresetTemplate(template: PresetTemplate): PresetTemplateDto = PresetTemplateDto(
+            systemPrefix = LocalizedTextDto(
+                template.systemPrefix.english,
+                template.systemPrefix.chinese,
+            ),
+            systemSuffix = LocalizedTextDto(
+                template.systemSuffix.english,
+                template.systemSuffix.chinese,
+            ),
+            formatInstructions = LocalizedTextDto(
+                template.formatInstructions.english,
+                template.formatInstructions.chinese,
+            ),
+            postHistoryInstructions = LocalizedTextDto(
+                template.postHistoryInstructions.english,
+                template.postHistoryInstructions.chinese,
+            ),
+        )
+    }
+}
+
+@Serializable
+data class PresetDto(
+    val id: String,
+    val displayName: LocalizedTextDto,
+    val description: LocalizedTextDto = LocalizedTextDto("", ""),
+    val template: PresetTemplateDto = PresetTemplateDto(),
+    val params: PresetParamsDto = PresetParamsDto(),
+    val isBuiltIn: Boolean = false,
+    val isActive: Boolean = false,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
+    val extensions: JsonObject = JsonObject(emptyMap()),
+) {
+    fun toPreset(): Preset = Preset(
+        id = id,
+        displayName = displayName.toLocalizedText(),
+        description = description.toLocalizedText(),
+        template = template.toPresetTemplate(),
+        params = params.toPresetParams(),
+        isBuiltIn = isBuiltIn,
+        isActive = isActive,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        extensions = extensions,
+    )
+
+    companion object {
+        fun fromPreset(preset: Preset): PresetDto = PresetDto(
+            id = preset.id,
+            displayName = LocalizedTextDto(
+                preset.displayName.english,
+                preset.displayName.chinese,
+            ),
+            description = LocalizedTextDto(
+                preset.description.english,
+                preset.description.chinese,
+            ),
+            template = PresetTemplateDto.fromPresetTemplate(preset.template),
+            params = PresetParamsDto.fromPresetParams(preset.params),
+            isBuiltIn = preset.isBuiltIn,
+            isActive = preset.isActive,
+            createdAt = preset.createdAt,
+            updatedAt = preset.updatedAt,
+            extensions = preset.extensions,
+        )
+    }
+}
+
+@Serializable
+data class PresetListDto(
+    val presets: List<PresetDto> = emptyList(),
+    val activePresetId: String? = null,
+)
+
+@Serializable
+data class PresetActivateRequestDto(
+    val presetId: String,
+)
+
+private fun CompanionMemoryResetScope.toWireKey(): String = when (this) {
+    CompanionMemoryResetScope.Pins -> "pins"
+    CompanionMemoryResetScope.Summary -> "summary"
+    CompanionMemoryResetScope.All -> "all"
+}
+
+private fun String.toSecondaryGate(): SecondaryGate = when (uppercase()) {
+    "AND" -> SecondaryGate.And
+    "OR" -> SecondaryGate.Or
+    else -> SecondaryGate.None
+}
+
+private fun SecondaryGate.toWireName(): String = when (this) {
+    SecondaryGate.None -> "NONE"
+    SecondaryGate.And -> "AND"
+    SecondaryGate.Or -> "OR"
 }
 
 private fun MessageAttachmentDto.toMessageAttachment(
@@ -317,6 +1205,70 @@ sealed interface ImGatewayEvent {
         val requestId: String,
         val byUserId: String,
     ) : ImGatewayEvent
+
+    @Serializable
+    data class CompanionTurnStarted(
+        val turnId: String,
+        val conversationId: String,
+        val messageId: String,
+        val variantGroupId: String,
+        val variantIndex: Int,
+        val parentMessageId: String? = null,
+        val providerId: String? = null,
+        val model: String? = null,
+    ) : ImGatewayEvent
+
+    @Serializable
+    data class CompanionTurnDelta(
+        val turnId: String,
+        val conversationId: String,
+        val messageId: String,
+        val deltaSeq: Int,
+        val textDelta: String,
+    ) : ImGatewayEvent
+
+    @Serializable
+    data class CompanionTurnCompleted(
+        val turnId: String,
+        val conversationId: String,
+        val messageId: String,
+        val finalBody: String,
+        val completedAt: String,
+    ) : ImGatewayEvent
+
+    @Serializable
+    data class CompanionTurnFailed(
+        val turnId: String,
+        val conversationId: String,
+        val messageId: String,
+        val subtype: String,
+        val errorMessage: String? = null,
+        val completedAt: String? = null,
+    ) : ImGatewayEvent {
+        val subtypeAsFailedSubtype: FailedSubtype
+            get() = FailedSubtype.fromWireKey(subtype)
+    }
+
+    @Serializable
+    data class CompanionTurnBlocked(
+        val turnId: String,
+        val conversationId: String,
+        val messageId: String,
+        val reason: String,
+        val completedAt: String? = null,
+    ) : ImGatewayEvent {
+        val reasonAsBlockReason: BlockReason
+            get() = BlockReason.fromWireKey(reason)
+    }
+
+    @Serializable
+    data class CompanionTurnTimeout(
+        val turnId: String,
+        val conversationId: String,
+        val messageId: String,
+        val elapsedMs: Long,
+        val completedAt: String? = null,
+    ) : ImGatewayEvent
 }
 
 object ImGatewayEventParser {
@@ -335,7 +1287,25 @@ object ImGatewayEventParser {
             "friend_request.received" -> json.decodeFromJsonElement<ImGatewayEvent.FriendRequestReceived>(element)
             "friend_request.accepted" -> json.decodeFromJsonElement<ImGatewayEvent.FriendRequestAccepted>(element)
             "friend_request.rejected" -> json.decodeFromJsonElement<ImGatewayEvent.FriendRequestRejected>(element)
+            "companion_turn.started" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnStarted>(element)
+            "companion_turn.delta" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnDelta>(element)
+            "companion_turn.completed" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnCompleted>(element)
+            "companion_turn.failed" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnFailed>(element)
+            "companion_turn.blocked" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnBlocked>(element)
+            "companion_turn.timeout" -> json.decodeFromJsonElement<ImGatewayEvent.CompanionTurnTimeout>(element)
             else -> throw IllegalArgumentException("Unsupported gateway event type")
         }
     }
 }
+
+@Serializable
+data class ContentPolicyAcknowledgmentDto(
+    val accepted: Boolean,
+    val version: String,
+    val acceptedAtMillis: Long?,
+)
+
+@Serializable
+data class ContentPolicyAcknowledgmentRequestDto(
+    val version: String,
+)

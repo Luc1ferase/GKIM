@@ -1,0 +1,7 @@
+{
+  "parentMessageId": "msg-original-user-7",
+  "newUserText": "rewritten greeting from user",
+  "clientTurnId": "client-turn-edit-smoke-01",
+  "activeCompanionId": "daylight-listener",
+  "activeLanguage": "en"
+}

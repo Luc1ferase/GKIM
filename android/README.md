@@ -112,6 +112,7 @@ The app now derives the realtime endpoint from the selected backend origin, so o
 - App startup issues a dev session, loads bootstrap data, and connects the authenticated WebSocket gateway through `LiveMessagingRepository`.
 - `Messages` shows live integration status instead of silently implying seed-only success.
 - Opening a backend-backed chat now triggers message-history hydration for that conversation.
+- On `feature/ai-companion-im`, the third primary tab is a tavern-style `酒馆` surface for preset角色、抽卡 and owned-roster activation rather than the old `Space` feed.
 
 ### Known scope limits before device validation
 
@@ -187,9 +188,13 @@ recovery after reconnect or relaunch against the deployed backend.
 Use this workflow when validating against a locally containerized backend on the workstation. The
 existing Android emulator exercises the live API suite through host port `18080`.
 
+The backend source is no longer published in the public repository tip. Before using this local
+workflow, restore the maintainer-private backend checkout under `.private/backend/` or another
+private path on the workstation.
+
 ### 1. Start the local backend container
 
-From `backend/`:
+From your private/local backend checkout, for example `.private/backend/`:
 
 ```powershell
 Copy-Item .env.example .env.local
@@ -235,7 +240,7 @@ After the validation run:
 ```powershell
 & 'D:\Android\Sdk\platform-tools\adb.exe' logcat -d > android\emulator-im-validation.log
 & 'D:\Android\Sdk\platform-tools\adb.exe' exec-out screencap -p > android\emulator-im-validation.png
-docker logs gkim-im-backend-local > backend\docker-im-validation.log
+docker logs gkim-im-backend-local > android\docker-im-validation.log
 ```
 
 ### 4. Expected validation surface

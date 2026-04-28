@@ -49,6 +49,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.util.UUID
 
 enum class MessagingIntegrationPhase {
     Idle,
@@ -77,12 +78,23 @@ interface MessagingRepository {
     val conversations: StateFlow<List<Conversation>>
     val integrationState: StateFlow<MessagingIntegrationState>
     fun conversation(conversationId: String): Flow<Conversation?>
-    fun ensureConversation(contact: Contact): Conversation
+    fun ensureConversation(contact: Contact, companionCardId: String? = null): Conversation
     fun ensureStudioRoom(): Conversation
     fun sendMessage(conversationId: String, body: String, attachment: MessageAttachment? = null)
     fun appendAigcResult(conversationId: String, task: AigcTask)
     fun loadConversationHistory(conversationId: String)
     fun refreshBootstrap()
+
+    /**
+     * §2.1 — Calls `POST /api/relationships/{characterId}/reset` and on success removes
+     * every conversation in the local cache whose `companionCardId == characterId`. Wire
+     * failures are remapped to stable error codes so the UI can render localized copy
+     * without parsing exception types: `character_not_available` (HTTP 403),
+     * `network_failure` (anything else). Default impl throws so `InMemoryMessagingRepository`
+     * does not silently no-op when a test forgets to use `LiveMessagingRepository`.
+     */
+    suspend fun resetRelationship(characterId: String): Result<Unit> =
+        Result.failure(NotImplementedError("reset path requires a live repository"))
 }
 
 class InMemoryMessagingRepository(
@@ -102,9 +114,21 @@ class InMemoryMessagingRepository(
         items.firstOrNull { it.id == conversationId }
     }
 
-    override fun ensureConversation(contact: Contact): Conversation {
+    override fun ensureConversation(contact: Contact, companionCardId: String?): Conversation {
         val existing = conversationState.value.firstOrNull { it.contactId == contact.id }
-        if (existing != null) return existing
+        if (existing != null) {
+            val refreshed = existing.copy(
+                contactName = contact.nickname,
+                contactTitle = contact.title,
+                avatarText = contact.avatarText,
+                isOnline = contact.isOnline,
+                companionCardId = companionCardId ?: existing.companionCardId,
+            )
+            conversationState.value = conversationState.value.map { conversation ->
+                if (conversation.id == existing.id) refreshed else conversation
+            }
+            return refreshed
+        }
         val timestamp = Instant.now().toString()
         val created = Conversation(
             id = "room-${contact.id}",
@@ -125,6 +149,7 @@ class InMemoryMessagingRepository(
                     createdAt = timestamp,
                 )
             ),
+            companionCardId = companionCardId,
         )
         conversationState.value = listOf(created) + conversationState.value
         return created
@@ -612,6 +637,7 @@ class LiveMessagingRepository(
     private val chatAttachmentEncoder: ChatAttachmentEncoder = UnsupportedChatAttachmentEncoder(),
     private val shippedBackendOrigin: String = BuildConfig.IM_BACKEND_ORIGIN,
     private val allowDeveloperOverrides: Boolean = BuildConfig.DEBUG,
+    private val onBootstrapLoaded: (suspend () -> Unit)? = null,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : MessagingRepository {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
@@ -680,13 +706,36 @@ class LiveMessagingRepository(
         conversations.firstOrNull { it.id == conversationId || it.contactId == conversationId }
     }
 
-    override fun ensureConversation(contact: Contact): Conversation {
+    override fun ensureConversation(contact: Contact, companionCardId: String?): Conversation {
         val existing = conversationState.value.firstOrNull { it.contactId == contact.id }
-        if (existing != null) return existing
+        if (existing != null) {
+            val refreshed = existing.copy(
+                contactName = contact.nickname,
+                contactTitle = contact.title,
+                avatarText = contact.avatarText,
+                isOnline = contact.isOnline,
+                companionCardId = companionCardId ?: existing.companionCardId,
+            )
+            conversationState.value = conversationState.value.map { conversation ->
+                if (conversation.id == existing.id) refreshed else conversation
+            }
+            contactState.value = contactState.value.map { existingContact ->
+                if (existingContact.id == contact.id) contact else existingContact
+            }
+            return refreshed
+        }
 
         val timestamp = Instant.now().toString()
+        // Companion conversations require a UUID conversation_id (server casts it to PostgreSQL
+        // UUID for ownership checks); for non-companion DMs preserve the historical contact.id
+        // value since those are routed through the legacy IM contract.
+        val newConversationId = if (companionCardId != null) {
+            UUID.randomUUID().toString()
+        } else {
+            contact.id
+        }
         val placeholderConversation = Conversation(
-            id = contact.id,
+            id = newConversationId,
             contactId = contact.id,
             contactName = contact.nickname,
             contactTitle = contact.title,
@@ -696,6 +745,7 @@ class LiveMessagingRepository(
             unreadCount = 0,
             isOnline = contact.isOnline,
             messages = emptyList(),
+            companionCardId = companionCardId,
         )
         conversationState.value = listOf(placeholderConversation) + conversationState.value
         if (contactState.value.none { existingContact -> existingContact.id == contact.id }) {
@@ -782,6 +832,45 @@ class LiveMessagingRepository(
                 if (error is CancellationException) throw error
                 reportError(error.message ?: "Failed to sync messages.")
             }
+        }
+    }
+
+    /**
+     * §2.1 — POST `/api/relationships/{characterId}/reset` then reconcile the local
+     * conversations cache by removing entries whose `companionCardId == characterId`. The
+     * server's response confirms the user×character pair's conversations + memory + greeting
+     * are cleared on the backend; client-side memory pins (if cached anywhere) are
+     * server-authoritative and pick up the cleared state on next bootstrap.
+     */
+    override suspend fun resetRelationship(characterId: String): Result<Unit> {
+        val baseUrl = activeHttpBaseUrl ?: return Result.failure(IllegalStateException("missing_base_url"))
+        val token = activeToken ?: return Result.failure(IllegalStateException("missing_token"))
+        return try {
+            backendClient.resetRelationship(
+                baseUrl = baseUrl,
+                token = token,
+                characterId = characterId,
+            )
+            conversationState.value = conversationState.value.filterNot { it.companionCardId == characterId }
+            Result.success(Unit)
+        } catch (t: Throwable) {
+            Result.failure(remapResetError(t))
+        }
+    }
+
+    private fun remapResetError(t: Throwable): Throwable {
+        val httpException = t as? retrofit2.HttpException
+        return when (httpException?.code()) {
+            403 -> {
+                val errorBody = runCatching { httpException.response()?.errorBody()?.string() }.getOrNull().orEmpty()
+                if (errorBody.contains("character_not_available")) {
+                    RuntimeException("character_not_available")
+                } else {
+                    RuntimeException("network_failure")
+                }
+            }
+            null -> RuntimeException("network_failure", t)
+            else -> RuntimeException("network_failure", t)
         }
     }
 
@@ -919,6 +1008,7 @@ class LiveMessagingRepository(
             resolvedUserExternalId = session.user.externalId,
         )
         flushPendingHistoryLoads()
+        runPostBootstrapHook()
 
         integrationStateValue.value = MessagingIntegrationState(
             phase = MessagingIntegrationPhase.RealtimeConnecting,
@@ -953,12 +1043,18 @@ class LiveMessagingRepository(
             resolvedUserExternalId = bootstrap.user.externalId,
         )
         flushPendingHistoryLoads()
+        runPostBootstrapHook()
 
         integrationStateValue.value = MessagingIntegrationState(
             phase = MessagingIntegrationPhase.RealtimeConnecting,
             activeUserExternalId = bootstrap.user.externalId,
         )
         realtimeGateway.connect(token = token, endpointOverride = webSocketUrl)
+    }
+
+    private suspend fun runPostBootstrapHook() {
+        val hook = onBootstrapLoaded ?: return
+        runCatching { hook() }
     }
 
     private fun resetRuntimeForBootstrap() {
@@ -1101,6 +1197,12 @@ class LiveMessagingRepository(
             is com.gkim.im.android.data.remote.im.ImGatewayEvent.FriendRequestReceived -> Unit // TODO: handle in friend request UI
             is com.gkim.im.android.data.remote.im.ImGatewayEvent.FriendRequestAccepted -> Unit // TODO: handle in friend request UI
             is com.gkim.im.android.data.remote.im.ImGatewayEvent.FriendRequestRejected -> Unit // TODO: handle in friend request UI
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.CompanionTurnStarted,
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.CompanionTurnDelta,
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.CompanionTurnCompleted,
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.CompanionTurnFailed,
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.CompanionTurnBlocked,
+            is com.gkim.im.android.data.remote.im.ImGatewayEvent.CompanionTurnTimeout -> Unit
         }
     }
 
@@ -1167,6 +1269,7 @@ class LiveMessagingRepository(
                     resolvedUserExternalId = bootstrap.user.externalId,
                     preserveLoadedMessages = true,
                 )
+                runPostBootstrapHook()
                 loadedConversationIds.toList().forEach { conversationId ->
                     loadConversationHistoryNow(
                         conversationId = conversationId,

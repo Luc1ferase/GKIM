@@ -22,16 +22,34 @@ import com.gkim.im.android.data.remote.im.UserSearchResultDto
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.repository.CompanionMemoryRepository
+import com.gkim.im.android.data.repository.CompanionPresetRepository
+import com.gkim.im.android.data.repository.CompanionRosterRepository
+import com.gkim.im.android.data.repository.CompanionTurnRepository
+import com.gkim.im.android.data.repository.DefaultCompanionMemoryRepository
+import com.gkim.im.android.data.repository.DefaultCompanionPresetRepository
+import com.gkim.im.android.data.repository.CardInteropRepository
+import com.gkim.im.android.data.repository.DefaultCardInteropRepository
+import com.gkim.im.android.data.repository.LiveCardInteropRepository
 import com.gkim.im.android.data.repository.ContactsRepository
 import com.gkim.im.android.data.repository.DefaultAigcRepository
+import com.gkim.im.android.data.repository.DefaultCompanionRosterRepository
+import com.gkim.im.android.data.repository.DefaultCompanionTurnRepository
 import com.gkim.im.android.data.repository.DefaultContactsRepository
 import com.gkim.im.android.data.repository.DefaultFeedRepository
+import com.gkim.im.android.data.repository.DefaultUserPersonaRepository
 import com.gkim.im.android.data.repository.FeedRepository
 import com.gkim.im.android.data.repository.InMemoryMessagingRepository
 import com.gkim.im.android.data.repository.MessagingRepository
+import com.gkim.im.android.data.repository.UserPersonaRepository
+import com.gkim.im.android.data.repository.DefaultWorldInfoRepository
+import com.gkim.im.android.data.repository.WorldInfoRepository
 import com.gkim.im.android.data.repository.presetProviders
+import com.gkim.im.android.data.repository.seedBuiltInPersonas
+import com.gkim.im.android.data.repository.seedDrawPoolCharacters
 import com.gkim.im.android.data.repository.seedContacts
 import com.gkim.im.android.data.repository.seedConversations
+import com.gkim.im.android.data.repository.seedPresetCharacters
 import com.gkim.im.android.data.repository.seedPosts
 import com.gkim.im.android.data.repository.seedPrompts
 import kotlinx.coroutines.Dispatchers
@@ -101,6 +119,24 @@ private class LoginEndpointTestAppContainer(
     override val messagingRepository: MessagingRepository = InMemoryMessagingRepository(seedConversations)
     override val contactsRepository: ContactsRepository = DefaultContactsRepository(seedContacts, preferencesStore, Dispatchers.Main)
     override val feedRepository: FeedRepository = DefaultFeedRepository(seedPosts, seedPrompts, Dispatchers.Main)
+    override val companionRosterRepository: CompanionRosterRepository = DefaultCompanionRosterRepository(
+        presetCharacters = seedPresetCharacters,
+        drawPool = seedDrawPoolCharacters,
+    )
+    override val companionTurnRepository: CompanionTurnRepository = DefaultCompanionTurnRepository()
+    override val cardInteropRepository: CardInteropRepository = DefaultCardInteropRepository(
+        delegate = LiveCardInteropRepository(
+            backendClient = imBackendClient,
+            baseUrlProvider = { sessionStore.baseUrl },
+            tokenProvider = { sessionStore.token },
+        ),
+    )
+    override val userPersonaRepository: UserPersonaRepository = DefaultUserPersonaRepository(
+        initialPersonas = seedBuiltInPersonas,
+    )
+    override val worldInfoRepository: WorldInfoRepository = DefaultWorldInfoRepository()
+    override val companionMemoryRepository: CompanionMemoryRepository = DefaultCompanionMemoryRepository()
+    override val companionPresetRepository: CompanionPresetRepository = DefaultCompanionPresetRepository()
     override val aigcRepository: AigcRepository = DefaultAigcRepository(
         presets = presetProviders,
         preferencesStore = preferencesStore,

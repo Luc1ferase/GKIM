@@ -17,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -69,14 +70,285 @@ internal data class SettingsUiState(
     val messagingIntegrationState: MessagingIntegrationState = MessagingIntegrationState(),
     val appLanguage: AppLanguage = AppLanguage.English,
     val themeMode: AppThemeMode = AppThemeMode.Light,
+    val blockReasonVerbosity: Boolean = true,
+    val contentPolicyAcknowledgedAtMillis: Long? = null,
+    val contentPolicyAcknowledgedVersion: String = "",
 )
 
-private enum class SettingsDestination {
+internal enum class SettingsDestination {
     Menu,
     Appearance,
     AiProvider,
     ImValidation,
+    Personas,
+    PersonaEditor,
+    Presets,
+    PresetEditor,
+    WorldInfo,
+    WorldInfoEditor,
+    WorldInfoEntryEditor,
+    CompanionMemoryChooser,
+    CompanionMemoryPanel,
+    ContentSafety,
+    ContentPolicy,
     Account,
+}
+
+internal data class SettingsMenuItem(
+    val destination: SettingsDestination,
+    val testTag: String,
+    val englishLabel: String,
+    val chineseLabel: String,
+    val englishSummary: String,
+    val chineseSummary: String,
+)
+
+internal enum class SettingsSectionId {
+    Companion,
+    Appearance,
+    ContentSafety,
+    AigcImageProvider,
+    DeveloperConnection,
+    Account,
+}
+
+internal data class SettingsMenuSection(
+    val id: SettingsSectionId,
+    val testTag: String,
+    val englishLabel: String,
+    val chineseLabel: String,
+    val englishCaption: String? = null,
+    val chineseCaption: String? = null,
+    val items: List<SettingsMenuItem>,
+)
+
+internal data class CompanionMemoryChooserEntry(
+    val cardId: String,
+    val displayName: com.gkim.im.android.core.model.LocalizedText,
+    val roleLabel: com.gkim.im.android.core.model.LocalizedText,
+    val isActive: Boolean,
+)
+
+internal fun buildCompanionMemoryChooserEntries(
+    presetCharacters: List<com.gkim.im.android.core.model.CompanionCharacterCard>,
+    ownedCharacters: List<com.gkim.im.android.core.model.CompanionCharacterCard>,
+    userCharacters: List<com.gkim.im.android.core.model.CompanionCharacterCard>,
+    activeCardId: String,
+): List<CompanionMemoryChooserEntry> {
+    val seen = mutableSetOf<String>()
+    val merged = mutableListOf<com.gkim.im.android.core.model.CompanionCharacterCard>()
+    (userCharacters + ownedCharacters + presetCharacters).forEach { card ->
+        if (seen.add(card.id)) merged += card
+    }
+    val activeIndex = merged.indexOfFirst { it.id == activeCardId }
+    val ordered = if (activeIndex > 0) {
+        val active = merged[activeIndex]
+        listOf(active) + merged.filterIndexed { index, _ -> index != activeIndex }
+    } else {
+        merged
+    }
+    return ordered.map { card ->
+        CompanionMemoryChooserEntry(
+            cardId = card.id,
+            displayName = card.displayName,
+            roleLabel = card.roleLabel,
+            isActive = card.id == activeCardId,
+        )
+    }
+}
+
+internal fun buildSettingsMenuItems(
+    uiState: SettingsUiState,
+): List<SettingsMenuItem> {
+    val activeProvider = uiState.providers.firstOrNull { it.id == uiState.activeProviderId }
+    val providerEnglishSummary = activeProvider?.let { "${it.label} · ${it.model}" } ?: "Choose a provider"
+    val providerChineseSummary = activeProvider?.let { "${it.label} · ${it.model}" } ?: "选择提供商"
+    val appearanceEnglishSummary = "${uiState.appLanguage.menuEnglishLabel()} · ${uiState.themeMode.menuEnglishLabel()}"
+    val appearanceChineseSummary = "${uiState.appLanguage.menuChineseLabel()} · ${uiState.themeMode.menuChineseLabel()}"
+    val validationResolved = uiState.imResolvedBackendOrigin.removeSuffix("/")
+    val validationEnglishSummary = uiState.imValidationError ?: "Backend $validationResolved"
+    val validationChineseSummary = uiState.imValidationError ?: "后端 $validationResolved"
+    val verbosityEnglishSummary = if (uiState.blockReasonVerbosity) "On" else "Off"
+    val verbosityChineseSummary = if (uiState.blockReasonVerbosity) "开" else "关"
+    val ackEnglishSummary = formatAcknowledgmentEnglishSummary(uiState.contentPolicyAcknowledgedAtMillis)
+    val ackChineseSummary = formatAcknowledgmentChineseSummary(uiState.contentPolicyAcknowledgedAtMillis)
+
+    return listOf(
+        SettingsMenuItem(
+            destination = SettingsDestination.Appearance,
+            testTag = "settings-menu-appearance",
+            englishLabel = "Appearance & Language",
+            chineseLabel = "外观与语言",
+            englishSummary = appearanceEnglishSummary,
+            chineseSummary = appearanceChineseSummary,
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.AiProvider,
+            testTag = "settings-menu-ai-provider",
+            englishLabel = "AIGC Image Provider",
+            chineseLabel = "AIGC 图像提供商",
+            englishSummary = providerEnglishSummary,
+            chineseSummary = providerChineseSummary,
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.ImValidation,
+            testTag = "settings-menu-im-validation",
+            englishLabel = "Connection & Developer Tools",
+            chineseLabel = "连接与开发者工具",
+            englishSummary = validationEnglishSummary,
+            chineseSummary = validationChineseSummary,
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.Personas,
+            testTag = "settings-menu-personas",
+            englishLabel = "Persona library",
+            chineseLabel = "用户角色库",
+            englishSummary = "Manage the {{user}} personas used across companion chats.",
+            chineseSummary = "管理陪伴对话中的 {{user}} 角色资料。",
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.Presets,
+            testTag = "settings-menu-presets",
+            englishLabel = "Preset library",
+            chineseLabel = "预设库",
+            englishSummary = "Manage the prompt presets that shape companion replies.",
+            chineseSummary = "管理用于塑造伙伴回复的提示预设。",
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.WorldInfo,
+            testTag = "settings-menu-worldinfo",
+            englishLabel = "World Info",
+            chineseLabel = "世界信息",
+            englishSummary = "Manage lorebooks bound to companion characters.",
+            chineseSummary = "管理绑定到伙伴角色的世界书。",
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.CompanionMemoryChooser,
+            testTag = "settings-menu-companion-memory",
+            englishLabel = "Companion memory",
+            chineseLabel = "伙伴记忆",
+            englishSummary = "Open the memory panel for a recently active companion.",
+            chineseSummary = "为最近使用的伙伴打开记忆面板。",
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.ContentPolicy,
+            testTag = "settings-menu-content-policy",
+            englishLabel = "Acknowledgment status",
+            chineseLabel = "内容政策确认",
+            englishSummary = ackEnglishSummary,
+            chineseSummary = ackChineseSummary,
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.ContentSafety,
+            testTag = "settings-menu-block-reason-verbosity",
+            englishLabel = "Block reason verbosity",
+            chineseLabel = "屏蔽原因详细度",
+            englishSummary = verbosityEnglishSummary,
+            chineseSummary = verbosityChineseSummary,
+        ),
+        SettingsMenuItem(
+            destination = SettingsDestination.Account,
+            testTag = "settings-menu-account",
+            englishLabel = "Account",
+            chineseLabel = "账号",
+            englishSummary = "Manage sign-in and session details.",
+            chineseSummary = "管理登录与会话信息。",
+        ),
+    )
+}
+
+internal fun formatAcknowledgmentEnglishSummary(acknowledgedAtMillis: Long?): String {
+    if (acknowledgedAtMillis == null) return "Not accepted — read policy"
+    val date = java.time.Instant.ofEpochMilli(acknowledgedAtMillis)
+        .atZone(java.time.ZoneId.systemDefault())
+        .toLocalDate()
+    return "Accepted on ${date.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)}"
+}
+
+internal fun formatAcknowledgmentChineseSummary(acknowledgedAtMillis: Long?): String {
+    if (acknowledgedAtMillis == null) return "未确认 — 请阅读政策"
+    val date = java.time.Instant.ofEpochMilli(acknowledgedAtMillis)
+        .atZone(java.time.ZoneId.systemDefault())
+        .toLocalDate()
+    return "${date.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)} 已确认"
+}
+
+
+internal fun buildSettingsMenuSections(
+    uiState: SettingsUiState,
+    isDebugBuild: Boolean = BuildConfig.DEBUG,
+): List<SettingsMenuSection> {
+    val items = buildSettingsMenuItems(uiState).associateBy { it.destination }
+
+    val companionItems = listOfNotNull(
+        items[SettingsDestination.Personas],
+        items[SettingsDestination.Presets],
+        items[SettingsDestination.WorldInfo],
+        items[SettingsDestination.CompanionMemoryChooser],
+    )
+    val appearanceItems = listOfNotNull(items[SettingsDestination.Appearance])
+    val contentSafetyItems = listOfNotNull(
+        items[SettingsDestination.ContentPolicy],
+        items[SettingsDestination.ContentSafety],
+    )
+    val aigcItems = listOfNotNull(items[SettingsDestination.AiProvider])
+    val accountItems = listOfNotNull(items[SettingsDestination.Account])
+    val developerItems = listOfNotNull(items[SettingsDestination.ImValidation])
+
+    val sections = mutableListOf<SettingsMenuSection>()
+    sections += SettingsMenuSection(
+        id = SettingsSectionId.Companion,
+        testTag = "settings-section-companion",
+        englishLabel = "Companion",
+        chineseLabel = "陪伴",
+        englishCaption = "Personas, presets, and lorebooks that shape the companion.",
+        chineseCaption = "塑造伙伴的用户角色、预设和世界书。",
+        items = companionItems,
+    )
+    sections += SettingsMenuSection(
+        id = SettingsSectionId.Appearance,
+        testTag = "settings-section-appearance",
+        englishLabel = "Appearance",
+        chineseLabel = "外观",
+        items = appearanceItems,
+    )
+    sections += SettingsMenuSection(
+        id = SettingsSectionId.ContentSafety,
+        testTag = "settings-section-content-safety",
+        englishLabel = "Content & Safety",
+        chineseLabel = "内容与安全",
+        englishCaption = "Content policy acknowledgment and block-reason verbosity.",
+        chineseCaption = "内容政策确认与屏蔽原因详细度。",
+        items = contentSafetyItems,
+    )
+    sections += SettingsMenuSection(
+        id = SettingsSectionId.AigcImageProvider,
+        testTag = "settings-section-aigc-image-provider",
+        englishLabel = "AIGC Image Provider",
+        chineseLabel = "AIGC 图像提供商",
+        englishCaption = "Provider for AI image generation only — does not affect companion chat.",
+        chineseCaption = "仅用于 AI 图像生成的提供商,不影响陪伴聊天。",
+        items = aigcItems,
+    )
+    if (isDebugBuild) {
+        sections += SettingsMenuSection(
+            id = SettingsSectionId.DeveloperConnection,
+            testTag = "settings-section-developer-connection",
+            englishLabel = "Developer & Connection",
+            chineseLabel = "开发者与连接",
+            englishCaption = "Backend connection details and developer overrides.",
+            chineseCaption = "后端连接信息与开发者选项。",
+            items = developerItems,
+        )
+    }
+    sections += SettingsMenuSection(
+        id = SettingsSectionId.Account,
+        testTag = "settings-section-account",
+        englishLabel = "Account",
+        chineseLabel = "账号",
+        items = accountItems,
+    )
+    return sections
 }
 
 internal class SettingsViewModel(
@@ -121,6 +393,12 @@ internal class SettingsViewModel(
         )
     }
 
+    private data class SafetySettingsState(
+        val blockReasonVerbosity: Boolean,
+        val contentPolicyAcknowledgedAtMillis: Long?,
+        val contentPolicyAcknowledgedVersion: String,
+    )
+
     private val providerSettings = combine(
         providerConfig,
         preferencesStore.appLanguage,
@@ -136,7 +414,19 @@ internal class SettingsViewModel(
         )
     }
 
-    val uiState = combine(providerSettings, imValidationConfig, messagingRepository.integrationState) { providerSettings, validationConfig, messagingIntegrationState ->
+    private val safetySettings = combine(
+        preferencesStore.blockReasonVerbosity,
+        preferencesStore.contentPolicyAcknowledgedAtMillis,
+        preferencesStore.contentPolicyAcknowledgedVersion,
+    ) { verbosity, acceptedAt, version ->
+        SafetySettingsState(
+            blockReasonVerbosity = verbosity,
+            contentPolicyAcknowledgedAtMillis = acceptedAt,
+            contentPolicyAcknowledgedVersion = version,
+        )
+    }
+
+    val uiState = combine(providerSettings, imValidationConfig, messagingRepository.integrationState, safetySettings) { providerSettings, validationConfig, messagingIntegrationState, safetySettings ->
         val (imDeveloperOverrideOrigin, imDevUserExternalId) = validationConfig
         val resolvedEndpoint = ImHttpEndpointResolver.resolve(
             sessionBaseUrl = null,
@@ -161,6 +451,9 @@ internal class SettingsViewModel(
             messagingIntegrationState = messagingIntegrationState,
             appLanguage = providerSettings.appLanguage,
             themeMode = providerSettings.themeMode,
+            blockReasonVerbosity = safetySettings.blockReasonVerbosity,
+            contentPolicyAcknowledgedAtMillis = safetySettings.contentPolicyAcknowledgedAtMillis,
+            contentPolicyAcknowledgedVersion = safetySettings.contentPolicyAcknowledgedVersion,
         )
     }.stateIn(
         viewModelScope,
@@ -210,6 +503,9 @@ internal class SettingsViewModel(
     fun setThemeMode(value: AppThemeMode) {
         viewModelScope.launch { preferencesStore.setAppThemeMode(value) }
     }
+    fun setBlockReasonVerbosity(value: Boolean) {
+        viewModelScope.launch { preferencesStore.setBlockReasonVerbosity(value) }
+    }
 
     private fun validationErrorFor(
         appLanguage: AppLanguage,
@@ -231,7 +527,11 @@ internal class SettingsViewModel(
 }
 
 @Composable
-fun SettingsRoute(navController: NavHostController, container: AppContainer) {
+fun SettingsRoute(
+    navController: NavHostController,
+    container: AppContainer,
+    initialWorldInfoLorebookId: String? = null,
+) {
     val viewModel = viewModel<SettingsViewModel>(factory = simpleViewModelFactory {
         SettingsViewModel(container.aigcRepository, container.preferencesStore, container.messagingRepository)
     })
@@ -240,17 +540,35 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
     val presetProviderConfig = uiState.activePresetProviderConfig
     val activeModelValue = if (activeProvider?.id == "custom") uiState.customProvider.model else presetProviderConfig?.model.orEmpty()
     val activeApiKeyValue = if (activeProvider?.id == "custom") uiState.customProvider.apiKey else presetProviderConfig?.apiKey.orEmpty()
-    var destination by rememberSaveable { mutableStateOf(SettingsDestination.Menu) }
+    var destination by rememberSaveable(initialWorldInfoLorebookId) {
+        mutableStateOf(
+            if (initialWorldInfoLorebookId != null) SettingsDestination.WorldInfoEditor
+            else SettingsDestination.Menu,
+        )
+    }
     var baseUrl by remember(uiState.customProvider.baseUrl) { mutableStateOf(uiState.customProvider.baseUrl) }
     var model by remember(uiState.activeProviderId, activeModelValue) { mutableStateOf(activeModelValue) }
     var apiKey by remember(uiState.activeProviderId, activeApiKeyValue) { mutableStateOf(activeApiKeyValue) }
     var imDeveloperOverrideOrigin by remember(uiState.imDeveloperOverrideOrigin) { mutableStateOf(uiState.imDeveloperOverrideOrigin) }
     var imDevUserExternalId by remember(uiState.imDevUserExternalId) { mutableStateOf(uiState.imDevUserExternalId) }
     var showImDeveloperControls by rememberSaveable { mutableStateOf(false) }
+    var editingPersonaId by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingPresetId by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingLorebookId by rememberSaveable(initialWorldInfoLorebookId) {
+        mutableStateOf(initialWorldInfoLorebookId)
+    }
+    var editingEntryId by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingCompanionMemoryCardId by rememberSaveable { mutableStateOf<String?>(null) }
 
     SettingsScreen(
+        container = container,
         uiState = uiState,
         destination = destination,
+        editingPersonaId = editingPersonaId,
+        editingLorebookId = editingLorebookId,
+        editingEntryId = editingEntryId,
+        editingPresetId = editingPresetId,
+        editingCompanionMemoryCardId = editingCompanionMemoryCardId,
         baseUrl = baseUrl,
         model = model,
         apiKey = apiKey,
@@ -288,17 +606,64 @@ fun SettingsRoute(navController: NavHostController, container: AppContainer) {
         },
         onToggleImDeveloperControls = { showImDeveloperControls = !showImDeveloperControls },
         onNavigateToDestination = { destination = it },
+        onEditPersona = { id ->
+            editingPersonaId = id
+            destination = SettingsDestination.PersonaEditor
+        },
+        onPersonaEditorDone = {
+            editingPersonaId = null
+            destination = SettingsDestination.Personas
+        },
+        onEditPreset = { id ->
+            editingPresetId = id
+            destination = SettingsDestination.PresetEditor
+        },
+        onPresetEditorDone = {
+            editingPresetId = null
+            destination = SettingsDestination.Presets
+        },
+        onOpenLorebook = { id ->
+            editingLorebookId = id
+            destination = SettingsDestination.WorldInfoEditor
+        },
+        onLorebookEditorDone = {
+            editingLorebookId = null
+            destination = SettingsDestination.WorldInfo
+        },
+        onOpenEntry = { id ->
+            editingEntryId = id
+            destination = SettingsDestination.WorldInfoEntryEditor
+        },
+        onEntryEditorDone = {
+            editingEntryId = null
+            destination = SettingsDestination.WorldInfoEditor
+        },
+        onOpenCompanionMemory = { id ->
+            editingCompanionMemoryCardId = id
+            destination = SettingsDestination.CompanionMemoryPanel
+        },
+        onCompanionMemoryPanelDone = {
+            editingCompanionMemoryCardId = null
+            destination = SettingsDestination.CompanionMemoryChooser
+        },
         onSelectProvider = viewModel::setActiveProvider,
         onSelectLanguage = viewModel::setAppLanguage,
         onSelectThemeMode = viewModel::setThemeMode,
+        onSetBlockReasonVerbosity = viewModel::setBlockReasonVerbosity,
         onBack = { navController.popBackStack() },
     )
 }
 
 @Composable
 private fun SettingsScreen(
+    container: AppContainer,
     uiState: SettingsUiState,
     destination: SettingsDestination,
+    editingPersonaId: String?,
+    editingPresetId: String?,
+    editingLorebookId: String?,
+    editingEntryId: String?,
+    editingCompanionMemoryCardId: String?,
     baseUrl: String,
     model: String,
     apiKey: String,
@@ -313,9 +678,20 @@ private fun SettingsScreen(
     onImDevUserExternalIdChanged: (String) -> Unit,
     onToggleImDeveloperControls: () -> Unit,
     onNavigateToDestination: (SettingsDestination) -> Unit,
+    onEditPersona: (String) -> Unit,
+    onPersonaEditorDone: () -> Unit,
+    onEditPreset: (String) -> Unit,
+    onPresetEditorDone: () -> Unit,
+    onOpenLorebook: (String) -> Unit,
+    onLorebookEditorDone: () -> Unit,
+    onOpenEntry: (String) -> Unit,
+    onEntryEditorDone: () -> Unit,
+    onOpenCompanionMemory: (String) -> Unit,
+    onCompanionMemoryPanelDone: () -> Unit,
     onSelectProvider: (String) -> Unit,
     onSelectLanguage: (AppLanguage) -> Unit,
     onSelectThemeMode: (AppThemeMode) -> Unit,
+    onSetBlockReasonVerbosity: (Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
     if (destination != SettingsDestination.Menu) {
@@ -368,6 +744,111 @@ private fun SettingsScreen(
                 onBack = { onNavigateToDestination(SettingsDestination.Menu) },
             )
 
+            SettingsDestination.Personas -> SettingsPersonasScreen(
+                container = container,
+                onEditPersona = onEditPersona,
+                onBack = { onNavigateToDestination(SettingsDestination.Menu) },
+            )
+
+            SettingsDestination.PersonaEditor -> {
+                val id = editingPersonaId
+                if (id != null) {
+                    PersonaEditorRoute(
+                        container = container,
+                        personaId = id,
+                        onDone = onPersonaEditorDone,
+                    )
+                } else {
+                    androidx.compose.runtime.SideEffect { onPersonaEditorDone() }
+                }
+            }
+
+            SettingsDestination.Presets -> SettingsPresetsScreen(
+                container = container,
+                onEditPreset = onEditPreset,
+                onBack = { onNavigateToDestination(SettingsDestination.Menu) },
+            )
+
+            SettingsDestination.PresetEditor -> {
+                val id = editingPresetId
+                if (id != null) {
+                    PresetEditorRoute(
+                        container = container,
+                        presetId = id,
+                        onDone = onPresetEditorDone,
+                    )
+                } else {
+                    androidx.compose.runtime.SideEffect { onPresetEditorDone() }
+                }
+            }
+
+            SettingsDestination.WorldInfo -> com.gkim.im.android.feature.settings.worldinfo.WorldInfoLibraryRoute(
+                container = container,
+                onBack = { onNavigateToDestination(SettingsDestination.Menu) },
+                onOpenLorebook = onOpenLorebook,
+            )
+
+            SettingsDestination.WorldInfoEditor -> {
+                val id = editingLorebookId
+                if (id != null) {
+                    com.gkim.im.android.feature.settings.worldinfo.WorldInfoEditorRoute(
+                        container = container,
+                        lorebookId = id,
+                        onBack = onLorebookEditorDone,
+                        onOpenEntry = onOpenEntry,
+                    )
+                } else {
+                    androidx.compose.runtime.SideEffect { onLorebookEditorDone() }
+                }
+            }
+
+            SettingsDestination.WorldInfoEntryEditor -> {
+                val lorebook = editingLorebookId
+                val entry = editingEntryId
+                if (lorebook != null && entry != null) {
+                    com.gkim.im.android.feature.settings.worldinfo.WorldInfoEntryEditorRoute(
+                        container = container,
+                        lorebookId = lorebook,
+                        entryId = entry,
+                        onBack = onEntryEditorDone,
+                    )
+                } else {
+                    androidx.compose.runtime.SideEffect { onEntryEditorDone() }
+                }
+            }
+
+            SettingsDestination.CompanionMemoryChooser -> SettingsCompanionMemoryChooserScreen(
+                container = container,
+                onOpenMemory = onOpenCompanionMemory,
+                onBack = { onNavigateToDestination(SettingsDestination.Menu) },
+            )
+
+            SettingsDestination.CompanionMemoryPanel -> {
+                val id = editingCompanionMemoryCardId
+                if (id != null) {
+                    com.gkim.im.android.feature.chat.MemoryPanelRoute(
+                        container = container,
+                        cardId = id,
+                        onDone = onCompanionMemoryPanelDone,
+                    )
+                } else {
+                    androidx.compose.runtime.SideEffect { onCompanionMemoryPanelDone() }
+                }
+            }
+
+            SettingsDestination.ContentSafety -> SettingsContentSafetyScreen(
+                uiState = uiState,
+                onSetBlockReasonVerbosity = onSetBlockReasonVerbosity,
+                onReadPolicy = { onNavigateToDestination(SettingsDestination.ContentPolicy) },
+                onBack = { onNavigateToDestination(SettingsDestination.Menu) },
+            )
+
+            SettingsDestination.ContentPolicy -> ContentPolicyAcknowledgmentRoute(
+                container = container,
+                onAccepted = { onNavigateToDestination(SettingsDestination.Menu) },
+                onBack = { onNavigateToDestination(SettingsDestination.Menu) },
+            )
+
             SettingsDestination.Account -> SettingsAccountScreen(
                 onBack = { onNavigateToDestination(SettingsDestination.Menu) },
             )
@@ -382,18 +863,6 @@ private fun SettingsMenuScreen(
     onBack: () -> Unit,
 ) {
     val appLanguage = LocalAppLanguage.current
-    val activeProvider = uiState.providers.firstOrNull { it.id == uiState.activeProviderId }
-    val providerSummary = activeProvider?.let { provider ->
-        appLanguage.pick("${provider.label} · ${provider.model}", "${provider.label} · ${provider.model}")
-    } ?: appLanguage.pick("Choose a provider", "选择提供商")
-    val appearanceSummary = appLanguage.pick(
-        "${uiState.appLanguage.menuEnglishLabel()} · ${uiState.themeMode.menuEnglishLabel()}",
-        "${uiState.appLanguage.menuChineseLabel()} · ${uiState.themeMode.menuChineseLabel()}",
-    )
-    val validationSummary = uiState.imValidationError ?: appLanguage.pick(
-        "Backend ${uiState.imResolvedBackendOrigin.removeSuffix("/")}",
-        "后端 ${uiState.imResolvedBackendOrigin.removeSuffix("/")}",
-    )
 
     PageHeader(
         eyebrow = appLanguage.pick("Settings", "设置"),
@@ -408,28 +877,40 @@ private fun SettingsMenuScreen(
 
     Column(
         modifier = Modifier.testTag("settings-menu-screen"),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        SettingsMenuEntry(
-            testTag = "settings-menu-appearance",
-            label = appLanguage.pick("Appearance & Language", "外观与语言"),
-            summary = appearanceSummary,
-        ) { onNavigateToDestination(SettingsDestination.Appearance) }
-        SettingsMenuEntry(
-            testTag = "settings-menu-ai-provider",
-            label = appLanguage.pick("AI Provider", "AI 提供商"),
-            summary = providerSummary,
-        ) { onNavigateToDestination(SettingsDestination.AiProvider) }
-        SettingsMenuEntry(
-            testTag = "settings-menu-im-validation",
-            label = appLanguage.pick("Connection", "连接信息"),
-            summary = validationSummary,
-        ) { onNavigateToDestination(SettingsDestination.ImValidation) }
-        SettingsMenuEntry(
-            testTag = "settings-menu-account",
-            label = appLanguage.pick("Account", "账号"),
-            summary = appLanguage.pick("Manage sign-in and session details.", "管理登录与会话信息。"),
-        ) { onNavigateToDestination(SettingsDestination.Account) }
+        buildSettingsMenuSections(uiState).forEach { section ->
+            Column(
+                modifier = Modifier.testTag(section.testTag),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = appLanguage.pick(section.englishLabel, section.chineseLabel),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = AetherColors.Primary,
+                    modifier = Modifier.testTag("${section.testTag}-label"),
+                )
+                val caption = appLanguage.pick(
+                    section.englishCaption.orEmpty(),
+                    section.chineseCaption.orEmpty(),
+                )
+                if (caption.isNotBlank()) {
+                    Text(
+                        text = caption,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AetherColors.OnSurfaceVariant,
+                        modifier = Modifier.testTag("${section.testTag}-caption"),
+                    )
+                }
+                section.items.forEach { item ->
+                    SettingsMenuEntry(
+                        testTag = item.testTag,
+                        label = appLanguage.pick(item.englishLabel, item.chineseLabel),
+                        summary = appLanguage.pick(item.englishSummary, item.chineseSummary),
+                    ) { onNavigateToDestination(item.destination) }
+                }
+            }
+        }
     }
 }
 
@@ -505,10 +986,10 @@ private fun SettingsAiProviderScreen(
     val appLanguage = LocalAppLanguage.current
     PageHeader(
         eyebrow = appLanguage.pick("Settings", "设置"),
-        title = appLanguage.pick("AI Provider", "AI 提供商"),
+        title = appLanguage.pick("AIGC Image Provider", "AIGC 图像提供商"),
         description = appLanguage.pick(
-            "Switch between presets or wire a custom OpenAI-compatible gateway for generation requests.",
-            "切换预设模型提供商，或接入兼容 OpenAI 的自定义生成网关。",
+            "Configure the provider used for AI image generation. This does not affect companion chat.",
+            "配置用于 AI 图像生成的提供商。不会影响陪伴聊天。",
         ),
         leadingLabel = appLanguage.pick("Back", "返回"),
         onLeading = onBack,
@@ -597,10 +1078,10 @@ private fun SettingsImValidationScreen(
     val appLanguage = LocalAppLanguage.current
     PageHeader(
         eyebrow = appLanguage.pick("Settings", "设置"),
-        title = appLanguage.pick("Connection", "连接信息"),
+        title = appLanguage.pick("Connection & Developer Tools", "连接与开发者工具"),
         description = appLanguage.pick(
-            "Review the current server address and connection status for messaging.",
-            "查看消息服务当前使用的地址和连接状态。",
+            "Review the current server address and messaging status, with developer overrides available in debug builds.",
+            "查看消息服务当前使用的地址和连接状态,调试构建中可使用开发者覆盖项。",
         ),
         leadingLabel = appLanguage.pick("Back", "返回"),
         onLeading = onBack,
@@ -688,6 +1169,433 @@ private fun SettingsImValidationScreen(
                     ),
                     style = MaterialTheme.typography.bodyLarge,
                     color = AetherColors.OnSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsPersonasScreen(
+    container: AppContainer,
+    onEditPersona: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    val viewModel = viewModel<PersonaLibraryViewModel>(
+        key = "personaLibrary",
+        factory = simpleViewModelFactory {
+            PersonaLibraryViewModel(
+                repository = container.userPersonaRepository,
+                language = { appLanguage },
+            )
+        },
+    )
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    PageHeader(
+        eyebrow = appLanguage.pick("Settings", "设置"),
+        title = appLanguage.pick("Persona library", "用户角色库"),
+        description = appLanguage.pick(
+            "Choose how companions address you. The active persona powers the {{user}} macro in chats.",
+            "选择陪伴对象称呼你的方式。当前启用的角色资料会驱动对话中的 {{user}} 占位。",
+        ),
+        leadingLabel = appLanguage.pick("Back", "返回"),
+        onLeading = onBack,
+    )
+
+    Column(
+        modifier = Modifier.testTag("settings-detail-personas"),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        uiState.errorMessage?.let { message ->
+            GlassCard(modifier = Modifier.testTag("settings-personas-error")) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurface,
+                )
+                OutlinedButton(
+                    onClick = viewModel::clearError,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings-personas-error-dismiss"),
+                ) {
+                    Text(appLanguage.pick("Dismiss", "知道了"))
+                }
+            }
+        }
+
+        OutlinedButton(
+            onClick = { /* hook for task 3.2 PersonaEditor */ },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("settings-personas-new"),
+        ) {
+            Text(appLanguage.pick("New persona", "新建角色"))
+        }
+
+        uiState.items.forEach { item ->
+            val pendingOperation = uiState.pendingOperation?.takeIf { it.personaId == item.persona.id }
+            val isPending = pendingOperation != null
+            GlassCard(modifier = Modifier.testTag("settings-personas-card-${item.persona.id}")) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = item.resolved.displayName,
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = AetherColors.OnSurface,
+                    )
+                    if (item.isActive) {
+                        Text(
+                            text = appLanguage.pick("ACTIVE", "已启用"),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.Surface,
+                            modifier = Modifier
+                                .testTag("settings-personas-active-${item.persona.id}")
+                                .background(AetherColors.Primary, RoundedCornerShape(999.dp))
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                    }
+                    if (item.persona.isBuiltIn) {
+                        Text(
+                            text = appLanguage.pick("BUILT-IN", "内置"),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.OnSurfaceVariant,
+                        )
+                    }
+                }
+                Text(
+                    text = item.resolved.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = { viewModel.activate(item.persona.id) },
+                        enabled = item.canActivate && !isPending,
+                        modifier = Modifier.testTag("settings-personas-activate-${item.persona.id}"),
+                    ) {
+                        Text(appLanguage.pick("Activate", "启用"))
+                    }
+                    OutlinedButton(
+                        onClick = { onEditPersona(item.persona.id) },
+                        enabled = item.canEdit && !isPending,
+                        modifier = Modifier.testTag("settings-personas-edit-${item.persona.id}"),
+                    ) {
+                        Text(appLanguage.pick("Edit", "编辑"))
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.duplicate(item.persona.id) },
+                        enabled = item.canDuplicate && !isPending,
+                        modifier = Modifier.testTag("settings-personas-duplicate-${item.persona.id}"),
+                    ) {
+                        Text(appLanguage.pick("Duplicate", "复制"))
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.delete(item.persona.id) },
+                        enabled = item.canDelete && !isPending,
+                        modifier = Modifier.testTag("settings-personas-delete-${item.persona.id}"),
+                    ) {
+                        Text(appLanguage.pick("Delete", "删除"))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsPresetsScreen(
+    container: AppContainer,
+    onEditPreset: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    val viewModel = viewModel<PresetLibraryViewModel>(
+        key = "presetLibrary",
+        factory = simpleViewModelFactory {
+            PresetLibraryViewModel(
+                repository = container.companionPresetRepository,
+                language = { appLanguage },
+            )
+        },
+    )
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    PageHeader(
+        eyebrow = appLanguage.pick("Settings", "设置"),
+        title = appLanguage.pick("Preset library", "预设库"),
+        description = appLanguage.pick(
+            "Presets shape the system prompt and reply parameters. Built-ins are locked; duplicate to customise.",
+            "预设用于控制系统提示与回复参数。内置预设无法修改，可复制后自定义。",
+        ),
+        leadingLabel = appLanguage.pick("Back", "返回"),
+        onLeading = onBack,
+    )
+
+    Column(
+        modifier = Modifier.testTag("settings-detail-presets"),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        uiState.errorMessage?.let { message ->
+            GlassCard(modifier = Modifier.testTag("settings-presets-error")) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurface,
+                )
+                OutlinedButton(
+                    onClick = viewModel::clearError,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings-presets-error-dismiss"),
+                ) {
+                    Text(appLanguage.pick("Dismiss", "知道了"))
+                }
+            }
+        }
+
+        OutlinedButton(
+            onClick = { /* hook for task 4.2 PresetEditor */ },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("settings-presets-new"),
+        ) {
+            Text(appLanguage.pick("New preset", "新建预设"))
+        }
+
+        uiState.items.forEach { item ->
+            val pendingOperation = uiState.pendingOperation?.takeIf { it.presetId == item.preset.id }
+            val isPending = pendingOperation != null
+            GlassCard(modifier = Modifier.testTag("settings-presets-card-${item.preset.id}")) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = item.resolved.displayName,
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = AetherColors.OnSurface,
+                    )
+                    if (item.isActive) {
+                        Text(
+                            text = appLanguage.pick("ACTIVE", "已启用"),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.Surface,
+                            modifier = Modifier
+                                .testTag("settings-presets-active-${item.preset.id}")
+                                .background(AetherColors.Primary, RoundedCornerShape(999.dp))
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                    }
+                    if (item.preset.isBuiltIn) {
+                        Text(
+                            text = appLanguage.pick("BUILT-IN", "内置"),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.OnSurfaceVariant,
+                        )
+                    }
+                }
+                Text(
+                    text = item.resolved.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = { viewModel.activate(item.preset.id) },
+                        enabled = item.canActivate && !isPending,
+                        modifier = Modifier.testTag("settings-presets-activate-${item.preset.id}"),
+                    ) {
+                        Text(appLanguage.pick("Activate", "启用"))
+                    }
+                    OutlinedButton(
+                        onClick = { onEditPreset(item.preset.id) },
+                        enabled = item.canEdit && !isPending,
+                        modifier = Modifier.testTag("settings-presets-edit-${item.preset.id}"),
+                    ) {
+                        Text(appLanguage.pick("Edit", "编辑"))
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.duplicate(item.preset.id) },
+                        enabled = item.canDuplicate && !isPending,
+                        modifier = Modifier.testTag("settings-presets-duplicate-${item.preset.id}"),
+                    ) {
+                        Text(appLanguage.pick("Duplicate", "复制"))
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.delete(item.preset.id) },
+                        enabled = item.canDelete && !isPending,
+                        modifier = Modifier.testTag("settings-presets-delete-${item.preset.id}"),
+                    ) {
+                        Text(appLanguage.pick("Delete", "删除"))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsCompanionMemoryChooserScreen(
+    container: AppContainer,
+    onOpenMemory: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    val roster = container.companionRosterRepository
+    val presetCharacters by roster.presetCharacters.collectAsStateWithLifecycle()
+    val ownedCharacters by roster.ownedCharacters.collectAsStateWithLifecycle()
+    val userCharacters by roster.userCharacters.collectAsStateWithLifecycle()
+    val activeCharacterId by roster.activeCharacterId.collectAsStateWithLifecycle()
+
+    val entries = remember(presetCharacters, ownedCharacters, userCharacters, activeCharacterId) {
+        buildCompanionMemoryChooserEntries(
+            presetCharacters = presetCharacters,
+            ownedCharacters = ownedCharacters,
+            userCharacters = userCharacters,
+            activeCardId = activeCharacterId,
+        )
+    }
+
+    PageHeader(
+        eyebrow = appLanguage.pick("Settings", "设置"),
+        title = appLanguage.pick("Companion memory", "伙伴记忆"),
+        description = appLanguage.pick(
+            "Pick a companion to open its memory panel. The active companion appears first.",
+            "选择一个伙伴打开其记忆面板。当前启用的伙伴置顶。",
+        ),
+        leadingLabel = appLanguage.pick("Back", "返回"),
+        onLeading = onBack,
+    )
+
+    Column(
+        modifier = Modifier.testTag("settings-detail-companion-memory-chooser"),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (entries.isEmpty()) {
+            GlassCard(modifier = Modifier.testTag("settings-companion-memory-empty")) {
+                Text(
+                    text = appLanguage.pick(
+                        "No companions available yet. Draw or import a card first.",
+                        "暂无可用伙伴。请先抽卡或导入角色卡。",
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                )
+            }
+        }
+        entries.forEach { entry ->
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("settings-companion-memory-entry-${entry.cardId}")
+                    .clickable { onOpenMemory(entry.cardId) },
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = entry.displayName.resolve(appLanguage),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = AetherColors.OnSurface,
+                    )
+                    if (entry.isActive) {
+                        Text(
+                            text = appLanguage.pick("ACTIVE", "已启用"),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AetherColors.Surface,
+                            modifier = Modifier
+                                .testTag("settings-companion-memory-active-${entry.cardId}")
+                                .background(AetherColors.Primary, RoundedCornerShape(999.dp))
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                    }
+                }
+                Text(
+                    text = entry.roleLabel.resolve(appLanguage),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsContentSafetyScreen(
+    uiState: SettingsUiState,
+    onSetBlockReasonVerbosity: (Boolean) -> Unit,
+    onReadPolicy: () -> Unit,
+    onBack: () -> Unit,
+) {
+    val appLanguage = LocalAppLanguage.current
+    PageHeader(
+        eyebrow = appLanguage.pick("Settings", "设置"),
+        title = appLanguage.pick("Content & Safety", "内容与安全"),
+        description = appLanguage.pick(
+            "Review your content policy acknowledgment and tune the verbosity of block-reason copy.",
+            "查看内容政策的确认状态，并调整屏蔽原因的详细程度。",
+        ),
+        leadingLabel = appLanguage.pick("Back", "返回"),
+        onLeading = onBack,
+    )
+
+    Column(
+        modifier = Modifier.testTag("settings-detail-content-safety"),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        GlassCard(modifier = Modifier.testTag("settings-content-safety-ack-row")) {
+            Text(
+                text = appLanguage.pick("ACKNOWLEDGMENT STATUS", "内容政策确认"),
+                style = MaterialTheme.typography.labelLarge,
+                color = AetherColors.Primary,
+            )
+            Text(
+                text = appLanguage.pick(
+                    formatAcknowledgmentEnglishSummary(uiState.contentPolicyAcknowledgedAtMillis),
+                    formatAcknowledgmentChineseSummary(uiState.contentPolicyAcknowledgedAtMillis),
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+                color = AetherColors.OnSurface,
+                modifier = Modifier.testTag("settings-content-safety-ack-status"),
+            )
+            OutlinedButton(
+                onClick = onReadPolicy,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("settings-content-safety-read-policy"),
+            ) {
+                Text(appLanguage.pick("Read policy", "阅读政策"))
+            }
+        }
+
+        GlassCard(modifier = Modifier.testTag("settings-content-safety-verbosity-row")) {
+            Text(
+                text = appLanguage.pick("BLOCK REASON VERBOSITY", "屏蔽原因详细度"),
+                style = MaterialTheme.typography.labelLarge,
+                color = AetherColors.Primary,
+            )
+            Text(
+                text = appLanguage.pick(
+                    "Show detailed block reasons in chat bubbles.",
+                    "在对话气泡中显示详细的屏蔽原因。",
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+                color = AetherColors.OnSurfaceVariant,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = appLanguage.pick(
+                        if (uiState.blockReasonVerbosity) "On" else "Off",
+                        if (uiState.blockReasonVerbosity) "开" else "关",
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AetherColors.OnSurface,
+                    modifier = Modifier.testTag("settings-content-safety-verbosity-state"),
+                )
+                Switch(
+                    checked = uiState.blockReasonVerbosity,
+                    onCheckedChange = onSetBlockReasonVerbosity,
+                    modifier = Modifier.testTag("settings-content-safety-verbosity-switch"),
                 )
             }
         }

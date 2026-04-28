@@ -46,18 +46,36 @@ import com.gkim.im.android.data.remote.aigc.RemoteAigcProviderClient
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
 import com.gkim.im.android.data.repository.AigcRepository
 import com.gkim.im.android.data.repository.AppContainer
+import com.gkim.im.android.data.repository.CompanionMemoryRepository
+import com.gkim.im.android.data.repository.CompanionPresetRepository
+import com.gkim.im.android.data.repository.CompanionRosterRepository
+import com.gkim.im.android.data.repository.CompanionTurnRepository
+import com.gkim.im.android.data.repository.DefaultCompanionMemoryRepository
+import com.gkim.im.android.data.repository.DefaultCompanionPresetRepository
+import com.gkim.im.android.data.repository.CardInteropRepository
+import com.gkim.im.android.data.repository.DefaultCardInteropRepository
+import com.gkim.im.android.data.repository.LiveCardInteropRepository
 import com.gkim.im.android.data.repository.ContactsRepository
 import com.gkim.im.android.data.repository.DefaultAigcRepository
+import com.gkim.im.android.data.repository.DefaultCompanionRosterRepository
+import com.gkim.im.android.data.repository.DefaultCompanionTurnRepository
 import com.gkim.im.android.data.repository.DefaultContactsRepository
 import com.gkim.im.android.data.repository.DefaultFeedRepository
+import com.gkim.im.android.data.repository.DefaultUserPersonaRepository
 import com.gkim.im.android.data.repository.FeedRepository
 import com.gkim.im.android.data.repository.InMemoryMessagingRepository
 import com.gkim.im.android.data.repository.MessagingIntegrationPhase
 import com.gkim.im.android.data.repository.MessagingIntegrationState
 import com.gkim.im.android.data.repository.MessagingRepository
+import com.gkim.im.android.data.repository.UserPersonaRepository
+import com.gkim.im.android.data.repository.DefaultWorldInfoRepository
+import com.gkim.im.android.data.repository.WorldInfoRepository
 import com.gkim.im.android.data.repository.presetProviders
+import com.gkim.im.android.data.repository.seedBuiltInPersonas
+import com.gkim.im.android.data.repository.seedDrawPoolCharacters
 import com.gkim.im.android.data.repository.seedContacts
 import com.gkim.im.android.data.repository.seedConversations
+import com.gkim.im.android.data.repository.seedPresetCharacters
 import com.gkim.im.android.data.repository.seedPosts
 import com.gkim.im.android.data.repository.seedPrompts
 import com.gkim.im.android.feature.qr.QrScannerController
@@ -279,7 +297,7 @@ class GkimRootAppTest {
         composeRule.onNodeWithTag("gkim-theme-Light").fetchSemanticsNode()
         composeRule.onNodeWithText("消息").fetchSemanticsNode()
         composeRule.onNodeWithText("联系人").fetchSemanticsNode()
-        composeRule.onNodeWithText("空间").fetchSemanticsNode()
+        composeRule.onNodeWithText("酒馆").fetchSemanticsNode()
     }
 
     @Test
@@ -289,8 +307,8 @@ class GkimRootAppTest {
         composeRule.onNodeWithTag("bottom-nav").fetchSemanticsNode()
         composeRule.onNodeWithText("联系人").performClick()
         composeRule.onNodeWithTag("contacts-screen").fetchSemanticsNode()
-        composeRule.onNodeWithText("空间").performClick()
-        composeRule.onNodeWithTag("space-screen").fetchSemanticsNode()
+        composeRule.onNodeWithText("酒馆").performClick()
+        composeRule.onNodeWithTag("tavern-screen").fetchSemanticsNode()
     }
 
     @Test
@@ -418,74 +436,129 @@ class GkimRootAppTest {
     }
 
     @Test
-    fun spaceScreenStartsAtDiscoveryFiltersWithoutUnreadSummaryChrome() {
+    fun tavernScreenShowsPresetRosterAndDrawEntry() {
         setApp(UiTestAppContainer())
 
-        composeRule.onNodeWithText("空间").performClick()
+        composeRule.onNodeWithText("酒馆").performClick()
 
-        composeRule.onNodeWithTag("space-filter-for-you").fetchSemanticsNode()
-        composeRule.onNodeWithTag("space-filter-prompting").fetchSemanticsNode()
-        composeRule.onNodeWithTag("space-filter-ai-tools").fetchSemanticsNode()
-        composeRule.onNodeWithTag("space-filter-activity").fetchSemanticsNode()
-        assertTrue(!nodeExists("space-unread-summary"))
-        assertTrue(textNodeMissing("未读信号"))
+        composeRule.onNodeWithTag("tavern-screen").fetchSemanticsNode()
+        composeRule.onNodeWithTag("tavern-preset-section").fetchSemanticsNode()
+        composeRule.onNodeWithTag("tavern-draw-trigger").fetchSemanticsNode()
+        composeRule.onNodeWithTag("tavern-screen").performScrollToNode(hasTestTag("tavern-owned-section"))
+        composeRule.onNodeWithTag("tavern-owned-section").fetchSemanticsNode()
+        assertTrue(textNodeMissing("为你推荐"))
+        assertTrue(textNodeMissing("提示工程"))
     }
 
     @Test
-    fun spaceScreenHeaderShowsSettingsEntryPoint() {
+    fun tavernScreenUsesChineseCompanionCopyByDefault() {
         setApp(UiTestAppContainer())
 
-        composeRule.onNodeWithText("空间").performClick()
+        composeRule.onNodeWithText("酒馆").performClick()
+
+        composeRule.onNodeWithText("筑谕师").fetchSemanticsNode()
+        composeRule.onNodeWithText("冷静策士").fetchSemanticsNode()
+        composeRule.onNodeWithText(
+            "把纷乱感受整理成清晰计划，并陪你迈出下一步的精确同伴。",
+            substring = true,
+        ).fetchSemanticsNode()
+        composeRule.onNodeWithText(
+            "我一直在酒馆等你。今晚是什么样的夜色，说给我听。",
+            substring = true,
+        ).fetchSemanticsNode()
+    }
+
+    @Test
+    fun switchingToEnglishRefreshesTavernAndCompanionChatCopy() {
+        val container = UiTestAppContainer()
+        setApp(container)
+
+        composeRule.onNodeWithText("酒馆").performClick()
+        composeRule.onNodeWithText("筑谕师").fetchSemanticsNode()
+
+        openSettingsFromSpace()
+        composeRule.onNodeWithTag("settings-menu-appearance").performClick()
+        composeRule.onNodeWithTag("settings-detail-appearance").fetchSemanticsNode()
+        composeRule.onNodeWithTag("settings-language-english").performClick()
+        composeRule.waitUntil(5_000) {
+            container.preferencesStore.currentLanguage == com.gkim.im.android.core.model.AppLanguage.English
+        }
+
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.onBackPressedDispatcher.onBackPressed()
+        }
+        composeRule.waitUntil(5_000) { nodeExists("settings-menu-screen") }
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.onBackPressedDispatcher.onBackPressed()
+        }
+        composeRule.waitUntil(5_000) { nodeExists("tavern-screen") }
+
+        composeRule.onNodeWithText("Architect Oracle").fetchSemanticsNode()
+        composeRule.onNodeWithText("Calm Strategist").fetchSemanticsNode()
+        composeRule.onNodeWithTag("tavern-preset-card-architect-oracle").performClick()
+
+        composeRule.waitUntil(5_000) { nodeExists("character-detail-screen") }
+        composeRule.onNodeWithTag("character-detail-screen").fetchSemanticsNode()
+        composeRule.onNodeWithTag("character-detail-activate").performClick()
+
+        composeRule.waitUntil(5_000) { nodeExists("chat-screen") }
+        composeRule.onNodeWithTag("chat-contact-name").assertTextContains("Architect Oracle")
+        composeRule.onNodeWithTag("chat-contact-title").assertTextContains("Calm Strategist")
+    }
+
+    @Test
+    fun tavernCreateCharacterOpensEditorAndSavesCustomCard() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithText("酒馆").performClick()
+        composeRule.onNodeWithText("新建").performClick()
+
+        composeRule.waitUntil(5_000) { nodeExists("character-editor-screen") }
+        composeRule.onAllNodesWithText("Display name")[0].performTextReplacement("Custom Oracle")
+        composeRule.onAllNodesWithText("角色名")[0].performTextReplacement("自建谕师")
+        composeRule.onAllNodesWithText("Role label")[0].performTextReplacement("Custom Role")
+        composeRule.onAllNodesWithText("角色标签")[0].performTextReplacement("自建角色")
+        composeRule.onAllNodesWithText("Summary")[0].performTextReplacement("A custom tavern card")
+        composeRule.onAllNodesWithText("摘要")[0].performTextReplacement("一个自建酒馆角色")
+        composeRule.onAllNodesWithText("First message")[0].performTextReplacement("Hello there")
+        composeRule.onAllNodesWithText("开场白")[0].performTextReplacement("你好呀")
+        composeRule.onNodeWithText("保存").performClick()
+
+        composeRule.waitUntil(5_000) { nodeExists("tavern-screen") }
+        composeRule.onNodeWithTag("tavern-screen").performScrollToNode(hasTestTag("tavern-user-section"))
+        composeRule.onNodeWithTag("tavern-user-section").fetchSemanticsNode()
+        composeRule.onNodeWithText("自建谕师").fetchSemanticsNode()
+    }
+
+    @Test
+    fun tavernScreenHeaderShowsSettingsEntryPoint() {
+        setApp(UiTestAppContainer())
+
+        composeRule.onNodeWithText("酒馆").performClick()
 
         composeRule.onNodeWithText("设置").fetchSemanticsNode()
     }
 
     @Test
-    fun spaceScreenMergesWorkshopDiscoveryIntoUnifiedFeed() {
-        setApp(UiTestAppContainer())
-
-        composeRule.onNodeWithText("空间").performClick()
-
-        composeRule.onNodeWithTag("space-filter-for-you").fetchSemanticsNode()
-        composeRule.onNodeWithTag("space-filter-prompting").fetchSemanticsNode()
-        composeRule.onNodeWithTag("space-filter-ai-tools").fetchSemanticsNode()
-        composeRule.onNodeWithTag("space-filter-activity").fetchSemanticsNode()
-        assertTrue(textNodeMissing("工作台"))
-        composeRule.onNodeWithTag("space-feed-item-post-post-1").fetchSemanticsNode()
-        composeRule.onNodeWithTag("space-feed").performScrollToNode(hasTestTag("space-feed-item-prompt-prompt-1"))
-        composeRule.onNodeWithTag("space-feed-item-prompt-prompt-1").fetchSemanticsNode()
-
-        composeRule.onNodeWithTag("space-filter-prompting").performClick()
-
-        composeRule.onNodeWithTag("space-feed-item-prompt-prompt-1").fetchSemanticsNode()
-        assertTrue(!nodeExists("space-feed-item-post-post-1"))
-    }
-
-    @Test
-    fun spaceScreenUsesTitleOnlyProductionHeaderChrome() {
-        setApp(UiTestAppContainer())
-
-        composeRule.onNodeWithText("空间").performClick()
-
-        composeRule.onNodeWithTag("space-screen").fetchSemanticsNode()
-        assertTrue(textNodeMissing("创作者动态"))
-        assertTrue(textNodeMissing("开发者帖子与提示模板现在合并进同一个发现面，并统一使用同一种瀑布流浏览节奏。"))
-    }
-
-    @Test
-    fun spacePromptCardsApplyTemplatesIntoStudioChat() {
+    fun tavernCharacterActivationOpensCompanionConversation() {
         val container = UiTestAppContainer()
         setApp(container)
 
-        composeRule.onNodeWithText("空间").performClick()
-        composeRule.onNodeWithTag("space-filter-prompting").performClick()
-        composeRule.onNodeWithTag("space-apply-prompt-prompt-1").performClick()
+        composeRule.onNodeWithText("酒馆").performClick()
+        composeRule.onNodeWithTag("tavern-preset-card-architect-oracle").performClick()
+
+        composeRule.waitUntil(5_000) { nodeExists("character-detail-screen") }
+        composeRule.onNodeWithTag("character-detail-screen").fetchSemanticsNode()
+        composeRule.onNodeWithTag("character-detail-activate").performClick()
+
         composeRule.waitUntil(5_000) {
-            container.aigcRepository.draftRequest.value.prompt.startsWith("Create an editorial portrait")
+            container.companionRosterRepository.activeCharacterId.value == "architect-oracle" &&
+                nodeExists("chat-screen")
         }
 
         composeRule.onNodeWithTag("chat-screen").fetchSemanticsNode()
-        composeRule.onNodeWithText("Create an editorial portrait", substring = true).fetchSemanticsNode()
+        composeRule.onNodeWithTag("chat-contact-name").assertTextContains("筑谕师")
+        composeRule.onNodeWithTag("chat-contact-title").assertTextContains("冷静策士")
     }
 
     @Test
@@ -973,10 +1046,10 @@ class GkimRootAppTest {
         composeRule.activity.runOnUiThread {
             composeRule.activity.onBackPressedDispatcher.onBackPressed()
         }
-        composeRule.waitUntil(5_000) { nodeExists("space-screen") }
+        composeRule.waitUntil(5_000) { nodeExists("tavern-screen") }
 
         composeRule.onNodeWithTag("gkim-theme-Light").fetchSemanticsNode()
-        composeRule.onNodeWithTag("space-screen").fetchSemanticsNode()
+        composeRule.onNodeWithTag("tavern-screen").fetchSemanticsNode()
     }
 
     @Test
@@ -1148,7 +1221,7 @@ class GkimRootAppTest {
     }
 
     private fun openSettingsFromSpace() {
-        composeRule.onNodeWithText("空间").performClick()
+        composeRule.onNodeWithText("酒馆").performClick()
         composeRule.onNodeWithText("设置").performClick()
     }
 
@@ -1281,6 +1354,24 @@ private class UiTestAppContainer(
 
     override val contactsRepository: ContactsRepository = DefaultContactsRepository(seedContacts, preferencesStore, Dispatchers.Main)
     override val feedRepository: FeedRepository = DefaultFeedRepository(seedPosts, seedPrompts, Dispatchers.Main)
+    override val companionRosterRepository: CompanionRosterRepository = DefaultCompanionRosterRepository(
+        presetCharacters = seedPresetCharacters,
+        drawPool = seedDrawPoolCharacters,
+    )
+    override val companionTurnRepository: CompanionTurnRepository = DefaultCompanionTurnRepository()
+    override val cardInteropRepository: CardInteropRepository = DefaultCardInteropRepository(
+        delegate = LiveCardInteropRepository(
+            backendClient = imBackendClient,
+            baseUrlProvider = { sessionStore.baseUrl },
+            tokenProvider = { sessionStore.token },
+        ),
+    )
+    override val userPersonaRepository: UserPersonaRepository = DefaultUserPersonaRepository(
+        initialPersonas = seedBuiltInPersonas,
+    )
+    override val worldInfoRepository: WorldInfoRepository = DefaultWorldInfoRepository()
+    override val companionMemoryRepository: CompanionMemoryRepository = DefaultCompanionMemoryRepository()
+    override val companionPresetRepository: CompanionPresetRepository = DefaultCompanionPresetRepository()
     override val aigcRepository: AigcRepository = DefaultAigcRepository(
         presets = presetProviders,
         preferencesStore = preferencesStore,

@@ -22,13 +22,24 @@ import com.gkim.im.android.data.remote.im.ChatAttachmentEncoder
 import com.gkim.im.android.data.remote.im.ImBackendClient
 import com.gkim.im.android.data.remote.im.ImBackendHttpClient
 import com.gkim.im.android.data.remote.im.ImHttpEndpointResolver
+import com.gkim.im.android.data.remote.im.ImWorldInfoHttpClient
 import com.gkim.im.android.data.remote.realtime.RealtimeChatClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
 
 interface AppContainer {
     val messagingRepository: MessagingRepository
     val contactsRepository: ContactsRepository
     val feedRepository: FeedRepository
+    val companionRosterRepository: CompanionRosterRepository
+    val companionTurnRepository: CompanionTurnRepository
+    val cardInteropRepository: CardInteropRepository
+    val userPersonaRepository: UserPersonaRepository
+    val worldInfoRepository: WorldInfoRepository
+    val companionMemoryRepository: CompanionMemoryRepository
+    val companionPresetRepository: CompanionPresetRepository
     val aigcRepository: AigcRepository
     val preferencesStore: PreferencesStore
     val sessionStore: SessionStore
@@ -74,6 +85,14 @@ class DefaultAppContainer(context: Context) : AppContainer {
         httpClient = okHttpClient,
     )
 
+    private val imWorldInfoClient = ImWorldInfoHttpClient(okHttpClient)
+
+    override val worldInfoRepository: WorldInfoRepository = LiveWorldInfoRepository(
+        default = DefaultWorldInfoRepository(),
+        client = imWorldInfoClient,
+        baseUrlProvider = { sessionStore.baseUrl },
+        tokenProvider = { sessionStore.token },
+    )
     override val messagingRepository: MessagingRepository = LiveMessagingRepository(
         backendClient = imBackendClient,
         realtimeGateway = realtimeChatClient,
@@ -81,12 +100,52 @@ class DefaultAppContainer(context: Context) : AppContainer {
         preferencesStore = preferencesStore,
         fallbackRepository = fallbackMessagingRepository,
         chatAttachmentEncoder = chatAttachmentEncoder,
+        onBootstrapLoaded = { worldInfoRepository.refresh() },
     )
     override val contactsRepository: ContactsRepository = LiveContactsRepository(
         messagingRepository = messagingRepository,
         preferencesStore = preferencesStore,
     )
     override val feedRepository: FeedRepository = DefaultFeedRepository(seedPosts, seedPrompts)
+    override val companionRosterRepository: CompanionRosterRepository = BackendAwareCompanionRosterRepository(
+        backendClient = imBackendClient,
+        sessionStore = sessionStore,
+        presetCharacters = seedPresetCharacters,
+        drawPool = seedDrawPoolCharacters,
+    )
+    private val companionTurnScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    override val companionTurnRepository: CompanionTurnRepository = LiveCompanionTurnRepository(
+        backendClient = imBackendClient,
+        gateway = realtimeChatClient,
+        scope = companionTurnScope,
+        baseUrlProvider = { sessionStore.baseUrl },
+        tokenProvider = { sessionStore.token },
+    )
+    override val cardInteropRepository: CardInteropRepository = DefaultCardInteropRepository(
+        delegate = LiveCardInteropRepository(
+            backendClient = imBackendClient,
+            baseUrlProvider = { sessionStore.baseUrl },
+            tokenProvider = { sessionStore.token },
+            characterBookMaterializer = CharacterBookLorebookMaterializer(imWorldInfoClient),
+        ),
+    )
+    override val userPersonaRepository: UserPersonaRepository = LiveUserPersonaRepository(
+        default = DefaultUserPersonaRepository(initialPersonas = seedBuiltInPersonas),
+        backendClient = imBackendClient,
+        baseUrlProvider = { sessionStore.baseUrl },
+        tokenProvider = { sessionStore.token },
+    )
+    override val companionMemoryRepository: CompanionMemoryRepository = LiveCompanionMemoryRepository(
+        backend = imBackendClient,
+        baseUrlProvider = { sessionStore.baseUrl.orEmpty() },
+        tokenProvider = { sessionStore.token.orEmpty() },
+    )
+    override val companionPresetRepository: CompanionPresetRepository = LiveCompanionPresetRepository(
+        default = DefaultCompanionPresetRepository(),
+        backendClient = imBackendClient,
+        baseUrlProvider = { sessionStore.baseUrl },
+        tokenProvider = { sessionStore.token },
+    )
     override val aigcRepository: AigcRepository = DefaultAigcRepository(
         presets = presetProviders,
         preferencesStore = preferencesStore,

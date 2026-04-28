@@ -265,7 +265,7 @@ The system SHALL present shipped Android UI copy as product-facing language, and
 - **THEN** the visible page chrome does not show internal-facing helper copy such as `创作者动态` or long development-oriented explanatory sentences above the feed
 
 ### Requirement: Chat detail presents compact identity chrome and attributed message rows
-The system SHALL present chat detail with a compact top identity row that places the `<` back affordance immediately before the contact nickname, and it MUST render incoming and system message rows with an avatar before the message bubble plus a small sender label above the bubble while rendering outgoing self-authored messages as compact self-bubbles without redundant self identity chrome. Short outgoing text-only bubbles MUST adapt their width more closely to message content, while longer outgoing text and attachment-bearing outgoing rows MUST continue to preserve readable mobile wrapping and stable footer/timestamp placement. Incoming message timestamps MUST render inside the lower-right area of the incoming bubble so time remains secondary to message content for both directions.
+The system SHALL present chat detail with a compact top identity row that places the `<` back affordance immediately before the contact nickname, and it MUST render incoming and system message rows with an avatar before the message bubble plus a small sender label above the bubble while rendering outgoing self-authored messages as compact self-bubbles without redundant self identity chrome. Short outgoing text-only bubbles MUST adapt their width more closely to message content, while longer outgoing text and attachment-bearing outgoing rows MUST continue to preserve readable mobile wrapping and stable footer/timestamp placement. Incoming message timestamps MUST render inside the lower-right area of the incoming bubble so time remains secondary to message content for both directions. The chat detail MUST expose a single bilingual Regenerate affordance per companion bubble (no duplicate English-only legacy entry), MUST provide reachable Settings navigation from the chat top-bar overflow when the active conversation is a companion conversation, and MUST hide the Completed-bubble status-line row when no provider/model badge is available so the row never renders an untranslated `"Ready"` literal.
 
 #### Scenario: User sees compact chat identity row
 - **WHEN** the user opens a conversation
@@ -294,6 +294,20 @@ The system SHALL present chat detail with a compact top identity row that places
 #### Scenario: Longer outgoing content still wraps cleanly
 - **WHEN** the chat timeline renders a longer outgoing text message or an outgoing message with an attachment
 - **THEN** the bubble preserves readable wrapping and stable footer placement instead of collapsing into an overly narrow layout
+
+#### Scenario: Companion bubbles render exactly one bilingual Regenerate affordance
+- **WHEN** the chat timeline renders the most-recent completed companion bubble
+- **THEN** the bubble MUST expose exactly one Regenerate affordance, rendered as the bilingual text `"Regenerate from here"` (English) / `"从这里重新生成"` (Chinese) per the active app language; the legacy English-only `"Regenerate"` Text MUST NOT be present
+- **AND** any non-most-recent companion bubble that supports mid-conversation regeneration MUST also render the same bilingual affordance and no other Regenerate entry
+
+#### Scenario: Settings is reachable from the chat top-bar overflow
+- **WHEN** the user is on the chat detail surface for a companion conversation and opens the top-bar overflow `⋮` dropdown
+- **THEN** the dropdown MUST contain a `"Settings"` (English) / `"设置"` (Chinese) item alongside the existing `"Export chat"` / `"导出对话"` item; tapping the Settings item MUST navigate to the `"settings"` route without losing the chat detail's place in the back stack
+
+#### Scenario: Completed companion bubble hides the status line when no model badge is available
+- **WHEN** a companion turn lifecycle reaches `MessageStatus.Completed` and the response carries no `modelBadge`
+- **THEN** the bubble's status-line row MUST be hidden entirely; no fallback string (in particular, no English `"Ready"` literal) MUST render under the bubble
+- **AND** when a `modelBadge` IS available, the status line MUST render as `"Model · <badge>"` unchanged
 
 ### Requirement: Chat detail exposes AIGC generation entry points
 The system SHALL provide a standard chat composer with a text input field and send action as the primary control path, and it MUST expose distinct secondary actions for only the AIGC generation modes supported by the currently active provider, normal chat media attachments, and generation-source media selection from the `+` menu inside the chat experience. Image-to-image and video-to-video actions MUST only appear or enable as ready-to-run actions when both the active provider supports the mode and the required local source media for that mode has been selected explicitly for generation. Unsupported AIGC modes MUST NOT appear as ready-to-run actions for the active provider.
@@ -416,3 +430,313 @@ The system SHALL present live IM connection and validation status inside `Settin
 #### Scenario: User opens the IM Validation settings surface
 - **WHEN** the user navigates to `Settings > IM Validation`
 - **THEN** the screen shows the current live IM validation or connection status near the HTTP base URL, WebSocket URL, and development-user inputs
+
+### Requirement: Tavern surface exposes character detail and editor flows
+
+The system SHALL let authenticated users open a character detail surface for any roster card and open a character editor surface for user-authored or draw-acquired cards. The detail surface MUST show the resolved persona authoring record and an activation action. The editor MUST support creating new cards and updating editable cards with bilingual prose input and optional avatar selection.
+
+#### Scenario: User navigates from tavern to character detail
+
+- **WHEN** the user taps a companion card on the tavern surface
+- **THEN** the app opens a character detail route that renders the card's persona authoring record in the active language and shows an activation action
+
+#### Scenario: User enters the editor to author a new card
+
+- **WHEN** the user invokes the create-card entry point from the tavern surface
+- **THEN** the app opens a character editor route that accepts bilingual entries for system prompt, personality, scenario, example dialogue, first-message greeting, alternate greetings, tags, creator metadata, and avatar image selection
+
+#### Scenario: User saves or cancels the editor
+
+- **WHEN** the user confirms Save or Cancel from the editor route
+- **THEN** the app either persists the new or updated card and returns to the prior surface, or discards edits and returns without modifying roster state
+
+### Requirement: Companion chat entry uses the full persona authoring record
+
+The system SHALL propagate the full persona authoring record (system prompt, personality, scenario, example dialogue, greetings) along with the selected card's bilingual display metadata when the user activates a companion and routes into chat. Companion chat entry MUST NOT rely on only the card's display summary to identify persona context.
+
+#### Scenario: User activates a card and enters chat
+
+- **WHEN** the user activates a card from the tavern detail surface and opens the companion conversation
+- **THEN** the conversation entry path carries the full persona authoring record associated with the active card so downstream chat flows can use persona instructions rather than only the summary string
+### Requirement: Android tavern + chat avatar taps route to a portrait large-view surface
+
+The system SHALL wire every avatar tap on the tavern roster, chat header, and chat bubble avatar to navigate to a portrait large-view surface scoped to the tapped card. The surface MUST support pinch-to-zoom, single-finger pan, and double-tap to toggle between 1× and 2× zoom, with a graceful placeholder for cards without an avatar.
+
+#### Scenario: Tavern roster avatar tap routes to large-view
+
+- **WHEN** a user taps a card's avatar on the tavern roster
+- **THEN** the app navigates to the portrait large-view surface for that card
+
+#### Scenario: Chat header avatar tap routes to large-view
+
+- **WHEN** a user taps the chat header's avatar for the active companion
+- **THEN** the app navigates to the same portrait large-view surface as from the tavern roster
+
+#### Scenario: Chat bubble avatar tap routes to large-view
+
+- **WHEN** a user taps a companion bubble's inline avatar inside the chat timeline
+- **THEN** the app navigates to the same portrait large-view surface scoped to that bubble's companion card
+
+#### Scenario: Avatar-less card renders a placeholder large-view
+
+- **WHEN** a user taps the avatar of a card that has no high-resolution portrait
+- **THEN** the large-view surface renders a placeholder carrying the card's display name and an "Edit card" shortcut, instead of an empty portrait area
+
+### Requirement: Android chat opener picker renders bilingual previews with remembered-default behavior
+
+The system SHALL render the opener picker (introduced by `llm-text-companion-chat`) with ~120-character bilingual previews per option, tap-to-preview modals for the full greeting text, and a remembered-default highlight on the previously-selected greeting per companion. The remembered default MUST carry a localized "Remembered from last time" caption.
+
+#### Scenario: Picker renders localized previews
+
+- **WHEN** a user opens the opener picker for a card with three alt-greetings
+- **THEN** each option card shows a ~120-character preview localized to the user's active `AppLanguage`
+
+#### Scenario: Remembered default is highlighted
+
+- **WHEN** a user had previously selected greeting B, then returns to the picker for the same companion after a relationship reset
+- **THEN** greeting B is default-highlighted and carries the "Remembered from last time" caption
+
+#### Scenario: Tap-to-preview opens the full greeting modal
+
+- **WHEN** a user taps an option's preview chevron on the picker
+- **THEN** a modal renders the full greeting text in the active `AppLanguage` without committing the selection; dismissing the modal returns to the picker with no selection change
+
+### Requirement: Android chat bubble rows support sibling-swipe, edit-user, and arbitrary-layer regenerate
+
+The system SHALL extend `ChatMessageRow` so every bubble with `siblingCount > 1` renders left/right chevrons plus an `n / total` caption; every **user** bubble exposes an "Edit" overflow action; and every **companion** bubble exposes a "Regenerate from here" overflow action. All three affordances MUST operate on the variant-tree model from `llm-text-companion-chat` by creating new siblings under the appropriate `parentMessageId` or `variantGroupId`, never by overwriting existing messages.
+
+#### Scenario: Sibling chevrons appear only on multi-sibling groups
+
+- **WHEN** a bubble's variant group has a single sibling
+- **THEN** no chevrons or caption render for that bubble
+
+#### Scenario: Edit creates a user-turn sibling
+
+- **WHEN** a user taps Edit on a user bubble, modifies the text, and submits
+- **THEN** the client calls the edit endpoint with the new text and the bubble's `parentMessageId`; the returned new user sibling becomes the active path alongside its generated companion turn
+
+#### Scenario: Regenerate from here creates a companion-turn sibling at that layer
+
+- **WHEN** a user taps "Regenerate from here" on a mid-conversation companion bubble
+- **THEN** the client calls the regenerate endpoint with that bubble's `messageId` as the target; the returned new sibling becomes the active path
+
+#### Scenario: Sibling caption renders n / total at any depth
+
+- **WHEN** a multi-sibling variant group is displayed mid-conversation (not only the most-recent layer)
+- **THEN** the caption renders `n / total` reflecting the active sibling's 1-based index plus the group's sibling count, identical in shape to the most-recent-layer rendering
+
+### Requirement: Android chat chrome surfaces the per-character preset override
+
+The system SHALL render the chat chrome's preset pill with the overridden preset's display name and a localized "(card override)" suffix when the active character carries `characterPresetId` non-null. Tapping the pill MUST route to the character-detail surface where the override can be cleared.
+
+#### Scenario: Overridden pill renders the override label
+
+- **WHEN** the active character has `characterPresetId = "preset-X"` and the user's globally-active preset is `preset-Y`
+- **THEN** the pill renders `preset-X`'s display name with the "(card override)" suffix
+
+#### Scenario: Tapping the pill routes to the character detail
+
+- **WHEN** a user taps the overridden preset pill
+- **THEN** the app routes to the active character's detail surface with the "Override preset" row focused for clearing
+
+#### Scenario: Clearing the override reverts the pill to the global preset label
+
+- **WHEN** a user clears the "Override preset" row on the character-detail surface
+- **THEN** the chat chrome's preset pill re-renders with the user's globally-active preset's display name, no "(card override)" suffix, and the pill's tap target reverts to the global-preset settings entry
+
+### Requirement: Android chat exposes a JSONL export dialog
+
+The system SHALL add a "Export as JSONL" action to the chat overflow menu that opens an export dialog offering: active-path-only vs. full-tree toggle, a target-language selector defaulted to the user's active `AppLanguage`, and a share-sheet vs. Downloads destination. Invoking the dialog MUST call the backend export endpoint and route the returned payload to the chosen destination; the default filename MUST include the `_<first8OfConversationId>` suffix.
+
+#### Scenario: Dialog defaults to active path + share sheet + active language
+
+- **WHEN** a user opens the export dialog for the first time
+- **THEN** active-path-only is pre-selected, the target is the share sheet, and the language defaults to the user's active `AppLanguage`
+
+#### Scenario: Downloads destination writes the file
+
+- **WHEN** a user selects the Downloads destination and confirms the export
+- **THEN** the returned JSONL payload is written through `DownloadManager` with the conversation-hash-suffixed filename
+
+#### Scenario: Full-tree toggle requests every message regardless of active path
+
+- **WHEN** a user flips the toggle from active-path-only to full-tree and confirms the export
+- **THEN** the client calls the export endpoint with `pathOnly=false`; the resulting JSONL carries one line per message in the conversation, including non-active siblings
+
+### Requirement: Android character detail exposes the full-relationship-reset affordance
+
+The system SHALL render a "Reset relationship" affordance on the character-detail surface behind a two-step confirmation dialog. The affordance MUST call the relationship-reset endpoint on confirm, show an inline error with a retry on failure, and update the in-memory caches (conversations list, memory record) to reflect the reset state on success.
+
+#### Scenario: Two-step confirmation arms and commits
+
+- **WHEN** a user taps "Reset relationship" once
+- **THEN** the affordance enters the armed state with a destructive-action warning; a second tap commits the reset; a cancel affordance dismisses without change
+
+#### Scenario: Successful reset refreshes in-memory caches
+
+- **WHEN** the backend acknowledges the reset
+- **THEN** the tavern surface shows zero conversations for this companion, the memory panel renders the empty-memory state, and no stale data lingers
+
+#### Scenario: Failed reset surfaces an inline error with a retry affordance
+
+- **WHEN** the backend rejects the reset request (non-2xx response or transport failure)
+- **THEN** the affordance renders an inline localized error and a retry button; tapping retry re-invokes the endpoint without re-arming the two-step confirmation
+
+### Requirement: Android gacha roster renders rarity probabilities and a duplicate-animation branch
+
+The system SHALL extend the gacha roster flow so the pre-draw surface renders the rarity / probability breakdown from the backend catalog response. After a draw whose resulting card id appears in the user's owned roster, the result-animation MUST play the "Already owned" variant with a "Keep as bonus" CTA that records a `bonusAwarded` event.
+
+#### Scenario: Pre-draw surface renders rarity breakdown
+
+- **WHEN** the user opens the gacha pre-draw surface
+- **THEN** a rarity breakdown derived from the backend catalog probabilities renders in the user's active `AppLanguage`
+
+#### Scenario: Owned-card draw plays the duplicate variant
+
+- **WHEN** a draw returns a card id that is already in the user's owned roster
+- **THEN** the result animation plays the "Already owned" variant; tapping the "Keep as bonus" CTA records the bonus event
+
+### Requirement: Android character detail renders an About-this-card sub-section for creator attribution
+
+The system SHALL add an "About this card" sub-section to the character-detail surface rendering `creator`, `creatorNotes`, `characterVersion`, the linkified `stSource` from `extensions.st.stSource`, and formatted `stCreationDate` / `stModificationDate` values. Missing fields MUST be hidden (no empty-row placeholder). The `stSource` link MUST open in the system browser.
+
+#### Scenario: Populated fields render labeled rows
+
+- **WHEN** a card's `creator` and `characterVersion` are populated and `creatorNotes` is empty
+- **THEN** the sub-section renders two rows (creator, characterVersion) and omits the creatorNotes row
+
+#### Scenario: All-fields-missing card hides the sub-section entirely
+
+- **WHEN** a card has no `creator`, `creatorNotes`, `characterVersion`, `extensions.st.stSource`, `extensions.st.stCreationDate`, nor `extensions.st.stModificationDate`
+- **THEN** the "About this card" sub-section is not rendered at all (no header, no empty-row placeholders), so the card detail keeps a clean layout
+
+#### Scenario: stSource opens the system browser
+
+- **WHEN** a user taps a linkified `stSource` URL
+- **THEN** the system browser opens the URL; the app remains in the background so returning resumes the character-detail surface
+
+### Requirement: Android chat surface renders the production Edit-user and Regenerate-from-here affordances on every applicable bubble
+
+The system SHALL render an Edit overflow on every user (Outgoing) bubble that carries a `parentMessageId`, opening an edit sheet prefilled with the bubble's body text. The system SHALL render a Regenerate-from-here overflow on every companion (Incoming + `companionTurnMeta`) bubble — not only the most recent — that on tap invokes the `regenerateCompanionTurnAtTarget` repository call. The §3.1 sibling chevrons MUST stay visible on every variantGroup with `siblingCount > 1` regardless of how the siblings were created (submit, regenerate, regenerate-at, or edit).
+
+#### Scenario: User bubble with a parent renders the Edit overflow
+
+- **WHEN** the chat timeline includes a user bubble with a non-null `parentMessageId` and the conversation has an active companion id
+- **THEN** the bubble renders an Edit overflow whose tap opens a Compose `ModalBottomSheet` prefilled with the bubble's body text and a Submit button gated on the §3.2 `canSubmit` rule (non-blank + differs-from-original)
+
+#### Scenario: Root user bubble suppresses the Edit overflow
+
+- **WHEN** the chat timeline includes a user bubble with a null `parentMessageId` (the conversation's root user message)
+- **THEN** the bubble does not render the Edit overflow because the §3.2 endpoint contractually rejects edits with no parent
+
+#### Scenario: Mid-conversation companion bubble renders Regenerate-from-here
+
+- **WHEN** the chat timeline includes a companion bubble in the middle of the conversation (not the most recent)
+- **THEN** the bubble renders a Regenerate-from-here overflow whose tap invokes the repository's `regenerateCompanionTurnAtTarget` call with the bubble's `messageId` as the target
+
+#### Scenario: Most-recent companion bubble also renders Regenerate-from-here
+
+- **WHEN** the chat timeline's most recent message is a companion bubble
+- **THEN** the same Regenerate-from-here overflow appears (the §3.3 spec wording requires it on every companion bubble, not only mid-conversation)
+
+### Requirement: ChatViewModel maintains a per-conversation active-path map and projects it back into bubble metadata
+
+The system SHALL maintain a `Map<conversationId, Map<variantGroupId, activeIndex>>` in `ChatViewModel` state. On every recomposition, each rendered `ChatMessage.companionTurnMeta` MUST carry the `siblingActiveIndex` corresponding to that bubble's `variantGroupId`'s entry in the map (or 0 when the group has only one sibling). The map MUST be mutable via `selectVariantAt(conversationId, variantGroupId, newIndex)`, idempotent (no-op when newIndex equals the current active), and clamped to `[0, siblingCount - 1]`.
+
+#### Scenario: Single-sibling group projects active index 0
+
+- **WHEN** a conversation has a `variantGroupId` with one sibling (the original submit response)
+- **THEN** the rendered bubble's `companionTurnMeta.siblingActiveIndex` is 0 and no chevron renders (per the §3.1 chevron-suppression rule)
+
+#### Scenario: Multi-sibling group projects the map's active index
+
+- **WHEN** a conversation has a `variantGroupId` with three siblings and the map records active index 2
+- **THEN** the rendered bubble's `companionTurnMeta.siblingActiveIndex` is 2, the §3.1 chevrons render with a "3/3" caption, and the prev chevron is enabled while the next chevron is disabled (terminal-disable rule)
+
+#### Scenario: selectVariantAt mutates the map and clamps out-of-bounds inputs
+
+- **WHEN** the user taps the next chevron on a "2/3" sibling group
+- **THEN** `selectVariantAt(conversationId, variantGroupId, 2)` flips the map entry from 1 → 2 and the bubble re-renders at the new active variant
+
+- **WHEN** `selectVariantAt(conversationId, variantGroupId, 5)` is called on a 3-sibling group
+- **THEN** the value clamps to 2 (the maximum valid index) without throwing
+
+### Requirement: ChatViewModel exposes editUserTurn and regenerateFromHere handlers with lifecycle state
+
+The system SHALL expose two handler entry-points on `ChatViewModel`: `editUserTurn(messageId, newDraftText)` and `regenerateFromHere(messageId)`. Each handler MUST surface in-flight + failed lifecycle state on the ViewModel so the affordance UI can render an in-flight indicator and an inline error with a retry. On success, the corresponding §3.2 / §3.3 active-path effect MUST be applied so the new variant becomes the active path.
+
+#### Scenario: editUserTurn happy path applies the active-path effect on success
+
+- **WHEN** `editUserTurn("user-msg-7", "rewritten text")` is called and the repository call returns the new user-message + companion-turn variants
+- **THEN** the lifecycle state transitions in-flight → completed and the §3.2 `editUserBubbleActivePathEffect` flips the active-path map entries for the user-message's parent variantGroup and the companion-turn's parent variantGroup to the new variants
+
+#### Scenario: editUserTurn failure surfaces an inline error with retry
+
+- **WHEN** the repository call rejects the request (transport failure or non-2xx response)
+- **THEN** the lifecycle state transitions in-flight → failed with the failure reason; the affordance UI renders the inline error and a retry button; tapping retry re-invokes the same `editUserTurn` without re-arming any user gesture
+
+#### Scenario: regenerateFromHere supports mid-conversation invocation
+
+- **WHEN** `regenerateFromHere("companion-msg-3")` is called on a companion bubble that is not the most recent
+- **THEN** the repository call's `targetMessageId` is "companion-msg-3" and the resulting new sibling becomes the active variant for that group, leaving every later companion turn's variant tree untouched
+
+### Requirement: Chat export entry-point and dispatcher in the production Android chat surface
+
+The Android chat surface SHALL expose an "Export" entry in the chat top bar's overflow menu on companion conversations (gated on `conversation.companionCardId != null`). Tapping the entry SHALL open `ChatExportDialog` with the active `conversationId`. The dialog SHALL render the `ChatExportDialogState` controls (path-only toggle, language pills, share/downloads target pills) and project the dispatcher's outcome through the §5.1 lifecycle flags (in-flight disables controls, completed auto-dismisses, errorCode renders inline copy).
+
+#### Scenario: Companion conversation surfaces the export entry
+
+- **WHEN** the user opens a chat where the active conversation has a non-null `companionCardId`
+- **THEN** the chat top bar's overflow menu displays an "Export" entry
+- **AND** non-companion (peer / direct) conversations do not surface the entry
+
+#### Scenario: Submit dispatches via share-sheet and auto-dismisses on success
+
+- **WHEN** the user opens the export dialog, leaves `pathOnly=true`, leaves the language at the active app language, and selects `target=Share` then taps Export
+- **THEN** the dialog enters the in-flight state, calls `repository.exportConversation(conversationId, format="jsonl", pathOnly=true)`, builds an `Intent(ACTION_SEND)` with the JSONL bytes attached via `FileProvider`, fires `Intent.createChooser(...)`, and on success marks the dialog completed which dismisses it
+
+#### Scenario: Submit dispatches via Downloads and auto-dismisses on success
+
+- **WHEN** the user opens the export dialog, toggles `pathOnly=false`, selects `target=Downloads`, and taps Export
+- **THEN** the dialog enters the in-flight state, calls `repository.exportConversation(conversationId, format="jsonl", pathOnly=false)`, writes the JSONL bytes to `MediaStore.Downloads` (Android Q+) under the chat-exports relative subdir using the `chat-export-full-tree_<first8OfConversationId>.jsonl` filename, and on success marks the dialog completed which dismisses it
+
+#### Scenario: Wire failure renders the inline error and re-enables controls
+
+- **WHEN** `repository.exportConversation` returns `Result.failure(throwable)` whose message matches one of `404_unknown_conversation` / `unsupported_format` / `network_failure`
+- **THEN** the dialog leaves the in-flight state, sets `errorCode = <code>`, renders the localized error copy below the controls, and re-enables the controls so the user can retry or change choices
+
+#### Scenario: Dispatcher failure renders the inline error
+
+- **WHEN** the wire call succeeds but the platform dispatcher fails (no share target installed, Downloads unavailable, write IO failure)
+- **THEN** the dialog leaves the in-flight state, sets `errorCode` to the dispatcher's emitted code (`no_share_target` / `share_cancelled` / `downloads_unavailable` / `write_failed`), and renders the localized error copy
+### Requirement: Reset relationship affordance on the production character-detail surface
+
+The Android character-detail screen SHALL render a "Reset relationship" affordance below the action row on companion-card details (gated on `card.companionCardId != null`). The affordance SHALL drive the §6.1 `RelationshipResetAffordanceState` state machine through five visible UI states (Idle / Armed / Submitting / Completed / Failed) and surface the destructive-action confirmation as an inline banner (not a modal), per the §6.1 presentation contract. On Completed, the local conversations list SHALL no longer contain entries whose `companionCardId` matches the reset character; on Failed, the inline error copy SHALL render and the user SHALL be able to retry the call without re-arming the two-step gate.
+
+#### Scenario: Idle state shows the trigger button
+
+- **WHEN** the user opens character detail for a card with `companionCardId != null` and the affordance is in `Idle` phase
+- **THEN** the screen renders the "Reset relationship" trigger button (testTag `relationship-reset-trigger`)
+- **AND** the confirmation banner is NOT rendered (testTag `relationship-reset-confirmation-banner` does not exist)
+
+#### Scenario: Tap arms the destructive-action gate
+
+- **WHEN** the user taps the trigger button
+- **THEN** the affordance transitions to `Armed`, the confirmation banner becomes visible (testTag `relationship-reset-confirmation-banner`), and the banner offers Cancel + Confirm controls (testTags `relationship-reset-cancel` / `relationship-reset-confirm`)
+- **AND** the conversations list is NOT yet mutated
+
+#### Scenario: Cancel from Armed returns to Idle without the call
+
+- **WHEN** the user taps Cancel from the Armed banner
+- **THEN** the affordance returns to `Idle`, the banner disappears, no `MessagingRepository.resetRelationship` call is made, and the conversations list is unchanged
+
+#### Scenario: Confirm from Armed dispatches and clears the local conversations on success
+
+- **WHEN** the user taps Confirm from the Armed banner
+- **THEN** the affordance transitions to `Submitting`, calls `MessagingRepository.resetRelationship(characterId)`, and on `Result.success` transitions to `Completed`, removing every `Conversation` whose `companionCardId == characterId` from the local cache
+
+#### Scenario: Failed reset surfaces an inline error with a retry that does not re-arm the gate
+
+- **WHEN** `MessagingRepository.resetRelationship(characterId)` returns `Result.failure` whose throwable message is `character_not_available` or `network_failure`
+- **THEN** the affordance transitions to `Failed`, the inline error copy renders the localized message for the failure code (testTag `relationship-reset-error`), and the retry button is enabled (testTag `relationship-reset-retry`)
+- **AND** tapping retry transitions the affordance directly from `Failed` to `Submitting` (NOT back through Armed); a successful retry then advances to `Completed` with the same local-cache mutation

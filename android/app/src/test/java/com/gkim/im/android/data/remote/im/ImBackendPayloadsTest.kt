@@ -1,9 +1,27 @@
 package com.gkim.im.android.data.remote.im
 
+import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AttachmentType
+import com.gkim.im.android.core.model.BlockReason
+import com.gkim.im.android.core.model.CompanionMemory
+import com.gkim.im.android.core.model.CompanionMemoryPin
+import com.gkim.im.android.core.model.CompanionMemoryResetScope
+import com.gkim.im.android.core.model.FailedSubtype
+import com.gkim.im.android.core.model.LocalizedText
+import com.gkim.im.android.core.model.Lorebook
+import com.gkim.im.android.core.model.LorebookBinding
+import com.gkim.im.android.core.model.LorebookEntry
 import com.gkim.im.android.core.model.MessageDirection
 import com.gkim.im.android.core.model.MessageKind
+import com.gkim.im.android.core.model.Preset
+import com.gkim.im.android.core.model.PresetParams
+import com.gkim.im.android.core.model.PresetTemplate
+import com.gkim.im.android.core.model.SecondaryGate
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -260,5 +278,1320 @@ class ImBackendPayloadsTest {
         assertEquals(MessageDirection.Incoming, message.direction)
         assertEquals(AttachmentType.Image, message.attachment?.type)
         assertEquals("/api/messages/message-image-1/attachment", message.attachment?.preview)
+    }
+
+    @Test
+    fun `companion turn submit request round-trips through kotlinx serialization`() {
+        val request = CompanionTurnSubmitRequestDto(
+            conversationId = "conversation-1",
+            activeCompanionId = "architect-oracle",
+            userTurnBody = "Tell me a story about the tavern",
+            activeLanguage = "en",
+            clientTurnId = "client-turn-001",
+            parentMessageId = "message-root",
+        )
+
+        val encoded = json.encodeToString(CompanionTurnSubmitRequestDto.serializer(), request)
+        val decoded = json.decodeFromString<CompanionTurnSubmitRequestDto>(encoded)
+
+        assertEquals(request, decoded)
+    }
+
+    @Test
+    fun `companion turn pending list payload decodes record shape`() {
+        val pending = json.decodeFromString<CompanionTurnPendingListDto>(
+            """
+            {
+              "turns": [
+                {
+                  "turnId": "turn-42",
+                  "conversationId": "conversation-1",
+                  "messageId": "message-9",
+                  "variantGroupId": "vg-3",
+                  "variantIndex": 0,
+                  "parentMessageId": "message-8",
+                  "status": "streaming",
+                  "accumulatedBody": "The tavern door creaks",
+                  "lastDeltaSeq": 7,
+                  "providerId": "openai",
+                  "model": "gpt-4o-mini",
+                  "startedAt": "2026-04-21T08:00:00Z"
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, pending.turns.size)
+        val turn = pending.turns.single()
+        assertEquals("turn-42", turn.turnId)
+        assertEquals("streaming", turn.status)
+        assertEquals(7, turn.lastDeltaSeq)
+        assertEquals("The tavern door creaks", turn.accumulatedBody)
+        assertNull(turn.completedAt)
+        assertNull(turn.blockReason)
+    }
+
+    @Test
+    fun `gateway parser emits companion_turn started event`() {
+        val started = ImGatewayEventParser.parse(
+            """
+            {
+              "type": "companion_turn.started",
+              "turnId": "turn-100",
+              "conversationId": "conversation-1",
+              "messageId": "message-100",
+              "variantGroupId": "vg-5",
+              "variantIndex": 0,
+              "parentMessageId": "message-99",
+              "providerId": "openai",
+              "model": "gpt-4o-mini"
+            }
+            """.trimIndent(),
+        )
+        assertTrue(started is ImGatewayEvent.CompanionTurnStarted)
+        started as ImGatewayEvent.CompanionTurnStarted
+        assertEquals("turn-100", started.turnId)
+        assertEquals("vg-5", started.variantGroupId)
+        assertEquals(0, started.variantIndex)
+        assertEquals("openai", started.providerId)
+    }
+
+    @Test
+    fun `gateway parser emits companion_turn delta event with monotonic deltaSeq`() {
+        val delta = ImGatewayEventParser.parse(
+            """
+            {
+              "type": "companion_turn.delta",
+              "turnId": "turn-100",
+              "conversationId": "conversation-1",
+              "messageId": "message-100",
+              "deltaSeq": 3,
+              "textDelta": "The tavern fire crackles"
+            }
+            """.trimIndent(),
+        )
+        assertTrue(delta is ImGatewayEvent.CompanionTurnDelta)
+        delta as ImGatewayEvent.CompanionTurnDelta
+        assertEquals(3, delta.deltaSeq)
+        assertEquals("The tavern fire crackles", delta.textDelta)
+    }
+
+    @Test
+    fun `gateway parser emits companion_turn completed event with final body`() {
+        val completed = ImGatewayEventParser.parse(
+            """
+            {
+              "type": "companion_turn.completed",
+              "turnId": "turn-100",
+              "conversationId": "conversation-1",
+              "messageId": "message-100",
+              "finalBody": "The tavern fire crackles warmly.",
+              "completedAt": "2026-04-21T08:01:00Z"
+            }
+            """.trimIndent(),
+        )
+        assertTrue(completed is ImGatewayEvent.CompanionTurnCompleted)
+        completed as ImGatewayEvent.CompanionTurnCompleted
+        assertEquals("turn-100", completed.turnId)
+        assertEquals("The tavern fire crackles warmly.", completed.finalBody)
+        assertEquals("2026-04-21T08:01:00Z", completed.completedAt)
+    }
+
+    @Test
+    fun `gateway parser emits companion_turn failed event with subtype`() {
+        val failed = ImGatewayEventParser.parse(
+            """
+            {
+              "type": "companion_turn.failed",
+              "turnId": "turn-101",
+              "conversationId": "conversation-1",
+              "messageId": "message-101",
+              "subtype": "timeout",
+              "errorMessage": "idle for 15s"
+            }
+            """.trimIndent(),
+        )
+        assertTrue(failed is ImGatewayEvent.CompanionTurnFailed)
+        failed as ImGatewayEvent.CompanionTurnFailed
+        assertEquals("timeout", failed.subtype)
+        assertEquals("idle for 15s", failed.errorMessage)
+    }
+
+    @Test
+    fun `gateway parser emits companion_turn blocked event with typed reason`() {
+        val blocked = ImGatewayEventParser.parse(
+            """
+            {
+              "type": "companion_turn.blocked",
+              "turnId": "turn-102",
+              "conversationId": "conversation-1",
+              "messageId": "message-102",
+              "reason": "nsfw_denied"
+            }
+            """.trimIndent(),
+        )
+        assertTrue(blocked is ImGatewayEvent.CompanionTurnBlocked)
+        blocked as ImGatewayEvent.CompanionTurnBlocked
+        assertEquals("nsfw_denied", blocked.reason)
+    }
+
+    @Test
+    fun `companion turn blocked reasonAsBlockReason round trips every BlockReason wire key`() {
+        BlockReason.entries.forEach { expected ->
+            val event = ImGatewayEvent.CompanionTurnBlocked(
+                turnId = "turn-1",
+                conversationId = "conversation-1",
+                messageId = "message-1",
+                reason = expected.wireKey,
+            )
+            assertEquals("round trip for ${expected.wireKey}", expected, event.reasonAsBlockReason)
+        }
+    }
+
+    @Test
+    fun `companion turn blocked reasonAsBlockReason falls back to Other on unrecognized wire`() {
+        val event = ImGatewayEvent.CompanionTurnBlocked(
+            turnId = "turn-1",
+            conversationId = "conversation-1",
+            messageId = "message-1",
+            reason = "server_added_a_new_reason",
+        )
+        assertEquals(BlockReason.Other, event.reasonAsBlockReason)
+    }
+
+    @Test
+    fun `companion turn blocked reasonAsBlockReason survives json encode decode round trip`() {
+        BlockReason.entries.forEach { expected ->
+            val raw = """
+                {
+                  "type": "companion_turn.blocked",
+                  "turnId": "turn-x",
+                  "conversationId": "conversation-x",
+                  "messageId": "message-x",
+                  "reason": "${expected.wireKey}"
+                }
+            """.trimIndent()
+            val parsed = ImGatewayEventParser.parse(raw) as ImGatewayEvent.CompanionTurnBlocked
+            assertEquals(expected.wireKey, parsed.reason)
+            assertEquals(expected, parsed.reasonAsBlockReason)
+        }
+    }
+
+    @Test
+    fun `companion turn failed subtypeAsFailedSubtype round trips every FailedSubtype wire key`() {
+        FailedSubtype.entries.forEach { expected ->
+            val event = ImGatewayEvent.CompanionTurnFailed(
+                turnId = "turn-1",
+                conversationId = "conversation-1",
+                messageId = "message-1",
+                subtype = expected.wireKey,
+            )
+            assertEquals("round trip for ${expected.wireKey}", expected, event.subtypeAsFailedSubtype)
+        }
+    }
+
+    @Test
+    fun `companion turn failed subtypeAsFailedSubtype falls back to Unknown on unrecognized wire`() {
+        val event = ImGatewayEvent.CompanionTurnFailed(
+            turnId = "turn-1",
+            conversationId = "conversation-1",
+            messageId = "message-1",
+            subtype = "brand_new_subtype",
+        )
+        assertEquals(FailedSubtype.Unknown, event.subtypeAsFailedSubtype)
+    }
+
+    @Test
+    fun `companion turn failed subtypeAsFailedSubtype survives json encode decode round trip`() {
+        FailedSubtype.entries.forEach { expected ->
+            val raw = """
+                {
+                  "type": "companion_turn.failed",
+                  "turnId": "turn-x",
+                  "conversationId": "conversation-x",
+                  "messageId": "message-x",
+                  "subtype": "${expected.wireKey}"
+                }
+            """.trimIndent()
+            val parsed = ImGatewayEventParser.parse(raw) as ImGatewayEvent.CompanionTurnFailed
+            assertEquals(expected.wireKey, parsed.subtype)
+            assertEquals(expected, parsed.subtypeAsFailedSubtype)
+        }
+    }
+
+    @Test
+    fun `companion roster payload maps bilingual companion fields into android card model`() {
+        val roster = json.decodeFromString<CompanionRosterDto>(
+            """
+            {
+              "presetCharacters": [
+                {
+                  "id": "architect-oracle",
+                  "displayName": {
+                    "english": "Architect Oracle",
+                    "chinese": "筑谕师"
+                  },
+                  "roleLabel": {
+                    "english": "Calm Strategist",
+                    "chinese": "冷静策士"
+                  },
+                  "summary": {
+                    "english": "A precise companion who turns messy feelings into structured plans and gentle next steps.",
+                    "chinese": "把纷乱感受整理成清晰计划，并陪你迈出下一步的精确同伴。"
+                  },
+                  "openingLine": {
+                    "english": "I have been waiting in the tavern. Tell me what kind of night this is.",
+                    "chinese": "我一直在酒馆等你。今晚是什么样的夜色，说给我听。"
+                  },
+                  "avatarText": "AO",
+                  "accent": "primary",
+                  "source": "preset"
+                }
+              ],
+              "ownedCharacters": [],
+              "activeCharacterId": "architect-oracle"
+            }
+            """.trimIndent(),
+        )
+
+        val card = roster.presetCharacters.single().toCompanionCharacterCard()
+
+        assertEquals("Architect Oracle", card.displayName.english)
+        assertEquals("筑谕师", card.displayName.chinese)
+        assertEquals("Calm Strategist", card.roleLabel.english)
+        assertEquals("冷静策士", card.roleLabel.chinese)
+        assertEquals("我一直在酒馆等你。今晚是什么样的夜色，说给我听。", card.firstMes.chinese)
+    }
+
+    @Test
+    fun `card import upload request round-trips through kotlinx serialization`() {
+        val request = CardImportUploadRequestDto(
+            filename = "aria.png",
+            contentBase64 = "iVBORw0KGgoAAA==",
+            claimedFormat = "png",
+        )
+        val encoded = json.encodeToString(CardImportUploadRequestDto.serializer(), request)
+        val decoded = json.decodeFromString<CardImportUploadRequestDto>(encoded)
+        assertEquals(request, decoded)
+    }
+
+    @Test
+    fun `card import preview payload decodes deep record plus warnings plus st extensions passthrough`() {
+        val preview = json.decodeFromString<CardImportPreviewDto>(
+            """
+            {
+              "previewToken": "preview-xyz-1",
+              "card": {
+                "id": "card-import-1",
+                "displayName": {"english":"Aria","chinese":"Aria"},
+                "roleLabel": {"english":"Guide","chinese":"向导"},
+                "summary": {"english":"Calm guide","chinese":"Calm guide"},
+                "firstMes": {"english":"Hello traveller.","chinese":"Hello traveller."},
+                "alternateGreetings": [],
+                "avatarText": "AR",
+                "accent": "primary",
+                "source": "userauthored",
+                "extensions": {
+                  "st": {
+                    "stPostHistoryInstructions": "Stay in character.",
+                    "stDepthPrompt": "You live deep in the woods.",
+                    "stTranslationPending": ["firstMes"]
+                  }
+                }
+              },
+              "detectedLanguage": "en",
+              "warnings": [
+                {"code":"field_truncated","field":"personality","detail":"exceeded 32 KiB"},
+                {"code":"avatar_discarded","field":"avatar","detail":"> 4096x4096"},
+                {"code":"alt_greetings_trimmed","detail":"kept first 64"},
+                {"code":"tags_trimmed"},
+                {"code":"extension_dropped","field":"st.unknown_large"},
+                {"code":"st_translation_pending","field":"firstMes"},
+                {"code":"post_history_instruction_parked","field":"stPostHistoryInstructions"}
+              ],
+              "stExtensionKeys": ["stPostHistoryInstructions","stDepthPrompt","stTranslationPending"]
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals("preview-xyz-1", preview.previewToken)
+        assertEquals("en", preview.detectedLanguage)
+        assertEquals("card-import-1", preview.card.id)
+        assertEquals("Hello traveller.", preview.card.firstMes?.english)
+        assertEquals(7, preview.warnings.size)
+        val codes = preview.warnings.map { it.code }
+        assertTrue(codes.contains("field_truncated"))
+        assertTrue(codes.contains("avatar_discarded"))
+        assertTrue(codes.contains("alt_greetings_trimmed"))
+        assertTrue(codes.contains("tags_trimmed"))
+        assertTrue(codes.contains("extension_dropped"))
+        assertTrue(codes.contains("st_translation_pending"))
+        assertTrue(codes.contains("post_history_instruction_parked"))
+        assertEquals("personality", preview.warnings.first { it.code == "field_truncated" }.field)
+        assertNull(preview.warnings.first { it.code == "tags_trimmed" }.field)
+        assertEquals(listOf("stPostHistoryInstructions", "stDepthPrompt", "stTranslationPending"), preview.stExtensionKeys)
+
+        val reEncoded = json.encodeToString(CardImportPreviewDto.serializer(), preview)
+        val reDecoded = json.decodeFromString<CardImportPreviewDto>(reEncoded)
+        assertEquals(preview, reDecoded)
+        assertTrue(reDecoded.card.extensions.containsKey("st"))
+    }
+
+    @Test
+    fun `card import commit request round-trips through kotlinx serialization`() {
+        val commit = CardImportCommitRequestDto(
+            previewToken = "preview-xyz-1",
+            card = CompanionCharacterCardDto(
+                id = "card-import-1",
+                displayName = LocalizedTextDto("Aria", "Aria"),
+                roleLabel = LocalizedTextDto("Guide", "向导"),
+                summary = LocalizedTextDto("Calm guide", "Calm guide"),
+                firstMes = LocalizedTextDto("Hello traveller.", "你好，旅人。"),
+                avatarText = "AR",
+                accent = "primary",
+                source = "userauthored",
+            ),
+            languageOverride = "zh",
+        )
+        val encoded = json.encodeToString(CardImportCommitRequestDto.serializer(), commit)
+        val decoded = json.decodeFromString<CardImportCommitRequestDto>(encoded)
+        assertEquals(commit, decoded)
+    }
+
+    @Test
+    fun `card export request and response round-trip through kotlinx serialization`() {
+        val request = CardExportRequestDto(
+            format = "png",
+            language = "zh",
+            includeTranslationAlt = true,
+        )
+        val encodedRequest = json.encodeToString(CardExportRequestDto.serializer(), request)
+        val decodedRequest = json.decodeFromString<CardExportRequestDto>(encodedRequest)
+        assertEquals(request, decodedRequest)
+
+        val pngResponse = CardExportResponseDto(
+            format = "png",
+            filename = "aria.png",
+            contentType = "image/png",
+            encoding = "base64",
+            payload = "iVBORw0KGgoAAA==",
+        )
+        val decodedPng = json.decodeFromString<CardExportResponseDto>(
+            json.encodeToString(CardExportResponseDto.serializer(), pngResponse),
+        )
+        assertEquals(pngResponse, decodedPng)
+
+        val jsonResponse = CardExportResponseDto(
+            format = "json",
+            filename = "aria.json",
+            contentType = "application/json",
+            encoding = "utf8",
+            payload = "{\"name\":\"Aria\"}",
+        )
+        val decodedJson = json.decodeFromString<CardExportResponseDto>(
+            json.encodeToString(CardExportResponseDto.serializer(), jsonResponse),
+        )
+        assertEquals(jsonResponse, decodedJson)
+    }
+
+    @Test
+    fun `user persona dto carries bilingual names and extensions passthrough`() {
+        val raw = """
+            {
+              "id": "persona-1",
+              "displayName": { "english": "Traveller", "chinese": "旅人" },
+              "description": { "english": "A curious wanderer.", "chinese": "好奇的漫游者。" },
+              "isBuiltIn": false,
+              "isActive": true,
+              "createdAt": 1700000000,
+              "updatedAt": 1700001234,
+              "extensions": { "nickname": "T" }
+            }
+        """.trimIndent()
+        val dto = json.decodeFromString<UserPersonaDto>(raw)
+
+        assertEquals("persona-1", dto.id)
+        assertEquals("Traveller", dto.displayName.english)
+        assertEquals("旅人", dto.displayName.chinese)
+        assertEquals("好奇的漫游者。", dto.description.chinese)
+        assertFalse(dto.isBuiltIn)
+        assertTrue(dto.isActive)
+        assertEquals(1_700_000_000L, dto.createdAt)
+        assertEquals(1_700_001_234L, dto.updatedAt)
+        assertEquals(
+            "T",
+            dto.extensions["nickname"]?.let { (it as kotlinx.serialization.json.JsonPrimitive).content },
+        )
+
+        val persona = dto.toUserPersona()
+        assertEquals("Traveller", persona.displayName.english)
+        assertEquals("旅人", persona.displayName.chinese)
+        assertTrue(persona.isActive)
+
+        val encoded = json.encodeToString(UserPersonaDto.serializer(), dto)
+        val decoded = json.decodeFromString<UserPersonaDto>(encoded)
+        assertEquals(dto, decoded)
+    }
+
+    @Test
+    fun `user persona list dto carries active id and persona list`() {
+        val dto = UserPersonaListDto(
+            personas = listOf(
+                UserPersonaDto(
+                    id = "persona-built-in",
+                    displayName = LocalizedTextDto("User", "用户"),
+                    description = LocalizedTextDto(
+                        "A user interacting with the companion.",
+                        "与同伴互动的用户。",
+                    ),
+                    isBuiltIn = true,
+                    isActive = true,
+                ),
+                UserPersonaDto(
+                    id = "persona-alpha",
+                    displayName = LocalizedTextDto("Aria", "艾莉亚"),
+                    description = LocalizedTextDto("Calm guide.", "沉稳向导。"),
+                ),
+            ),
+            activePersonaId = "persona-built-in",
+        )
+        val encoded = json.encodeToString(UserPersonaListDto.serializer(), dto)
+        val decoded = json.decodeFromString<UserPersonaListDto>(encoded)
+        assertEquals(dto, decoded)
+        assertEquals("persona-built-in", decoded.activePersonaId)
+        assertEquals(2, decoded.personas.size)
+    }
+
+    @Test
+    fun `user persona activate request forwards persona id`() {
+        val dto = UserPersonaActivateRequestDto(personaId = "persona-alpha")
+        val encoded = json.encodeToString(UserPersonaActivateRequestDto.serializer(), dto)
+        val decoded = json.decodeFromString<UserPersonaActivateRequestDto>(encoded)
+        assertEquals(dto, decoded)
+        assertEquals("persona-alpha", decoded.personaId)
+    }
+
+    @Test
+    fun `user persona dto round trip through fromUserPersona and back preserves every field`() {
+        val domain = com.gkim.im.android.core.model.UserPersona(
+            id = "persona-round",
+            displayName = com.gkim.im.android.core.model.LocalizedText("Pilgrim", "朝圣者"),
+            description = com.gkim.im.android.core.model.LocalizedText(
+                "Walks many roads.",
+                "走过许多道路。",
+            ),
+            isBuiltIn = false,
+            isActive = true,
+            createdAt = 1_700_000_000L,
+            updatedAt = 1_700_001_234L,
+            extensions = kotlinx.serialization.json.buildJsonObject {
+                put("nickname", kotlinx.serialization.json.JsonPrimitive("P"))
+            },
+        )
+        val dto = UserPersonaDto.fromUserPersona(domain)
+        val encoded = json.encodeToString(UserPersonaDto.serializer(), dto)
+        val decoded = json.decodeFromString<UserPersonaDto>(encoded)
+        val roundTripped = decoded.toUserPersona()
+        assertEquals(domain, roundTripped)
+    }
+
+    @Test
+    fun `lorebook dto carries bilingual fields and extensions passthrough`() {
+        val raw = """
+            {
+              "id": "lorebook-atlas",
+              "ownerId": "user-nox",
+              "displayName": { "english": "World Atlas", "chinese": "世界图鉴" },
+              "description": { "english": "Cross-character notes.", "chinese": "跨角色的笔记。" },
+              "isGlobal": true,
+              "isBuiltIn": false,
+              "tokenBudget": 2048,
+              "extensions": { "st": { "custom": "from ST" } },
+              "createdAt": 1700000000,
+              "updatedAt": 1700001234
+            }
+        """.trimIndent()
+        val dto = json.decodeFromString<LorebookDto>(raw)
+
+        assertEquals("lorebook-atlas", dto.id)
+        assertEquals("user-nox", dto.ownerId)
+        assertEquals("World Atlas", dto.displayName.english)
+        assertEquals("世界图鉴", dto.displayName.chinese)
+        assertEquals("跨角色的笔记。", dto.description.chinese)
+        assertTrue(dto.isGlobal)
+        assertEquals(2048, dto.tokenBudget)
+        assertEquals(1_700_000_000L, dto.createdAt)
+        assertTrue(dto.extensions.containsKey("st"))
+
+        val lorebook = dto.toLorebook()
+        assertEquals("lorebook-atlas", lorebook.id)
+        assertEquals("World Atlas", lorebook.displayName.english)
+        assertEquals(2048, lorebook.tokenBudget)
+
+        val encoded = json.encodeToString(LorebookDto.serializer(), dto)
+        val decoded = json.decodeFromString<LorebookDto>(encoded)
+        assertEquals(dto, decoded)
+    }
+
+    @Test
+    fun `lorebook dto defaults absent optional fields to sensible values`() {
+        val raw = """
+            {
+              "id": "lb-minimal",
+              "ownerId": "user-nox",
+              "displayName": { "english": "Minimal", "chinese": "精简" }
+            }
+        """.trimIndent()
+        val dto = json.decodeFromString<LorebookDto>(raw)
+
+        assertEquals("", dto.description.english)
+        assertFalse(dto.isGlobal)
+        assertFalse(dto.isBuiltIn)
+        assertEquals(Lorebook.DefaultTokenBudget, dto.tokenBudget)
+        assertEquals(0L, dto.createdAt)
+        assertTrue(dto.extensions.isEmpty())
+    }
+
+    @Test
+    fun `lorebook dto round trip through fromLorebook and back preserves every field`() {
+        val domain = Lorebook(
+            id = "lorebook-atlas",
+            ownerId = "user-nox",
+            displayName = LocalizedText("World Atlas", "世界图鉴"),
+            description = LocalizedText("Cross-character notes.", "跨角色的笔记。"),
+            isGlobal = true,
+            isBuiltIn = false,
+            tokenBudget = 2048,
+            extensions = buildJsonObject { put("st_probability", JsonPrimitive(100)) },
+            createdAt = 1_700_000_000L,
+            updatedAt = 1_700_001_234L,
+        )
+        val dto = LorebookDto.fromLorebook(domain)
+        val encoded = json.encodeToString(LorebookDto.serializer(), dto)
+        val decoded = json.decodeFromString<LorebookDto>(encoded)
+        assertEquals(domain, decoded.toLorebook())
+    }
+
+    @Test
+    fun `lorebook list dto wraps collection`() {
+        val listDto = LorebookListDto(
+            lorebooks = listOf(
+                LorebookDto(
+                    id = "lb-1",
+                    ownerId = "user-nox",
+                    displayName = LocalizedTextDto("One", "一"),
+                ),
+                LorebookDto(
+                    id = "lb-2",
+                    ownerId = "user-nox",
+                    displayName = LocalizedTextDto("Two", "二"),
+                    isGlobal = true,
+                ),
+            ),
+        )
+        val encoded = json.encodeToString(LorebookListDto.serializer(), listDto)
+        val decoded = json.decodeFromString<LorebookListDto>(encoded)
+        assertEquals(listDto, decoded)
+        assertEquals(2, decoded.lorebooks.size)
+        assertTrue(decoded.lorebooks[1].isGlobal)
+    }
+
+    @Test
+    fun `lorebook summary dto feeds the settings badge`() {
+        val summary = LorebookSummaryDto(
+            id = "lb-1",
+            displayName = LocalizedTextDto("Atlas", "图鉴"),
+            entryCount = 7,
+            isGlobal = true,
+        )
+        val encoded = json.encodeToString(LorebookSummaryDto.serializer(), summary)
+        val decoded = json.decodeFromString<LorebookSummaryDto>(encoded)
+        assertEquals(summary, decoded)
+        assertEquals(7, decoded.entryCount)
+    }
+
+    @Test
+    fun `bootstrap bundle carries lorebook summaries for the Settings badge`() {
+        val bootstrap = json.decodeFromString<BootstrapBundleDto>(
+            """
+            {
+              "user": {
+                "id": "user-nox",
+                "externalId": "nox-dev",
+                "displayName": "Nox Dev",
+                "title": "IM Milestone Owner",
+                "avatarText": "NX"
+              },
+              "contacts": [],
+              "conversations": [],
+              "lorebookSummaries": [
+                {
+                  "id": "lb-1",
+                  "displayName": { "english": "Atlas", "chinese": "图鉴" },
+                  "entryCount": 3,
+                  "isGlobal": false
+                },
+                {
+                  "id": "lb-2",
+                  "displayName": { "english": "Global notes", "chinese": "全局笔记" },
+                  "entryCount": 12,
+                  "isGlobal": true
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        assertEquals(2, bootstrap.lorebookSummaries.size)
+        assertEquals("lb-1", bootstrap.lorebookSummaries[0].id)
+        assertEquals(3, bootstrap.lorebookSummaries[0].entryCount)
+        assertTrue(bootstrap.lorebookSummaries[1].isGlobal)
+    }
+
+    @Test
+    fun `bootstrap bundle defaults lorebook summaries to empty when absent`() {
+        val bootstrap = json.decodeFromString<BootstrapBundleDto>(
+            """
+            {
+              "user": {
+                "id": "user-nox",
+                "externalId": "nox-dev",
+                "displayName": "Nox Dev",
+                "title": "IM Milestone Owner",
+                "avatarText": "NX"
+              },
+              "contacts": [],
+              "conversations": []
+            }
+            """.trimIndent(),
+        )
+        assertTrue(bootstrap.lorebookSummaries.isEmpty())
+    }
+
+    @Test
+    fun `create lorebook request round-trips through kotlinx serialization`() {
+        val request = CreateLorebookRequestDto(
+            displayName = LocalizedTextDto("New Atlas", "新图鉴"),
+            description = LocalizedTextDto("Notes", "笔记"),
+            isGlobal = true,
+            tokenBudget = 1500,
+        )
+        val encoded = json.encodeToString(CreateLorebookRequestDto.serializer(), request)
+        val decoded = json.decodeFromString<CreateLorebookRequestDto>(encoded)
+        assertEquals(request, decoded)
+    }
+
+    @Test
+    fun `update lorebook request carries only changed fields via nullable opt-in`() {
+        val partial = UpdateLorebookRequestDto(tokenBudget = 4096)
+        val encoded = json.encodeToString(UpdateLorebookRequestDto.serializer(), partial)
+        val decoded = json.decodeFromString<UpdateLorebookRequestDto>(encoded)
+        assertEquals(partial, decoded)
+        assertEquals(4096, decoded.tokenBudget)
+        assertNull(decoded.displayName)
+        assertNull(decoded.isGlobal)
+    }
+
+    @Test
+    fun `per-language string list dto converts to and from language map`() {
+        val dto = PerLanguageStringListDto(
+            english = listOf("moon", "moons"),
+            chinese = listOf("月亮", "双月"),
+        )
+        val map = dto.toLanguageMap()
+        assertEquals(listOf("moon", "moons"), map[AppLanguage.English])
+        assertEquals(listOf("月亮", "双月"), map[AppLanguage.Chinese])
+
+        val back = PerLanguageStringListDto.fromLanguageMap(map)
+        assertEquals(dto, back)
+    }
+
+    @Test
+    fun `per-language string list dto omits language key when list is empty`() {
+        val englishOnly = PerLanguageStringListDto(english = listOf("moon"))
+        val map = englishOnly.toLanguageMap()
+        assertEquals(listOf("moon"), map[AppLanguage.English])
+        assertFalse(map.containsKey(AppLanguage.Chinese))
+    }
+
+    @Test
+    fun `lorebook entry dto serializes each secondary gate variant and maps to domain`() {
+        SecondaryGate.values().forEach { gate ->
+            val dto = LorebookEntryDto(
+                id = "entry-${gate.name.lowercase()}",
+                lorebookId = "lb-1",
+                name = LocalizedTextDto("Entry ${gate.name}", "条目 ${gate.name}"),
+                secondaryGate = when (gate) {
+                    SecondaryGate.None -> "NONE"
+                    SecondaryGate.And -> "AND"
+                    SecondaryGate.Or -> "OR"
+                },
+            )
+            val encoded = json.encodeToString(LorebookEntryDto.serializer(), dto)
+            val decoded = json.decodeFromString<LorebookEntryDto>(encoded)
+            assertEquals(dto, decoded)
+            assertEquals(gate, decoded.toLorebookEntry().secondaryGate)
+        }
+    }
+
+    @Test
+    fun `lorebook entry dto tolerates lowercase gate strings when decoding`() {
+        val dto = LorebookEntryDto(
+            id = "entry-1",
+            lorebookId = "lb-1",
+            name = LocalizedTextDto("Entry", "条目"),
+            secondaryGate = "and",
+        )
+        val domain = dto.toLorebookEntry()
+        assertEquals(SecondaryGate.And, domain.secondaryGate)
+    }
+
+    @Test
+    fun `lorebook entry dto preserves per-language key lists through json round-trip`() {
+        val dto = LorebookEntryDto(
+            id = "entry-moons",
+            lorebookId = "lb-1",
+            name = LocalizedTextDto("Two moons", "双月"),
+            keysByLang = PerLanguageStringListDto(
+                english = listOf("moon", "moons"),
+                chinese = listOf("月亮", "双月"),
+            ),
+            secondaryKeysByLang = PerLanguageStringListDto(
+                english = listOf("night"),
+                chinese = listOf("夜晚"),
+            ),
+            secondaryGate = "AND",
+            content = LocalizedTextDto("Two moons hang above.", "天上挂着双月。"),
+            constant = true,
+            scanDepth = 5,
+            insertionOrder = 10,
+            comment = "authoring note",
+            extensions = buildJsonObject { put("st_probability", JsonPrimitive(100)) },
+        )
+        val encoded = json.encodeToString(LorebookEntryDto.serializer(), dto)
+        val decoded = json.decodeFromString<LorebookEntryDto>(encoded)
+        assertEquals(dto, decoded)
+
+        val domain = decoded.toLorebookEntry()
+        assertEquals(listOf("moon", "moons"), domain.keysByLang[AppLanguage.English])
+        assertEquals(listOf("月亮", "双月"), domain.keysByLang[AppLanguage.Chinese])
+        assertEquals(listOf("night"), domain.secondaryKeysByLang[AppLanguage.English])
+        assertEquals(SecondaryGate.And, domain.secondaryGate)
+        assertTrue(domain.constant)
+        assertEquals(5, domain.scanDepth)
+        assertEquals(10, domain.insertionOrder)
+        assertEquals(JsonPrimitive(100), domain.extensions["st_probability"])
+    }
+
+    @Test
+    fun `lorebook entry dto defaults match domain spec`() {
+        val raw = """
+            {
+              "id": "entry-minimal",
+              "lorebookId": "lb-1",
+              "name": { "english": "Minimal", "chinese": "精简" }
+            }
+        """.trimIndent()
+        val dto = json.decodeFromString<LorebookEntryDto>(raw)
+
+        assertEquals("NONE", dto.secondaryGate)
+        assertEquals("", dto.content.english)
+        assertTrue(dto.enabled)
+        assertFalse(dto.constant)
+        assertFalse(dto.caseSensitive)
+        assertEquals(LorebookEntry.DefaultScanDepth, dto.scanDepth)
+        assertEquals(0, dto.insertionOrder)
+        assertTrue(dto.keysByLang.english.isEmpty())
+        assertTrue(dto.keysByLang.chinese.isEmpty())
+
+        val domain = dto.toLorebookEntry()
+        assertEquals(SecondaryGate.None, domain.secondaryGate)
+        assertEquals(LorebookEntry.DefaultScanDepth, domain.scanDepth)
+        assertTrue(domain.keysByLang.isEmpty())
+    }
+
+    @Test
+    fun `lorebook entry dto round trip through fromLorebookEntry preserves every field`() {
+        val domain = LorebookEntry(
+            id = "entry-round",
+            lorebookId = "lb-1",
+            name = LocalizedText("Round trip", "往返"),
+            keysByLang = mapOf(
+                AppLanguage.English to listOf("alpha", "beta"),
+                AppLanguage.Chinese to listOf("甲", "乙"),
+            ),
+            secondaryKeysByLang = mapOf(
+                AppLanguage.English to listOf("night"),
+            ),
+            secondaryGate = SecondaryGate.Or,
+            content = LocalizedText("Body", "正文"),
+            enabled = false,
+            constant = true,
+            caseSensitive = true,
+            scanDepth = 7,
+            insertionOrder = 15,
+            comment = "c",
+            extensions = buildJsonObject { put("st", JsonPrimitive("x")) },
+        )
+        val dto = LorebookEntryDto.fromLorebookEntry(domain)
+        val encoded = json.encodeToString(LorebookEntryDto.serializer(), dto)
+        val decoded = json.decodeFromString<LorebookEntryDto>(encoded)
+        assertEquals(domain, decoded.toLorebookEntry())
+    }
+
+    @Test
+    fun `lorebook entry list dto wraps collection`() {
+        val listDto = LorebookEntryListDto(
+            entries = listOf(
+                LorebookEntryDto(
+                    id = "e1",
+                    lorebookId = "lb-1",
+                    name = LocalizedTextDto("A", "甲"),
+                ),
+                LorebookEntryDto(
+                    id = "e2",
+                    lorebookId = "lb-1",
+                    name = LocalizedTextDto("B", "乙"),
+                ),
+            ),
+        )
+        val encoded = json.encodeToString(LorebookEntryListDto.serializer(), listDto)
+        val decoded = json.decodeFromString<LorebookEntryListDto>(encoded)
+        assertEquals(listDto, decoded)
+    }
+
+    @Test
+    fun `create and update lorebook entry requests round-trip`() {
+        val create = CreateLorebookEntryRequestDto(
+            name = LocalizedTextDto("New", "新"),
+            keysByLang = PerLanguageStringListDto(english = listOf("x")),
+            secondaryGate = "OR",
+            content = LocalizedTextDto("body", "正文"),
+            scanDepth = 2,
+        )
+        assertEquals(
+            create,
+            json.decodeFromString<CreateLorebookEntryRequestDto>(
+                json.encodeToString(CreateLorebookEntryRequestDto.serializer(), create),
+            ),
+        )
+
+        val update = UpdateLorebookEntryRequestDto(insertionOrder = 5, enabled = false)
+        val updEncoded = json.encodeToString(UpdateLorebookEntryRequestDto.serializer(), update)
+        val updDecoded = json.decodeFromString<UpdateLorebookEntryRequestDto>(updEncoded)
+        assertEquals(update, updDecoded)
+        assertEquals(5, updDecoded.insertionOrder)
+        assertFalse(updDecoded.enabled!!)
+        assertNull(updDecoded.name)
+    }
+
+    @Test
+    fun `lorebook binding dto serializes primary flag and converts to domain`() {
+        val dto = LorebookBindingDto(
+            lorebookId = "lb-1",
+            characterId = "card-aria",
+            isPrimary = true,
+        )
+        val encoded = json.encodeToString(LorebookBindingDto.serializer(), dto)
+        val decoded = json.decodeFromString<LorebookBindingDto>(encoded)
+        assertEquals(dto, decoded)
+
+        val domain = decoded.toLorebookBinding()
+        assertEquals("lb-1", domain.lorebookId)
+        assertEquals("card-aria", domain.characterId)
+        assertTrue(domain.isPrimary)
+    }
+
+    @Test
+    fun `lorebook binding dto defaults primary flag to false when absent`() {
+        val dto = json.decodeFromString<LorebookBindingDto>(
+            """{ "lorebookId": "lb-1", "characterId": "card-aria" }""",
+        )
+        assertFalse(dto.isPrimary)
+    }
+
+    @Test
+    fun `lorebook binding dto round trip through fromLorebookBinding preserves fields`() {
+        val domain = LorebookBinding(
+            lorebookId = "lb-1",
+            characterId = "card-aria",
+            isPrimary = true,
+        )
+        val dto = LorebookBindingDto.fromLorebookBinding(domain)
+        assertEquals(domain, dto.toLorebookBinding())
+    }
+
+    @Test
+    fun `lorebook binding list dto wraps collection`() {
+        val listDto = LorebookBindingListDto(
+            bindings = listOf(
+                LorebookBindingDto("lb-1", "card-aria", isPrimary = true),
+                LorebookBindingDto("lb-1", "card-nova"),
+            ),
+        )
+        val encoded = json.encodeToString(LorebookBindingListDto.serializer(), listDto)
+        val decoded = json.decodeFromString<LorebookBindingListDto>(encoded)
+        assertEquals(listDto, decoded)
+    }
+
+    @Test
+    fun `create and update lorebook binding requests round-trip`() {
+        val create = CreateLorebookBindingRequestDto(
+            characterId = "card-aria",
+            isPrimary = true,
+        )
+        assertEquals(
+            create,
+            json.decodeFromString<CreateLorebookBindingRequestDto>(
+                json.encodeToString(CreateLorebookBindingRequestDto.serializer(), create),
+            ),
+        )
+
+        val update = UpdateLorebookBindingRequestDto(isPrimary = false)
+        val encoded = json.encodeToString(UpdateLorebookBindingRequestDto.serializer(), update)
+        val decoded = json.decodeFromString<UpdateLorebookBindingRequestDto>(encoded)
+        assertEquals(update, decoded)
+    }
+
+    @Test
+    fun `companion memory dto round trip preserves every field`() {
+        val dto = CompanionMemoryDto(
+            userId = "user-nox",
+            companionCardId = "card-aria",
+            summary = LocalizedTextDto("She remembers the lighthouse.", "她记得那座灯塔。"),
+            summaryUpdatedAt = 1_710_000_000_000L,
+            summaryTurnCursor = 42,
+            tokenBudgetHint = 1024,
+        )
+        val encoded = json.encodeToString(CompanionMemoryDto.serializer(), dto)
+        val decoded = json.decodeFromString<CompanionMemoryDto>(encoded)
+        assertEquals(dto, decoded)
+
+        val domain = decoded.toCompanionMemory()
+        assertEquals("user-nox", domain.userId)
+        assertEquals("card-aria", domain.companionCardId)
+        assertEquals(LocalizedText("She remembers the lighthouse.", "她记得那座灯塔。"), domain.summary)
+        assertEquals(1_710_000_000_000L, domain.summaryUpdatedAt)
+        assertEquals(42, domain.summaryTurnCursor)
+        assertEquals(1024, domain.tokenBudgetHint)
+    }
+
+    @Test
+    fun `companion memory dto applies defaults when optional fields omitted`() {
+        val dto = json.decodeFromString<CompanionMemoryDto>(
+            """{ "userId": "user-nox", "companionCardId": "card-aria" }""",
+        )
+        assertEquals(LocalizedTextDto("", ""), dto.summary)
+        assertEquals(0L, dto.summaryUpdatedAt)
+        assertEquals(0, dto.summaryTurnCursor)
+        assertNull(dto.tokenBudgetHint)
+    }
+
+    @Test
+    fun `companion memory dto fromCompanionMemory round trips domain`() {
+        val domain = CompanionMemory(
+            userId = "user-nox",
+            companionCardId = "card-aria",
+            summary = LocalizedText("Kept confidences.", "保留的倾诉。"),
+            summaryUpdatedAt = 1_711_000_000_000L,
+            summaryTurnCursor = 7,
+            tokenBudgetHint = 512,
+        )
+        val dto = CompanionMemoryDto.fromCompanionMemory(domain)
+        assertEquals(domain, dto.toCompanionMemory())
+    }
+
+    @Test
+    fun `companion memory pin dto round trip preserves every field`() {
+        val dto = CompanionMemoryPinDto(
+            id = "pin-1",
+            sourceMessageId = "message-42",
+            text = LocalizedTextDto("Her favorite color is dusk.", "她最爱的颜色是暮色。"),
+            createdAt = 1_712_000_000_000L,
+            pinnedByUser = true,
+        )
+        val encoded = json.encodeToString(CompanionMemoryPinDto.serializer(), dto)
+        val decoded = json.decodeFromString<CompanionMemoryPinDto>(encoded)
+        assertEquals(dto, decoded)
+
+        val domain = decoded.toCompanionMemoryPin()
+        assertEquals("pin-1", domain.id)
+        assertEquals("message-42", domain.sourceMessageId)
+        assertEquals(LocalizedText("Her favorite color is dusk.", "她最爱的颜色是暮色。"), domain.text)
+        assertEquals(1_712_000_000_000L, domain.createdAt)
+        assertTrue(domain.pinnedByUser)
+    }
+
+    @Test
+    fun `companion memory pin dto tolerates null sourceMessageId`() {
+        val dto = json.decodeFromString<CompanionMemoryPinDto>(
+            """{ "id": "pin-9", "text": { "english": "hi", "chinese": "你好" } }""",
+        )
+        assertNull(dto.sourceMessageId)
+        assertEquals(0L, dto.createdAt)
+        assertTrue("pinnedByUser defaults true when omitted", dto.pinnedByUser)
+    }
+
+    @Test
+    fun `companion memory pin dto fromCompanionMemoryPin round trips domain`() {
+        val domain = CompanionMemoryPin(
+            id = "pin-2",
+            sourceMessageId = null,
+            text = LocalizedText("Auto-pinned by summarizer.", "摘要自动置顶。"),
+            createdAt = 1_713_000_000_000L,
+            pinnedByUser = false,
+        )
+        val dto = CompanionMemoryPinDto.fromCompanionMemoryPin(domain)
+        assertEquals(domain, dto.toCompanionMemoryPin())
+    }
+
+    @Test
+    fun `companion memory pin list dto wraps collection`() {
+        val listDto = CompanionMemoryPinListDto(
+            pins = listOf(
+                CompanionMemoryPinDto(
+                    id = "pin-1",
+                    sourceMessageId = "message-1",
+                    text = LocalizedTextDto("one", "一"),
+                    createdAt = 1L,
+                    pinnedByUser = true,
+                ),
+                CompanionMemoryPinDto(
+                    id = "pin-2",
+                    sourceMessageId = null,
+                    text = LocalizedTextDto("two", "二"),
+                    createdAt = 2L,
+                    pinnedByUser = false,
+                ),
+            ),
+        )
+        val encoded = json.encodeToString(CompanionMemoryPinListDto.serializer(), listDto)
+        val decoded = json.decodeFromString<CompanionMemoryPinListDto>(encoded)
+        assertEquals(listDto, decoded)
+    }
+
+    @Test
+    fun `companion memory pin list dto defaults to empty list`() {
+        val decoded = json.decodeFromString<CompanionMemoryPinListDto>("""{}""")
+        assertTrue(decoded.pins.isEmpty())
+    }
+
+    @Test
+    fun `companion memory reset request dto encodes all three wire keys`() {
+        listOf(
+            CompanionMemoryResetScope.Pins to "pins",
+            CompanionMemoryResetScope.Summary to "summary",
+            CompanionMemoryResetScope.All to "all",
+        ).forEach { (scope, wireKey) ->
+            val dto = CompanionMemoryResetRequestDto.fromCompanionMemoryResetScope(scope)
+            assertEquals(wireKey, dto.scope)
+
+            val encoded = json.encodeToString(CompanionMemoryResetRequestDto.serializer(), dto)
+            val decoded = json.decodeFromString<CompanionMemoryResetRequestDto>(encoded)
+            assertEquals(dto, decoded)
+            assertEquals(scope, decoded.toCompanionMemoryResetScope())
+        }
+    }
+
+    @Test
+    fun `companion memory reset request dto decode is case insensitive`() {
+        val decoded = json.decodeFromString<CompanionMemoryResetRequestDto>(
+            """{ "scope": "SUMMARY" }""",
+        )
+        assertEquals(CompanionMemoryResetScope.Summary, decoded.toCompanionMemoryResetScope())
+    }
+
+    @Test
+    fun `companion memory reset request dto falls back to pins on unknown scope`() {
+        val decoded = json.decodeFromString<CompanionMemoryResetRequestDto>(
+            """{ "scope": "nonsense" }""",
+        )
+        assertEquals(CompanionMemoryResetScope.Pins, decoded.toCompanionMemoryResetScope())
+    }
+
+    @Test
+    fun `preset params dto defaults all to null`() {
+        val decoded = json.decodeFromString<PresetParamsDto>("""{}""")
+        assertNull(decoded.temperature)
+        assertNull(decoded.topP)
+        assertNull(decoded.maxReplyTokens)
+        assertEquals(PresetParams(), decoded.toPresetParams())
+    }
+
+    @Test
+    fun `preset params dto round trips explicit values`() {
+        val dto = PresetParamsDto(temperature = 0.9, topP = 0.95, maxReplyTokens = 1024)
+        val encoded = json.encodeToString(PresetParamsDto.serializer(), dto)
+        val decoded = json.decodeFromString<PresetParamsDto>(encoded)
+        assertEquals(dto, decoded)
+        assertEquals(
+            PresetParams(temperature = 0.9, topP = 0.95, maxReplyTokens = 1024),
+            decoded.toPresetParams(),
+        )
+    }
+
+    @Test
+    fun `preset template dto round trip preserves every slot`() {
+        val dto = PresetTemplateDto(
+            systemPrefix = LocalizedTextDto("Stay in character.", "保持角色。"),
+            systemSuffix = LocalizedTextDto("Never break the fourth wall.", "不要跳戏。"),
+            formatInstructions = LocalizedTextDto("Prefer prose.", "少用旁白。"),
+            postHistoryInstructions = LocalizedTextDto("Continue the scene.", "延续场景。"),
+        )
+        val encoded = json.encodeToString(PresetTemplateDto.serializer(), dto)
+        val decoded = json.decodeFromString<PresetTemplateDto>(encoded)
+        assertEquals(dto, decoded)
+
+        val domain = decoded.toPresetTemplate()
+        assertEquals(LocalizedText("Stay in character.", "保持角色。"), domain.systemPrefix)
+        assertEquals(LocalizedText("Never break the fourth wall.", "不要跳戏。"), domain.systemSuffix)
+        assertEquals(LocalizedText("Prefer prose.", "少用旁白。"), domain.formatInstructions)
+        assertEquals(LocalizedText("Continue the scene.", "延续场景。"), domain.postHistoryInstructions)
+    }
+
+    @Test
+    fun `preset template dto defaults all slots to empty localized text`() {
+        val decoded = json.decodeFromString<PresetTemplateDto>("""{}""")
+        val domain = decoded.toPresetTemplate()
+        assertEquals(PresetTemplate(), domain)
+    }
+
+    @Test
+    fun `preset dto full round trip preserves every field including extensions bag`() {
+        val dto = PresetDto(
+            id = "preset-roleplay",
+            displayName = LocalizedTextDto("Roleplay Immersive", "沉浸角色扮演"),
+            description = LocalizedTextDto("Deep roleplay.", "沉浸角色扮演预设。"),
+            template = PresetTemplateDto(
+                systemPrefix = LocalizedTextDto("Stay in character.", "保持角色。"),
+                systemSuffix = LocalizedTextDto("Never break.", "不要跳戏。"),
+                formatInstructions = LocalizedTextDto("Prose only.", "少用旁白。"),
+                postHistoryInstructions = LocalizedTextDto("Continue.", "延续。"),
+            ),
+            params = PresetParamsDto(temperature = 0.9, topP = 0.95, maxReplyTokens = 1024),
+            isBuiltIn = true,
+            isActive = true,
+            createdAt = 1_700_000_000L,
+            updatedAt = 1_700_000_500L,
+            extensions = buildJsonObject {
+                put("st", buildJsonObject { put("legacy", "passthrough") })
+                put("impersonation", "off")
+            },
+        )
+        val encoded = json.encodeToString(PresetDto.serializer(), dto)
+        val decoded = json.decodeFromString<PresetDto>(encoded)
+        assertEquals(dto, decoded)
+
+        val domain = decoded.toPreset()
+        assertEquals("preset-roleplay", domain.id)
+        assertEquals(LocalizedText("Roleplay Immersive", "沉浸角色扮演"), domain.displayName)
+        assertEquals(0.9, domain.params.temperature!!, 1e-9)
+        assertTrue(domain.isBuiltIn)
+        assertTrue(domain.isActive)
+        assertEquals(1_700_000_500L, domain.updatedAt)
+        assertEquals(JsonPrimitive("off"), domain.extensions["impersonation"])
+        assertTrue(
+            "nested ST payload survives round trip",
+            domain.extensions["st"] is JsonObject,
+        )
+    }
+
+    @Test
+    fun `preset dto preserves unknown extensions keys across serialization`() {
+        val rawJson = """
+            {
+              "id": "preset-forward",
+              "displayName": { "english": "Forward", "chinese": "向前" },
+              "extensions": {
+                "st": { "legacy": "passthrough" },
+                "future_feature": { "enabled": true, "weight": 0.42 },
+                "scalar": 7
+              }
+            }
+        """.trimIndent()
+        val decoded = json.decodeFromString<PresetDto>(rawJson)
+        val reEncoded = json.encodeToString(PresetDto.serializer(), decoded)
+        val roundTripped = json.decodeFromString<PresetDto>(reEncoded)
+        assertEquals(decoded.extensions, roundTripped.extensions)
+        assertTrue(
+            "unknown nested object survives round trip",
+            roundTripped.extensions["future_feature"] is JsonObject,
+        )
+        assertEquals(JsonPrimitive(7), roundTripped.extensions["scalar"])
+    }
+
+    @Test
+    fun `preset dto fromPreset round trips domain including extensions`() {
+        val domain = Preset(
+            id = "preset-concise",
+            displayName = LocalizedText("Concise", "简洁"),
+            description = LocalizedText("Short replies.", "简短回复。"),
+            template = PresetTemplate(
+                systemPrefix = LocalizedText.of("Be concise."),
+                systemSuffix = LocalizedText.Empty,
+                formatInstructions = LocalizedText.of("No filler."),
+                postHistoryInstructions = LocalizedText.Empty,
+            ),
+            params = PresetParams(temperature = 0.5, topP = null, maxReplyTokens = 256),
+            isBuiltIn = false,
+            isActive = false,
+            createdAt = 1_700_000_000L,
+            updatedAt = 1_700_000_100L,
+            extensions = buildJsonObject { put("tag", "shortform") },
+        )
+        val dto = PresetDto.fromPreset(domain)
+        assertEquals(domain, dto.toPreset())
+    }
+
+    @Test
+    fun `preset dto defaults non required fields when decoded from minimal json`() {
+        val decoded = json.decodeFromString<PresetDto>(
+            """{ "id": "preset-min", "displayName": { "english": "Min", "chinese": "最小" } }""",
+        )
+        assertEquals(LocalizedTextDto("", ""), decoded.description)
+        assertEquals(PresetTemplateDto(), decoded.template)
+        assertEquals(PresetParamsDto(), decoded.params)
+        assertFalse(decoded.isBuiltIn)
+        assertFalse(decoded.isActive)
+        assertEquals(0L, decoded.createdAt)
+        assertEquals(0L, decoded.updatedAt)
+        assertEquals(JsonObject(emptyMap()), decoded.extensions)
+    }
+
+    @Test
+    fun `preset list dto wraps presets with optional active id`() {
+        val listDto = PresetListDto(
+            presets = listOf(
+                PresetDto(
+                    id = "preset-default",
+                    displayName = LocalizedTextDto("Default", "默认"),
+                ),
+                PresetDto(
+                    id = "preset-concise",
+                    displayName = LocalizedTextDto("Concise", "简洁"),
+                    isActive = true,
+                ),
+            ),
+            activePresetId = "preset-concise",
+        )
+        val encoded = json.encodeToString(PresetListDto.serializer(), listDto)
+        val decoded = json.decodeFromString<PresetListDto>(encoded)
+        assertEquals(listDto, decoded)
+    }
+
+    @Test
+    fun `preset list dto defaults to empty list and null active id`() {
+        val decoded = json.decodeFromString<PresetListDto>("""{}""")
+        assertTrue(decoded.presets.isEmpty())
+        assertNull(decoded.activePresetId)
+    }
+
+    @Test
+    fun `preset activate request dto round trips`() {
+        val dto = PresetActivateRequestDto(presetId = "preset-roleplay")
+        val encoded = json.encodeToString(PresetActivateRequestDto.serializer(), dto)
+        val decoded = json.decodeFromString<PresetActivateRequestDto>(encoded)
+        assertEquals(dto, decoded)
+        assertEquals("preset-roleplay", decoded.presetId)
     }
 }

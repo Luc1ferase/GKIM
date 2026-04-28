@@ -1,0 +1,8 @@
+{
+  "type": "companion_turn.timeout",
+  "turnId": "turn-timeout-recovery-smoke-01",
+  "conversationId": "conversation-recovery-smoke",
+  "messageId": "companion-turn-timeout-recovery-smoke-01",
+  "elapsedMs": 30000,
+  "completedAt": "2026-04-27T12:00:30.000Z"
+}

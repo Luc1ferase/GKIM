@@ -1,0 +1,8 @@
+{
+  "type": "companion_turn.completed",
+  "turnId": "turn-scripted-smoke-01",
+  "conversationId": "conversation-daylight-listener-smoke",
+  "messageId": "companion-turn-scripted-smoke-01",
+  "finalBody": "Scripted companion reply complete.",
+  "completedAt": "2026-04-24T12:00:01.500Z"
+}

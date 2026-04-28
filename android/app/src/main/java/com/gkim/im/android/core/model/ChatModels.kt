@@ -16,6 +16,31 @@ enum class AttachmentType {
     Video,
 }
 
+enum class MessageStatus {
+    Pending,
+    Thinking,
+    Streaming,
+    Completed,
+    Failed,
+    Blocked,
+    Timeout,
+}
+
+data class CompanionTurnMeta(
+    val turnId: String,
+    val variantGroupId: String,
+    val variantIndex: Int,
+    val providerId: String? = null,
+    val model: String? = null,
+    val isEditable: Boolean = false,
+    val canRegenerate: Boolean = false,
+    val blockReasonKey: String? = null,
+    val failedSubtypeKey: String? = null,
+    val timeoutElapsedMs: Long? = null,
+    val siblingCount: Int = 1,
+    val siblingActiveIndex: Int = 0,
+)
+
 data class MessageAttachment(
     val type: AttachmentType,
     val preview: String,
@@ -34,6 +59,9 @@ data class ChatMessage(
     val readAt: String? = null,
     val chips: List<String> = emptyList(),
     val attachment: MessageAttachment? = null,
+    val parentMessageId: String? = null,
+    val status: MessageStatus = MessageStatus.Completed,
+    val companionTurnMeta: CompanionTurnMeta? = null,
 )
 
 data class Conversation(
@@ -47,4 +75,5 @@ data class Conversation(
     val unreadCount: Int,
     val isOnline: Boolean,
     val messages: List<ChatMessage>,
+    val companionCardId: String? = null,
 )

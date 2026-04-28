@@ -6,6 +6,7 @@ import com.gkim.im.android.core.model.TaskStatus
 import com.gkim.im.android.core.model.ContactSortMode
 import com.gkim.im.android.core.model.AttachmentType
 import com.gkim.im.android.core.model.MessageDirection
+import com.gkim.im.android.core.model.Contact
 import com.gkim.im.android.data.remote.aigc.EncodedMediaPayload
 import com.gkim.im.android.data.remote.aigc.MediaInputEncoder
 import com.gkim.im.android.data.remote.aigc.RemoteAigcGenerateRequest
@@ -223,6 +224,20 @@ class RepositoriesTest {
     }
 
     @Test
+    fun `seed companion cards expose authored deep tavern fields`() {
+        val cards = seedPresetCharacters + seedDrawPoolCharacters
+
+        assertTrue(cards.all { it.firstMes.english.isNotBlank() && it.firstMes.chinese.isNotBlank() })
+        assertTrue(cards.all { it.systemPrompt.english.isNotBlank() && it.systemPrompt.chinese.isNotBlank() })
+        assertTrue(cards.all { it.personality.english.isNotBlank() && it.personality.chinese.isNotBlank() })
+        assertTrue(cards.all { it.scenario.english.isNotBlank() && it.scenario.chinese.isNotBlank() })
+        assertTrue(cards.all { it.exampleDialogue.english.isNotBlank() && it.exampleDialogue.chinese.isNotBlank() })
+        assertTrue(cards.all { it.tags.isNotEmpty() })
+        assertTrue(cards.all { it.creator.isNotBlank() })
+        assertTrue(cards.all { it.characterVersion.isNotBlank() })
+    }
+
+    @Test
     fun `messaging repository sends image attachments as normal outgoing messages`() {
         val repository = InMemoryMessagingRepository(seedConversations)
         val attachment = com.gkim.im.android.core.model.MessageAttachment(
@@ -242,6 +257,36 @@ class RepositoriesTest {
         assertEquals(MessageDirection.Outgoing, sentMessage.direction)
         assertEquals(attachment, sentMessage.attachment)
         assertEquals("Sent an image", updatedConversation.lastMessage)
+    }
+
+    @Test
+    fun `ensureConversation refreshes companion identity labels when the same contact is reopened in another language`() {
+        val repository = InMemoryMessagingRepository(emptyList())
+
+        repository.ensureConversation(
+            Contact(
+                id = "architect-oracle",
+                nickname = "筑谕师",
+                title = "冷静策士",
+                avatarText = "AO",
+                addedAt = "2026-04-17T00:00:00Z",
+                isOnline = true,
+            )
+        )
+
+        val refreshed = repository.ensureConversation(
+            Contact(
+                id = "architect-oracle",
+                nickname = "Architect Oracle",
+                title = "Calm Strategist",
+                avatarText = "AO",
+                addedAt = "2026-04-17T00:01:00Z",
+                isOnline = true,
+            )
+        )
+
+        assertEquals("Architect Oracle", refreshed.contactName)
+        assertEquals("Calm Strategist", refreshed.contactTitle)
     }
 }
 

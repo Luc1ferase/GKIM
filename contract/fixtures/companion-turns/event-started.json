@@ -1,0 +1,11 @@
+{
+  "type": "companion_turn.started",
+  "turnId": "turn-scripted-smoke-01",
+  "conversationId": "conversation-daylight-listener-smoke",
+  "messageId": "companion-turn-scripted-smoke-01",
+  "variantGroupId": "variant-group-scripted-smoke-01",
+  "variantIndex": 0,
+  "parentMessageId": null,
+  "providerId": null,
+  "model": null
+}

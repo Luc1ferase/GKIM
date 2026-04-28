@@ -1,112 +1,35 @@
-# GKIM IM Backend Ops Notes
+# Backend Source Boundary
 
-## Secrets
+The Rust IM backend source lives in its own repository and is **not** tracked in
+this GKIM client repository.
 
-- Keep PostgreSQL passwords and any live DSN values in an untracked `backend/.env.local`
-  file for local work, or in `/etc/gkim-im-backend/gkim-im-backend.env` on Ubuntu.
-- Do not commit the SSH password, PostgreSQL password, or a filled `.env` file.
-- Only set `PGSSLROOTCERT` if operations confirms the replacement PostgreSQL server needs
-  custom trust material.
+This `backend/` directory remains only as a public placeholder so historical
+links to `backend/README.md` still resolve. Backend implementation files,
+migrations, Docker assets, systemd units, tests, and deployment scripts are
+intentionally excluded from the tracked files here.
 
-## Expected Ubuntu layout
+## Canonical backend location
 
-- Backend checkout: `/opt/gkim-im/backend`
-- Runtime env file: `/etc/gkim-im-backend/gkim-im-backend.env`
-- System service: `gkim-im-backend.service`
+- Git remote: `https://github.com/Luc1ferase/GKIM-Backend.git`
+- Recommended local checkout path: a sibling directory next to this `GKIM`
+  checkout (on the maintainer's workstation, `X:\Repos\GKIM-Backend`).
+- Server rollout, smoke tests, and backend development should run from that
+  sibling backend checkout, not from this repository tip.
 
-## Local smoke test
+## Public repository expectations
 
-1. Copy `backend/.env.example` to `backend/.env.local`.
-2. Fill in the local secret values without committing that file.
-3. Start the service with your shell env loaded and call `/health`.
-4. The backend now auto-applies checked-in SQL migrations on startup, including legacy bootstrap-only
-   databases that predate the auth migration ledger.
+- This repo keeps the Android client, OpenSpec artifacts, release automation,
+  and sanitized architecture / operations notes.
+- Cloning this repo alone is not sufficient for backend development or backend
+  container builds — also clone the backend repo above.
+- If backend implementation access is required, pull the backend repo rather
+  than restoring backend source under this tree.
 
-Example PowerShell:
+## Historical note
 
-```powershell
-Get-Content .env.local | ForEach-Object {
-  if ($_ -match '^\s*#' -or $_ -notmatch '=') { return }
-  $parts = $_ -split '=', 2
-  Set-Item -Path ("Env:" + $parts[0]) -Value $parts[1]
-}
-cargo run
-```
-
-## Local Docker image
-
-Build the backend image from `backend/`:
-
-```powershell
-docker build -t gkim-im-backend:local .
-```
-
-Run the container with local env values and publish the service on host port `18080`:
-
-```powershell
-docker run --rm -d `
-  --name gkim-im-backend-local `
-  --env-file .env.local `
-  -e APP_BIND_ADDR=0.0.0.0:8080 `
-  -p 18080:8080 `
-  gkim-im-backend:local
-```
-
-Then verify the published health endpoint from the host:
-
-```powershell
-Invoke-WebRequest http://127.0.0.1:18080/health | Select-Object -ExpandProperty Content
-```
-
-When validating from the Android emulator, do not point the client at `127.0.0.1:18080`.
-Inside the emulator that loopback address resolves to the device itself, not to the host-published
-backend. Use the host bridge endpoints instead:
-
-```text
-HTTP: http://10.0.2.2:18080/
-WS:   ws://10.0.2.2:18080/ws
-```
-
-This local image is also intended to become the deployable server image later, so keep the runtime env contract based on `.env.local` / deployment secrets rather than baking secrets into the image.
-The image must continue shipping the `migrations/` directory because startup now reconciles the
-runtime schema before serving requests.
-
-## Ubuntu bootstrap and debug
-
-1. SSH to the deployment host.
-2. Sync this `backend/` directory to `/opt/gkim-im/backend`.
-3. Edit `/etc/gkim-im-backend/gkim-im-backend.env` with real secret values.
-4. Run `./scripts/bootstrap-ubuntu.sh` from `/opt/gkim-im/backend`.
-5. Run `BACKEND_URL=http://127.0.0.1:18080 ./scripts/smoke-health.sh` on the Ubuntu host to confirm the systemd-managed service responds locally.
-6. Run `BACKEND_URL=http://127.0.0.1:18080 DEV_USER_EXTERNAL_ID=nox-dev ./scripts/smoke-session.sh` on the Ubuntu host to confirm auth/bootstrap succeeds before checking any published endpoint.
-7. From your workstation, point `BACKEND_URL` at the published Android-facing origin such as `https://chat.lastxuans.sbs/`, then re-run `./scripts/smoke-health.sh` plus `./scripts/smoke-session.sh`.
-8. Use `./scripts/debug-service.sh` or `sudo journalctl -u gkim-im-backend -f` for logs.
-
-The repo ships only placeholder values and service scaffolding. SSH auth remains interactive
-or key-based outside version control.
-
-### Current published Android-facing endpoints
-
-- HTTP: `https://chat.lastxuans.sbs/`
-- WebSocket: `wss://chat.lastxuans.sbs/ws`
-
-These are the accepted remote validation targets for the current Ubuntu deployment. Android
-validation against the deployed server should use these endpoints directly instead of relying on
-`adb reverse`, local Docker host publishing, or an SSH tunnel.
-
-### Distinguish service failures from published-endpoint failures
-
-Use the same checks in this order whenever the Android app cannot reach the deployed backend:
-
-1. `sudo systemctl is-active gkim-im-backend`
-2. `BACKEND_URL=http://127.0.0.1:18080 ./scripts/smoke-health.sh`
-3. `BACKEND_URL=http://127.0.0.1:18080 DEV_USER_EXTERNAL_ID=nox-dev ./scripts/smoke-session.sh`
-4. `BACKEND_URL=<published-http-origin> ./scripts/smoke-health.sh`
-5. `BACKEND_URL=<published-http-origin> DEV_USER_EXTERNAL_ID=nox-dev ./scripts/smoke-session.sh`
-
-Interpret the results like this:
-
-- `systemctl` or host-local `/health` fails: the Ubuntu service itself is down or misconfigured.
-- host-local `/health` passes but host-local `smoke-session.sh` fails: the backend process is running, but auth/bootstrap or backing services are still broken.
-- host-local checks pass but published-endpoint checks fail: the problem is outside the core backend process, usually bind-address, firewall, reverse-proxy, or port-publication drift.
-- published `smoke-session.sh` passes: the HTTP side is ready for Android validation; use the matching published WebSocket origin in the app's IM Validation settings.
+Older delivery records in `docs/DELIVERY_WORKFLOW.md` and earlier archive slices
+may reference tracked `backend/` files, or a local-only `.private/backend/`
+preservation copy used before the backend was extracted into its own public
+repository. Treat those references as historical evidence tied to the earlier
+layout; the canonical backend source is now the sibling backend repo at the
+remote above.
