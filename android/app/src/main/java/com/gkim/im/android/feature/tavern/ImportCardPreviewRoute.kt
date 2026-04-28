@@ -144,7 +144,7 @@ fun ImportCardPreviewRoute(
 
     LaunchedEffect(state) {
         if (state is ImportCardPreviewUiState.Committed) {
-            navController.popBackStack("space", inclusive = false)
+            navController.popBackStack("tavern", inclusive = false)
         }
     }
 

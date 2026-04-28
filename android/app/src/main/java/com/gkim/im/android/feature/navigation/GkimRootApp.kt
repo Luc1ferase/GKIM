@@ -70,6 +70,8 @@ enum class RootAuthStart {
     Unauthenticated,
 }
 
+internal const val RootStartDestination = "tavern"
+
 private enum class RootAuthState {
     Loading,
     Authenticated,
@@ -194,10 +196,10 @@ fun GkimRootApp(
                                 .fillMaxSize()
                                 .padding(paddingValues),
                         ) {
-                            NavHost(navController = resolvedNavController, startDestination = "messages") {
+                            NavHost(navController = resolvedNavController, startDestination = RootStartDestination) {
                                 composable("messages") { MessagesRoute(resolvedNavController, resolvedContainer) }
                                 composable("contacts") { ContactsRoute(resolvedNavController, resolvedContainer) }
-                                composable("space") { TavernRoute(resolvedNavController, resolvedContainer) }
+                                composable(RootStartDestination) { TavernRoute(resolvedNavController, resolvedContainer) }
                                 composable("tavern/detail/{characterId}") { backStackEntry ->
                                     CharacterDetailRoute(
                                         navController = resolvedNavController,
@@ -281,7 +283,7 @@ private fun RootBottomBar(navController: NavHostController) {
     val primaryDestinations = listOf(
         RootDestination("messages", appLanguage.pick("Messages", "消息")) { Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null) },
         RootDestination("contacts", appLanguage.pick("Contacts", "联系人")) { Icon(Icons.Outlined.PeopleAlt, contentDescription = null) },
-        RootDestination("space", appLanguage.pick("Tavern", "酒馆")) { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
+        RootDestination("tavern", appLanguage.pick("Tavern", "酒馆")) { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
     )
     val showBottomBar = primaryDestinations.any { it.route == currentRoute }
     if (!showBottomBar) return

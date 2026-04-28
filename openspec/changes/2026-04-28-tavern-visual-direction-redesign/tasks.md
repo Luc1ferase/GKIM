@@ -14,7 +14,7 @@ Each task is a single DELIVERY_WORKFLOW unit (verify → review ≥ 95 → commi
 
 ## R2. Information architecture — tavern as home, fold contacts
 
-- [ ] R2.1 Change the authenticated startup default route in `feature/navigation/GkimRootApp.kt` from `messages` to `tavern`. Add a Compose-Nav graph test asserting the start destination after a fresh authenticated session is `tavern`. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.navigation.RootNavStartDestinationTest` covers the start destination + back-handler behavior.
+- [x] R2.1 Change the authenticated startup default route in `feature/navigation/GkimRootApp.kt` from `messages` to `tavern`. Add a Compose-Nav graph test asserting the start destination after a fresh authenticated session is `tavern`. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.navigation.RootNavStartDestinationTest` covers the start destination + back-handler behavior.
 
 - [ ] R2.2 Reduce the bottom nav from three tabs (`消息 / 联系人 / 酒馆`) to two (`酒馆 / 消息`). The `联系人` tab's existing screen content moves into Tavern as a folded "All companions" section reachable from the tavern home; no companion-list affordance is lost. Update bilingual labels (`Tavern / Messages`). Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.navigation.BottomNavTwoTabContractTest` covers tab count + ordering + bilingual labels, and `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.TavernAllCompanionsSectionTest` covers the integrated companion-list section.
 
