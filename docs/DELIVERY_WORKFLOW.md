@@ -3763,3 +3763,25 @@ Upload
 
 ### Task 4.4 (companion-turn-client-retry-after-countdown): Archive applied; post-archive specs strict-valid
 - Ran `openspec archive companion-turn-client-retry-after-countdown --yes` after §4.2 evidence landed. The archive moves the slice to `openspec/changes/archive/2026-04-28-companion-turn-client-retry-after-countdown/` and applies the spec delta onto `openspec/specs/llm-text-companion-chat/spec.md` (1 modified Requirement). Post-archive `openspec validate --specs --strict` returns clean across all 16 client capabilities.
+
+## companion-turn-client-retry-after-snackbar delivery evidence
+
+### Task 0.1 (companion-turn-client-retry-after-snackbar): OpenSpec scaffold
+- Branch: `feature/companion-turn-client-retry-after-snackbar`; commit `cac3581`; push `origin/feature/companion-turn-client-retry-after-snackbar`.
+- Supersedes the visible-countdown UX from the just-archived `companion-turn-client-retry-after-countdown` (2026-04-28). The Failed bubble's affordance row was getting visually noisy with a live decrement-every-500ms timer next to Edit/Retry/Compose-new — reads as anxious. The corrected UX always-clickable button + on-tap ephemeral notice.
+- Spec delta: 1 MODIFIED Requirement on `llm-text-companion-chat`'s "Companion reply lifecycle is explicit and bounded" — rewrote the render-policy paragraph and replaced the F2c "disabled countdown" scenario with the new "ephemeral notice" scenario. `openspec validate --strict` returns valid.
+
+### Task 1 (companion-turn-client-retry-after-snackbar): Strip countdown render + on-tap ephemeral notice
+- Branch: `feature/companion-turn-client-retry-after-snackbar`; commit `ba2aa75`; push `origin/feature/companion-turn-client-retry-after-snackbar`.
+- §1.1: Reverted the Retry render block in `ChatMessageRow` to a single clickable `Text("Retry / 重试")`. Removed the `LaunchedEffect(deadline)` tick, the `nowMs` state, and the `chat-companion-retry-countdown-${id}` testTag (no public consumers).
+- §1.2: Added `onTooEarlyRetry: (remainingSeconds: Long) -> Unit = {}` to `ChatMessageRow`. The Retry `onClick` lambda computes `now` + reads `companionPresentation.retryAfterEpochMs` at click time; routes the tap to either `onTooEarlyRetry` or the existing `onRetryCompanionTurn` based on the cooldown predicate.
+- §1.3: `ChatScreen` hoists `var cooldownNotice: String?` + `LaunchedEffect(cooldownNotice)` 3-second auto-dismiss. The single `ChatMessageRow` call site binds `onTooEarlyRetry = { secs -> cooldownNotice = formatRetryCooldownNotice(secs, appLanguage) }`.
+- §1.4: Banner rendered as `Surface` with rounded 12dp + `SurfaceContainerLow` background (no `SurfaceVariant` token in the AetherColors palette — picked the closest equivalent), 8dp top padding, 12dp horizontal + 8dp vertical inner padding, `OnSurfaceVariant` text color. testTag `chat-retry-cooldown-notice`. Anchored just under the persona footer.
+- §1.5: New top-level helper `internal fun formatRetryCooldownNotice(remainingSeconds: Long, language: AppLanguage): String`. Bilingual copy: English `"Retry available in ${remainingSeconds}s"`; Chinese `"${remainingSeconds} 秒后才能重试"`.
+- Verification: `:app:compileDebugKotlin` BUILD SUCCESSFUL; `:app:testDebugUnitTest` full sweep BUILD SUCCESSFUL.
+
+### Task 2 (companion-turn-client-retry-after-snackbar): Tests + spec + archive
+- §2.2 commit (helper tests): squashed into §1 commit `ba2aa75`. 3 new `ChatPresentationTest` cases: `formatRetryCooldownNotice English form`, `formatRetryCooldownNotice Chinese form`, `formatRetryCooldownNotice clamps the rendered second to the helper's input regardless of size` (defensive split — caller-side clamps to >=1; helper passes through).
+- F2c's 3 presentation cases (data-flow into retryAfterEpochMs) keep passing — this slice doesn't touch the data path.
+- §2.3: `openspec archive companion-turn-client-retry-after-snackbar --yes` moves the slice to `openspec/changes/archive/2026-04-28-companion-turn-client-retry-after-snackbar/` and applies the spec delta onto `openspec/specs/llm-text-companion-chat/spec.md` (1 modified Requirement). Post-archive `openspec validate --specs --strict` returns 16 passed, 0 failed.
+- §2.4: Merge `feature/companion-turn-client-retry-after-snackbar` → `master` via `--no-ff`; pushed to origin/master.

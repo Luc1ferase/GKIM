@@ -4,6 +4,7 @@ import com.gkim.im.android.core.model.AigcMode
 import com.gkim.im.android.core.model.AigcProvider
 import com.gkim.im.android.core.model.AccentTone
 import com.gkim.im.android.core.model.AigcTask
+import com.gkim.im.android.core.model.AppLanguage
 import com.gkim.im.android.core.model.AttachmentType
 import com.gkim.im.android.core.model.ChatMessage
 import com.gkim.im.android.core.model.CompanionTurnMeta
@@ -363,6 +364,37 @@ class ChatPresentationTest {
         createdAt = "2026-04-21T08:00:00Z",
         status = status,
     )
+
+    @Test
+    fun `formatRetryCooldownNotice English form`() {
+        assertEquals(
+            "Retry available in 12s",
+            formatRetryCooldownNotice(remainingSeconds = 12L, language = AppLanguage.English),
+        )
+    }
+
+    @Test
+    fun `formatRetryCooldownNotice Chinese form`() {
+        assertEquals(
+            "12 秒后才能重试",
+            formatRetryCooldownNotice(remainingSeconds = 12L, language = AppLanguage.Chinese),
+        )
+    }
+
+    @Test
+    fun `formatRetryCooldownNotice clamps the rendered second to the helper's input regardless of size`() {
+        // Defensive: the caller (ChatMessageRow's onClick lambda) clamps to >=1
+        // before calling this helper. The helper itself does not re-clamp; that
+        // responsibility is split. This pin guards the contract.
+        assertEquals(
+            "Retry available in 1s",
+            formatRetryCooldownNotice(remainingSeconds = 1L, language = AppLanguage.English),
+        )
+        assertEquals(
+            "Retry available in 600s",
+            formatRetryCooldownNotice(remainingSeconds = 600L, language = AppLanguage.English),
+        )
+    }
 
     private fun companionMessage(
         status: MessageStatus,
