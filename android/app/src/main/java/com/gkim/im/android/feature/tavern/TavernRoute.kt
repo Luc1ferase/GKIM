@@ -49,6 +49,21 @@ import java.time.Instant
 
 internal const val TavernAllCompanionsSectionTestTag = "tavern-all-companions-section"
 
+internal enum class HeaderActionKind { Pill, Rectangle }
+
+internal data class HeaderActionSpec(val testTag: String, val kind: HeaderActionKind)
+
+// R3.1 — pill discipline manifest. The Tavern home holds exactly one Pill,
+// and that pill is the surface's primary emotional action (`抽卡` /
+// "Pour a drink"). Settings + Import are demoted to Rectangle. The
+// composable below reads from this list so the rendered layout cannot
+// drift from the contract test without updating both.
+internal val TavernHeaderActions: List<HeaderActionSpec> = listOf(
+    HeaderActionSpec("tavern-settings-trigger", HeaderActionKind.Rectangle),
+    HeaderActionSpec("tavern-draw-trigger", HeaderActionKind.Pill),
+    HeaderActionSpec("tavern-import-entry", HeaderActionKind.Rectangle),
+)
+
 private data class TavernUiState(
     val presetCharacters: List<CompanionCharacterCard> = emptyList(),
     val ownedCharacters: List<CompanionCharacterCard> = emptyList(),
@@ -191,17 +206,20 @@ private fun TavernScreen(
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                HeaderPill(label = appLanguage.pick("Settings", "设置"), onClick = onOpenSettings)
-                HeaderPill(label = appLanguage.pick("Draw", "抽卡"), onClick = onDraw)
-                Text(
-                    text = appLanguage.pick("Import card", "导入卡"),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = AetherColors.OnSurface,
-                    modifier = Modifier
-                        .background(AetherColors.SurfaceContainerHigh, shape = androidx.compose.foundation.shape.CircleShape)
-                        .clickable(onClick = onImportCard)
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                        .testTag("tavern-import-entry"),
+                RectangularAction(
+                    label = appLanguage.pick("Settings", "设置"),
+                    onClick = onOpenSettings,
+                    testTag = "tavern-settings-trigger",
+                )
+                PrimaryActionPill(
+                    label = appLanguage.pick("Pour a drink", "抽卡"),
+                    onClick = onDraw,
+                    testTag = "tavern-draw-trigger",
+                )
+                RectangularAction(
+                    label = appLanguage.pick("Import card", "导入卡"),
+                    onClick = onImportCard,
+                    testTag = "tavern-import-entry",
                 )
             }
         }
@@ -326,6 +344,53 @@ private fun HeaderPill(label: String, onClick: () -> Unit) {
             .background(AetherColors.SurfaceContainerHigh, shape = androidx.compose.foundation.shape.CircleShape)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
+    )
+}
+
+// R3.1 — pill discipline. The Tavern home holds exactly one rounded-pill
+// (corner radius >= 18 dp + brass primary chromatic emphasis) and that pill
+// is the surface's primary emotional action. Admin actions render as
+// rectangles (corner radius <= 12 dp) with surfaceContainerHigh background.
+
+@Composable
+internal fun RectangularAction(
+    label: String,
+    onClick: () -> Unit,
+    testTag: String,
+) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelLarge,
+        color = AetherColors.OnSurface,
+        modifier = Modifier
+            .background(
+                AetherColors.SurfaceContainerHigh,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .testTag(testTag),
+    )
+}
+
+@Composable
+internal fun PrimaryActionPill(
+    label: String,
+    onClick: () -> Unit,
+    testTag: String,
+) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelLarge,
+        color = AetherColors.OnSurface,
+        modifier = Modifier
+            .background(
+                AetherColors.Primary,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .testTag(testTag),
     )
 }
 

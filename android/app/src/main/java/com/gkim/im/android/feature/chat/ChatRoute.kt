@@ -88,6 +88,23 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
+// R3.1 — chat top-bar pill discipline. The header reserves no rounded-pill;
+// the overflow trigger is a 36 dp rectangular icon button (corner radius
+// 8 dp) and the dropdown items render as plain text-with-icon rows. The
+// only pill on the chat header is the persona selector (PillAction), which
+// IS the surface's primary emotional action (switching the active persona
+// before sending a message).
+internal val ChatTopBarHeaderActions: List<com.gkim.im.android.feature.tavern.HeaderActionSpec> = listOf(
+    com.gkim.im.android.feature.tavern.HeaderActionSpec(
+        testTag = "chat-top-overflow-trigger",
+        kind = com.gkim.im.android.feature.tavern.HeaderActionKind.Rectangle,
+    ),
+    com.gkim.im.android.feature.tavern.HeaderActionSpec(
+        testTag = "chat-persona-pill",
+        kind = com.gkim.im.android.feature.tavern.HeaderActionKind.Pill,
+    ),
+)
+
 internal fun appLanguageWireKey(language: AppLanguage): String = when (language) {
     AppLanguage.English -> "en"
     AppLanguage.Chinese -> "zh"
@@ -935,9 +952,9 @@ internal fun ChatTopBar(
             Box(modifier = Modifier.testTag("chat-top-overflow")) {
                 Box(
                     modifier = Modifier
-                        .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(14.dp))
+                        .size(36.dp)
+                        .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(8.dp))
                         .clickable { overflowOpen = true }
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
                         .testTag("chat-top-overflow-trigger"),
                     contentAlignment = androidx.compose.ui.Alignment.Center,
                 ) {
