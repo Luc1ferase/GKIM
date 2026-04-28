@@ -1,0 +1,9 @@
+# Designer drops generated skin variants here per
+# docs/skins/placeholder-generation.md, then runs tools/skins/upload.ps1
+# (R1.2) to push them to R2.
+#
+# Folder layout (created by the designer, not by code):
+#   {characterId}/{skinId}/v{n}/{thumb,avatar,portrait,banner}.webp
+#
+# This .gitkeep keeps the parent dir tracked while the staging artifacts
+# themselves stay outside git (they live in R2, not in the repo).
