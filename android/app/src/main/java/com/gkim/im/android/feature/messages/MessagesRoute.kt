@@ -9,10 +9,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +48,12 @@ import com.gkim.im.android.feature.shared.simpleViewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+
+// R3.3 — new-conversation trigger geometry. The reframed FAB renders as
+// a 48 dp tap target with 12 dp corner radius (rectangular, not pill) and
+// a brass-primary tinted icon on a surfaceContainerHigh background.
+internal const val MessagesNewConversationFabSizeDp: Int = 48
+internal const val MessagesNewConversationFabRadiusDp: Int = 12
 
 internal data class MessagesUiState(
     val conversations: List<Conversation> = emptyList(),
@@ -95,16 +104,27 @@ private fun MessagesScreen(
     ) {
         PrimaryShellHeader(title = appLanguage.pick("Recent conversations", "最近对话")) {
             Box {
-                Text(
-                    text = "+",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = AetherColors.OnSurface,
+                // R3.3 — reframed new-conversation trigger: 48 dp rectangular
+                // tap target with 12 dp corner radius on surfaceContainerHigh,
+                // brass-primary tinted icon. Replaces the previous Material-
+                // default FAB pill.
+                Box(
                     modifier = Modifier
-                        .background(AetherColors.SurfaceContainerHigh, RoundedCornerShape(999.dp))
+                        .size(MessagesNewConversationFabSizeDp.dp)
+                        .background(
+                            AetherColors.SurfaceContainerHigh,
+                            RoundedCornerShape(MessagesNewConversationFabRadiusDp.dp),
+                        )
                         .clickable { quickActionsExpanded = true }
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
                         .testTag("messages-quick-actions-trigger"),
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = appLanguage.pick("New conversation", "新建对话"),
+                        tint = AetherColors.Primary,
+                    )
+                }
                 DropdownMenu(
                     expanded = quickActionsExpanded,
                     onDismissRequest = { quickActionsExpanded = false },
