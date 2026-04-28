@@ -24,3 +24,4 @@ ops/skins-staging/**/*.webp
 ops/skins-staging/**/*.png
 ops/skins-staging/**/*.jpg
 
+android/ui-*.xml
