@@ -28,7 +28,7 @@ Each task is a single DELIVERY_WORKFLOW unit (verify → review ≥ 95 → commi
 
 - [x] R3.3 Reframe the new-conversation FAB on the messages list. Replace the Material `FloatingActionButton` `+` with a 48 dp rectangular tap target (`surfaceContainerHigh` background, 12 dp radius, brass-tinted `primary` icon — door-bell or quill SVG asset added under `res/drawable/`). Keep the `testTag("messages-new-conversation-trigger")` for existing instrumentation. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.messages.MessagesNewConversationFabTest` covers shape + tint + tap-routing parity.
 
-- [ ] R3.4 Replace the Material default bottom-nav active-state pill with a 2 dp `primary` underline anchored at the icon's bottom edge. Render via a `Box` with `Modifier.drawBehind { drawLine(...) }` rather than Material's `NavigationBarItemDefaults.colors(...)`, so the visual contract is explicit. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.navigation.BottomNavActiveUnderlineTest` covers underline-only-on-active and color = palette `primary`.
+- [x] R3.4 Replace the Material default bottom-nav active-state pill with a 2 dp `primary` underline anchored at the icon's bottom edge. Render via a `Box` with `Modifier.drawBehind { drawLine(...) }` rather than Material's `NavigationBarItemDefaults.colors(...)`, so the visual contract is explicit. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.navigation.BottomNavActiveUnderlineTest` covers underline-only-on-active and color = palette `primary`.
 
 ## R4. Ambient layer — restrained texture + candle-light glow
 

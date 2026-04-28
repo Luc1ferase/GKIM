@@ -21,6 +21,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -313,16 +315,54 @@ private fun RootBottomBar(navController: NavHostController) {
                         restoreState = true
                     }
                 },
-                icon = destination.icon,
+                icon = {
+                    BottomNavIconWithUnderline(
+                        selected = currentRoute == destination.route,
+                        underlineColor = AetherColors.Primary,
+                    ) { destination.icon() }
+                },
                 label = { Text(destination.label) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = AetherColors.Primary,
                     selectedTextColor = AetherColors.Primary,
-                    indicatorColor = AetherColors.SurfaceContainerHigh,
+                    // R3.4 — drop the Material default pill-behind-icon
+                    // indicator. The active state is now expressed via the
+                    // 2 dp brass-primary underline drawn under the icon by
+                    // BottomNavIconWithUnderline below.
+                    indicatorColor = androidx.compose.ui.graphics.Color.Transparent,
                     unselectedIconColor = AetherColors.OnSurfaceVariant,
                     unselectedTextColor = AetherColors.OnSurfaceVariant,
                 ),
             )
         }
+    }
+}
+
+internal const val BottomNavActiveUnderlineThicknessDp: Int = 2
+
+@Composable
+private fun BottomNavIconWithUnderline(
+    selected: Boolean,
+    underlineColor: androidx.compose.ui.graphics.Color,
+    iconContent: @Composable () -> Unit,
+) {
+    val testTagSuffix = if (selected) "-active" else "-inactive"
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier
+            .testTag("bottom-nav-underline$testTagSuffix")
+            .drawBehind {
+                if (!selected) return@drawBehind
+                val strokeWidthPx = BottomNavActiveUnderlineThicknessDp.dp.toPx()
+                val y = size.height - strokeWidthPx / 2f
+                drawLine(
+                    color = underlineColor,
+                    start = androidx.compose.ui.geometry.Offset(0f, y),
+                    end = androidx.compose.ui.geometry.Offset(size.width, y),
+                    strokeWidth = strokeWidthPx,
+                )
+            },
+        contentAlignment = androidx.compose.ui.Alignment.Center,
+    ) {
+        iconContent()
     }
 }
