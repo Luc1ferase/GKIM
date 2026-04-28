@@ -51,6 +51,20 @@ import java.time.Instant
 
 internal const val TavernAllCompanionsSectionTestTag = "tavern-all-companions-section"
 
+// R4.3 — gacha accent re-tone manifest. The post-draw result surfaces use
+// these palette tokens (and only these) for chromatic emphasis. R1.1 swapped
+// the palette so AetherColors.Tertiary now resolves to ember red (#B85450)
+// and AetherColors.Primary to brass (#E0A04D); listing the bindings here
+// makes the contract explicit so a future per-companion theming pass cannot
+// silently regress to the previous lavender / pink saturation.
+internal data class GachaAccentBinding(val testTag: String, val paletteToken: String)
+
+internal val GachaResultAccents: List<GachaAccentBinding> = listOf(
+    GachaAccentBinding("tavern-draw-result-latest-label", "tertiary"),
+    GachaAccentBinding("tavern-draw-result-duplicate-label", "tertiary"),
+    GachaAccentBinding("tavern-draw-keep-as-bonus", "primary"),
+)
+
 internal enum class HeaderActionKind { Pill, Rectangle }
 
 internal data class HeaderActionSpec(val testTag: String, val kind: HeaderActionKind)
