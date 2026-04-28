@@ -397,6 +397,10 @@ fun ChatRoute(
         },
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val activeSkinByCharacter by container.companionSkinRepository.activeSkinByCharacter.collectAsStateWithLifecycle()
+    val companionActiveSkinId: String? = uiState.conversation?.companionCardId?.let { cardId ->
+        activeSkinByCharacter[cardId] ?: com.gkim.im.android.core.model.CompanionCharacterCard.DEFAULT_SKIN_ID
+    }
     val appLanguage = LocalAppLanguage.current
     var prompt by remember { mutableStateOf("") }
     var chatAttachmentMedia by remember { mutableStateOf<MediaInput?>(null) }
@@ -470,6 +474,7 @@ fun ChatRoute(
         } else {
             null
         },
+        companionActiveSkinId = companionActiveSkinId,
     )
 
     if (showExportDialog) {
@@ -507,6 +512,11 @@ private fun ChatScreen(
     onDismissTreeAffordanceError: () -> Unit = {},
     onOpenExportDialog: (() -> Unit)? = null,
     onOpenSettings: (() -> Unit)? = null,
+    // R2.5 — when the conversation is a companion thread, the route
+    // resolves the active skin id and passes it down so the chat header
+    // loads the correct CDN avatar. Null means "use the silhouette
+    // fallback" (peer-IM thread or unresolved companion).
+    companionActiveSkinId: String? = null,
 ) {
     val appLanguage = LocalAppLanguage.current
     val timelineMessages = uiState.companionMessages ?: uiState.conversation?.messages.orEmpty()
@@ -551,6 +561,7 @@ private fun ChatScreen(
             onHeaderAvatarTap = headerPortraitRoute?.let { route -> { onOpenPortrait(route) } },
             onOpenExportDialog = onOpenExportDialog,
             onOpenSettings = onOpenSettings,
+            companionActiveSkinId = companionActiveSkinId,
         )
         chatChromePersonaFooter(uiState.activePersona, LocalAppLanguage.current)?.let { footer ->
             Text(
@@ -892,6 +903,11 @@ internal fun ChatTopBar(
     onHeaderAvatarTap: (() -> Unit)? = null,
     onOpenExportDialog: (() -> Unit)? = null,
     onOpenSettings: (() -> Unit)? = null,
+    // R2.5 — when the conversation is a companion thread, callers pass
+    // the active skin id so the chat header loads the brand-correct
+    // avatar. Null falls through to the silhouette fallback (peer-IM
+    // threads have no skin metadata to load).
+    companionActiveSkinId: String? = null,
 ) {
     val language = LocalAppLanguage.current
     val personaPill = chatChromePersonaPill(activePersona, language)
@@ -923,14 +939,33 @@ internal fun ChatTopBar(
             ) {
                 Text(text = "<", style = MaterialTheme.typography.titleLarge, color = AetherColors.OnSurface)
             }
-            com.gkim.im.android.core.ui.AvatarFallbackSilhouette(
-                modifier = Modifier
-                    .let { if (onHeaderAvatarTap != null) it.clickable(onClick = onHeaderAvatarTap) else it }
-                    .testTag("chat-header-avatar"),
-                size = 40.dp,
-                shape = com.gkim.im.android.core.ui.ChatAvatarShape,
-                contentDescription = conversation?.contactName,
-            )
+            run {
+                val companionCardId = conversation?.companionCardId
+                val tapModifier = if (onHeaderAvatarTap != null) {
+                    Modifier.clickable(onClick = onHeaderAvatarTap)
+                } else {
+                    Modifier
+                }
+                if (companionCardId != null && companionActiveSkinId != null) {
+                    com.gkim.im.android.core.ui.SkinAvatar(
+                        characterId = companionCardId,
+                        skinId = companionActiveSkinId,
+                        version = 1,
+                        variant = com.gkim.im.android.core.assets.SkinVariant.Avatar,
+                        modifier = tapModifier.testTag("chat-header-avatar"),
+                        size = 40.dp,
+                        shape = com.gkim.im.android.core.ui.ChatAvatarShape,
+                        contentDescription = conversation.contactName,
+                    )
+                } else {
+                    com.gkim.im.android.core.ui.AvatarFallbackSilhouette(
+                        modifier = tapModifier.testTag("chat-header-avatar"),
+                        size = 40.dp,
+                        shape = com.gkim.im.android.core.ui.ChatAvatarShape,
+                        contentDescription = conversation?.contactName,
+                    )
+                }
+            }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
                 Text(
                     text = conversation?.contactName ?: "Chat",

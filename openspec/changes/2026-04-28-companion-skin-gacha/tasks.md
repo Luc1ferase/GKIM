@@ -24,7 +24,7 @@ Each task is a single DELIVERY_WORKFLOW unit (verify → review ≥ 95 → commi
 
 - [x] R2.4 Add `core/model/CharacterSkin.kt` and `core/model/SkinTrait.kt` Kotlin data classes mirroring the catalog response. Add `activeSkinId: String` (default `"default"`) to `CompanionCharacterCard`. Extend `CompanionRosterRepository` to combine catalog + owned + active-skin flows into the existing `CompanionCharacterCard` projection. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.data.repository.CompanionRosterRepositoryActiveSkinTest` covers the combined flow shape and that `activeSkinId` defaults to `"default"` when no row exists in `user_active_skin`.
 
-- [ ] R2.5 Wire chat header avatar in `feature/chat/ChatRoute.kt` and tavern card avatar in `feature/tavern/TavernRoute.kt` to construct URLs from `card.activeSkinId` instead of the hardcoded `"default"` from R1.5. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatHeaderActiveSkinTest --tests com.gkim.im.android.feature.tavern.TavernCardActiveSkinTest` covers that the URL passed to the loader uses the card's `activeSkinId`.
+- [x] R2.5 Wire chat header avatar in `feature/chat/ChatRoute.kt` and tavern card avatar in `feature/tavern/TavernRoute.kt` to construct URLs from `card.activeSkinId` instead of the hardcoded `"default"` from R1.5. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.chat.ChatHeaderActiveSkinTest --tests com.gkim.im.android.feature.tavern.TavernCardActiveSkinTest` covers that the URL passed to the loader uses the card's `activeSkinId`.
 
 ## R3. Skin gallery on character detail
 

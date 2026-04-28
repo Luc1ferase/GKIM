@@ -66,12 +66,21 @@ fun SkinAvatar(
     )
 }
 
-// Helper isolating the URL-construction policy the tavern card uses, so
-// the contract test can pin it without spinning up Compose.
-internal fun tavernCardAvatarUrl(characterId: String): String =
+// R2.5 — URL-construction policies isolated as pure functions so contract
+// tests can pin the activeSkinId path without spinning up Compose.
+
+internal fun tavernCardAvatarUrl(characterId: String, activeSkinId: String): String =
     skinAssetUrl(
         characterId = characterId,
-        skinId = "default",
+        skinId = activeSkinId,
         version = 1,
         variant = SkinVariant.Thumb,
+    )
+
+internal fun chatHeaderAvatarUrl(characterId: String, activeSkinId: String): String =
+    skinAssetUrl(
+        characterId = characterId,
+        skinId = activeSkinId,
+        version = 1,
+        variant = SkinVariant.Avatar,
     )

@@ -34,6 +34,7 @@ interface AppContainer {
     val contactsRepository: ContactsRepository
     val feedRepository: FeedRepository
     val companionRosterRepository: CompanionRosterRepository
+    val companionSkinRepository: CompanionSkinRepository
     val companionTurnRepository: CompanionTurnRepository
     val cardInteropRepository: CardInteropRepository
     val userPersonaRepository: UserPersonaRepository
@@ -113,6 +114,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
         presetCharacters = seedPresetCharacters,
         drawPool = seedDrawPoolCharacters,
     )
+    override val companionSkinRepository: CompanionSkinRepository = InMemoryCompanionSkinRepository()
     private val companionTurnScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     override val companionTurnRepository: CompanionTurnRepository = LiveCompanionTurnRepository(
         backendClient = imBackendClient,

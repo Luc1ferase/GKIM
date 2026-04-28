@@ -609,7 +609,7 @@ private fun CharacterCard(
             ) {
                 com.gkim.im.android.core.ui.SkinAvatar(
                     characterId = character.id,
-                    skinId = "default",
+                    skinId = character.activeSkinId,
                     version = 1,
                     variant = com.gkim.im.android.core.assets.SkinVariant.Thumb,
                     modifier = Modifier
