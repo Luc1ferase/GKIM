@@ -13,7 +13,7 @@ class ChatHeaderActiveSkinTest {
         // shows on chat enter. Locked: skinId is the active skin, not
         // hardcoded "default".
         assertEquals(
-            "https://cdn.lastxuans.sbs/character-skins/architect-oracle/default/v1/avatar.webp",
+            "https://cdn.lastxuans.sbs/character-skins/architect-oracle/default/v1/avatar.png",
             chatHeaderAvatarUrl(
                 characterId = "architect-oracle",
                 activeSkinId = "default",
@@ -29,8 +29,8 @@ class ChatHeaderActiveSkinTest {
             characterId = "sunlit-almoner",
             activeSkinId = "default",
         )
-        assert(url.endsWith("/avatar.webp")) { "chat header URL must use AVATAR variant: $url" }
-        assert(!url.endsWith("/thumb.webp")) { "chat header must NOT use THUMB: $url" }
+        assert(url.endsWith("/avatar.png")) { "chat header URL must use AVATAR variant: $url" }
+        assert(!url.endsWith("/thumb.png")) { "chat header must NOT use THUMB: $url" }
     }
 
     @Test

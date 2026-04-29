@@ -3,7 +3,7 @@
 # (R1.2) to push them to R2.
 #
 # Folder layout (created by the designer, not by code):
-#   {characterId}/{skinId}/v{n}/{thumb,avatar,portrait,banner}.webp
+#   {characterId}/{skinId}/v{n}/{thumb,avatar,portrait,banner}.png
 #
 # This .gitkeep keeps the parent dir tracked while the staging artifacts
 # themselves stay outside git (they live in R2, not in the repo).

@@ -18,8 +18,8 @@ For each of the five characters below:
 | `avatar`   | 256 × 256   | head + shoulders, square crop |
 | `thumb`    | 96 × 96     | face only, square crop, simplified detail (low-detail re-render is OK; pure downscale loses the face at this size) |
 
-3. Encode each variant as **WebP** at quality ≈ 88 (adjust until under the size budget below).
-4. Save under the listed `ops/skins-staging/{characterId}/default/v1/{variant}.webp` path verbatim — the upload script reads exactly these paths.
+3. Encode each variant as **PNG** at quality ≈ 88 (adjust until under the size budget below).
+4. Save under the listed `ops/skins-staging/{characterId}/default/v1/{variant}.png` path verbatim — the upload script reads exactly these paths.
 
 ### Size budgets per variant (so the catalog stays light)
 
@@ -30,7 +30,7 @@ For each of the five characters below:
 | `portrait` | ~120 KB | 280 KB |
 | `banner`   | ~280 KB | 600 KB |
 
-If you blow the cap, re-encode at lower WebP quality before resizing — quality loss reads as "softer" rather than "blocky" at these sizes.
+If you blow the cap, re-encode at lower PNG quality before resizing — quality loss reads as "softer" rather than "blocky" at these sizes.
 
 ## Shared base prompt (prepend or interleave with every per-character prompt below)
 
@@ -74,10 +74,10 @@ text, watermark, signature, frame, border.
 
 | Variant | Path |
 |---|---|
-| banner   | `ops/skins-staging/architect-oracle/default/v1/banner.webp` |
-| portrait | `ops/skins-staging/architect-oracle/default/v1/portrait.webp` |
-| avatar   | `ops/skins-staging/architect-oracle/default/v1/avatar.webp` |
-| thumb    | `ops/skins-staging/architect-oracle/default/v1/thumb.webp` |
+| banner   | `ops/skins-staging/architect-oracle/default/v1/banner.png` |
+| portrait | `ops/skins-staging/architect-oracle/default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/architect-oracle/default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/architect-oracle/default/v1/thumb.png` |
 
 **Per-character subject (append to base):**
 
@@ -109,10 +109,10 @@ wood.
 
 | Variant | Path |
 |---|---|
-| banner   | `ops/skins-staging/sunlit-almoner/default/v1/banner.webp` |
-| portrait | `ops/skins-staging/sunlit-almoner/default/v1/portrait.webp` |
-| avatar   | `ops/skins-staging/sunlit-almoner/default/v1/avatar.webp` |
-| thumb    | `ops/skins-staging/sunlit-almoner/default/v1/thumb.webp` |
+| banner   | `ops/skins-staging/sunlit-almoner/default/v1/banner.png` |
+| portrait | `ops/skins-staging/sunlit-almoner/default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/sunlit-almoner/default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/sunlit-almoner/default/v1/thumb.png` |
 
 **Per-character subject (append to base, override the candle-only lighting clause):**
 
@@ -145,10 +145,10 @@ metal drinking vessels — only glass, ceramic, and wood.
 
 | Variant | Path |
 |---|---|
-| banner   | `ops/skins-staging/midnight-sutler/default/v1/banner.webp` |
-| portrait | `ops/skins-staging/midnight-sutler/default/v1/portrait.webp` |
-| avatar   | `ops/skins-staging/midnight-sutler/default/v1/avatar.webp` |
-| thumb    | `ops/skins-staging/midnight-sutler/default/v1/thumb.webp` |
+| banner   | `ops/skins-staging/midnight-sutler/default/v1/banner.png` |
+| portrait | `ops/skins-staging/midnight-sutler/default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/midnight-sutler/default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/midnight-sutler/default/v1/thumb.png` |
 
 **Per-character subject (append to base):**
 
@@ -181,10 +181,10 @@ only glass, ceramic, and wood.
 
 | Variant | Path |
 |---|---|
-| banner   | `ops/skins-staging/opal-lantern/default/v1/banner.webp` |
-| portrait | `ops/skins-staging/opal-lantern/default/v1/portrait.webp` |
-| avatar   | `ops/skins-staging/opal-lantern/default/v1/avatar.webp` |
-| thumb    | `ops/skins-staging/opal-lantern/default/v1/thumb.webp` |
+| banner   | `ops/skins-staging/opal-lantern/default/v1/banner.png` |
+| portrait | `ops/skins-staging/opal-lantern/default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/opal-lantern/default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/opal-lantern/default/v1/thumb.png` |
 
 **Per-character subject (append to base, allow a soft second light source from the glowing jars):**
 
@@ -219,10 +219,10 @@ told. No metal drinking vessels — only glass, ceramic, and wood.
 
 | Variant | Path |
 |---|---|
-| banner   | `ops/skins-staging/glass-mariner/default/v1/banner.webp` |
-| portrait | `ops/skins-staging/glass-mariner/default/v1/portrait.webp` |
-| avatar   | `ops/skins-staging/glass-mariner/default/v1/avatar.webp` |
-| thumb    | `ops/skins-staging/glass-mariner/default/v1/thumb.webp` |
+| banner   | `ops/skins-staging/glass-mariner/default/v1/banner.png` |
+| portrait | `ops/skins-staging/glass-mariner/default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/glass-mariner/default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/glass-mariner/default/v1/thumb.png` |
 
 **Per-character subject (append to base):**
 

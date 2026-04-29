@@ -19,8 +19,8 @@ tmp-*
 tmp_*
 android/tmp-*
 
-# R1.2 — designer staging dir; webp variants go to R2, not git
-ops/skins-staging/**/*.webp
+# R1.2 — designer staging dir; png variants go to R2, not git
+ops/skins-staging/**/*.png
 ops/skins-staging/**/*.png
 ops/skins-staging/**/*.jpg
 

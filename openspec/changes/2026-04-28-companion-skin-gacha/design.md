@@ -17,12 +17,12 @@ A character you've drawn is a person you've met. A *skin* is a different evening
 - **Visibility**: public read; write via R2 API token held by deploy operator only
 - **Default response headers** (set on bucket policy):
   - `Cache-Control: public, max-age=31536000, immutable`
-  - `Content-Type: image/webp`
+  - `Content-Type: image/png`
 
 ### Key contract
 
 ```
-character-skins/{characterId}/{skinId}/v{n}/{variant}.webp
+character-skins/{characterId}/{skinId}/v{n}/{variant}.png
 ```
 
 | Variant | Pixel size | Used by |
@@ -36,7 +36,7 @@ character-skins/{characterId}/{skinId}/v{n}/{variant}.webp
 
 - Versioned keys are **immutable**. To update a skin's art, upload as `v{n+1}` and bump `art_version` in `character_skins`.
 - Old versions stay reachable for clients still on stale catalogs; CDN never needs invalidation.
-- The `v` prefix is intentional — keeps the path readable as `…/v1/portrait.webp` rather than the bare number that risks collision with `1` as a filename.
+- The `v` prefix is intentional — keeps the path readable as `…/v1/portrait.png` rather than the bare number that risks collision with `1` as a filename.
 
 ### Naming rules for `characterId` and `skinId`
 
@@ -203,8 +203,8 @@ State derivation runs server-side only; client trusts the response. No client-si
 
 | State | Surface scale | Motion | Accent |
 |---|---|---|---|
-| `NEW_CHARACTER` | full-screen | banner.webp slide-in from below over 480 ms, hold 2 200 ms, dismiss on tap | brass `primary` halo radial pulse, 2 cycles |
-| `NEW_SKIN`      | mid-card 320 × 480 | portrait.webp slide-up from bottom 50 % to centre over 360 ms, hold 1 800 ms | ember `tertiary` 1 dp pulse, 2 cycles + "新装束" / "New attire" caption |
+| `NEW_CHARACTER` | full-screen | banner.png slide-in from below over 480 ms, hold 2 200 ms, dismiss on tap | brass `primary` halo radial pulse, 2 cycles |
+| `NEW_SKIN`      | mid-card 320 × 480 | portrait.png slide-up from bottom 50 % to centre over 360 ms, hold 1 800 ms | ember `tertiary` 1 dp pulse, 2 cycles + "新装束" / "New attire" caption |
 | `DUPLICATE_SKIN` | inline within draw result strip | crossfade thumb in 240 ms | re-uses existing R4.3 ember surface; replaces "Keep as bonus" CTA with currency delta caption |
 
 ### Probability detail tree
@@ -225,11 +225,11 @@ State derivation runs server-side only; client trusts the response. No client-si
 ## Operational flow (designer → live)
 
 ```
-ops/skins-staging/{characterId}/{skinId}/v{n}/   ← designer drops 4 webp files here
-  ├── thumb.webp     96  ×  96
-  ├── avatar.webp   256  × 256
-  ├── portrait.webp 512  × 768
-  └── banner.webp  1080  ×2400
+ops/skins-staging/{characterId}/{skinId}/v{n}/   ← designer drops 4 png files here
+  ├── thumb.png     96  ×  96
+  ├── avatar.png   256  × 256
+  ├── portrait.png 512  × 768
+  └── banner.png  1080  ×2400
               ↓
    tools/skins/upload.ps1  → validates + uploads to R2 → reports CDN URLs
               ↓
@@ -242,7 +242,7 @@ ops/skins-staging/{characterId}/{skinId}/v{n}/   ← designer drops 4 webp files
 
 ## Out of scope for this slice
 
-- Animated skin portraits / Live2D / sprite sheets. Banners are static webp in this slice.
+- Animated skin portraits / Live2D / sprite sheets. Banners are static png in this slice.
 - Per-skin chat-bubble re-skinning beyond a single `VOICE_TONE` tone tag. Chat layout does not branch on skin.
 - Skin trading or gifting between users.
 - Skin preview before ownership ("try on"). The probability tree is the transparency concession; we do not render unowned art at full size.

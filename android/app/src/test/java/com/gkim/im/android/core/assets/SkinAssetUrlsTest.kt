@@ -18,7 +18,7 @@ class SkinAssetUrlsTest {
             variant = SkinVariant.Portrait,
         )
         assertEquals(
-            "https://cdn.lastxuans.sbs/character-skins/founder-architect/lantern-keeper/v1/portrait.webp",
+            "https://cdn.lastxuans.sbs/character-skins/founder-architect/lantern-keeper/v1/portrait.png",
             url,
         )
     }
@@ -26,10 +26,10 @@ class SkinAssetUrlsTest {
     @Test
     fun `each variant maps to the documented webp filename`() {
         val expected = mapOf(
-            SkinVariant.Thumb to "thumb.webp",
-            SkinVariant.Avatar to "avatar.webp",
-            SkinVariant.Portrait to "portrait.webp",
-            SkinVariant.Banner to "banner.webp",
+            SkinVariant.Thumb to "thumb.png",
+            SkinVariant.Avatar to "avatar.png",
+            SkinVariant.Portrait to "portrait.png",
+            SkinVariant.Banner to "banner.png",
         )
         for ((variant, fileName) in expected) {
             assertEquals(fileName, variant.fileName)

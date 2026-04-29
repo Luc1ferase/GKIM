@@ -3,8 +3,8 @@
   Uploads a single companion skin (4 variants) to Cloudflare R2.
 
 .DESCRIPTION
-  Reads four WebP variants from a staging directory, validates each
-  against the design.md contract (pixel sizes + WebP magic bytes), and
+  Reads four PNG variants from a staging directory, validates each
+  against the design.md contract (pixel sizes + PNG magic bytes), and
   pushes them to s3://gkim-assets/character-skins/{characterId}/{skinId}/v{n}/
   with the immutable cache headers the CDN expects.
 
@@ -23,7 +23,7 @@
 
 .PARAMETER StagingDir
   Directory containing the four variants
-  (thumb.webp, avatar.webp, portrait.webp, banner.webp).
+  (thumb.png, avatar.png, portrait.png, banner.png).
 
 .PARAMETER CharacterId
   Companion character id (lowercase ASCII letters/digits/hyphens),
@@ -68,10 +68,10 @@ $KeyPrefix = "character-skins"
 $BucketName = "gkim-assets"
 
 $VariantSpecs = @(
-    @{ FileName = "thumb.webp";    Width =   96; Height =   96 },
-    @{ FileName = "avatar.webp";   Width =  256; Height =  256 },
-    @{ FileName = "portrait.webp"; Width =  512; Height =  768 },
-    @{ FileName = "banner.webp";   Width = 1080; Height = 2400 }
+    @{ FileName = "thumb.png";    Width =   96; Height =   96 },
+    @{ FileName = "avatar.png";   Width =  256; Height =  256 },
+    @{ FileName = "portrait.png"; Width =  512; Height =  768 },
+    @{ FileName = "banner.png";   Width = 1080; Height = 2400 }
 )
 
 # --- Param validation -------------------------------------------------------
@@ -129,48 +129,34 @@ if ($DryRun) {
 
 Add-Type -AssemblyName System.Drawing
 
-function Test-WebPMagicBytes {
+function Test-PngMagicBytes {
     param([string] $Path)
     $bytes = [System.IO.File]::ReadAllBytes($Path)
-    if ($bytes.Length -lt 12) { return $false }
-    # WebP magic: RIFF....WEBP at offsets 0..3 and 8..11
-    $isRiff = ($bytes[0] -eq 0x52) -and ($bytes[1] -eq 0x49) -and ($bytes[2] -eq 0x46) -and ($bytes[3] -eq 0x46)
-    $isWebp = ($bytes[8] -eq 0x57) -and ($bytes[9] -eq 0x45) -and ($bytes[10] -eq 0x42) -and ($bytes[11] -eq 0x50)
-    return ($isRiff -and $isWebp)
+    if ($bytes.Length -lt 8) { return $false }
+    # PNG magic: 89 50 4E 47 0D 0A 1A 0A
+    return ($bytes[0] -eq 0x89) -and ($bytes[1] -eq 0x50) -and ($bytes[2] -eq 0x4E) -and ($bytes[3] -eq 0x47) `
+       -and ($bytes[4] -eq 0x0D) -and ($bytes[5] -eq 0x0A) -and ($bytes[6] -eq 0x1A) -and ($bytes[7] -eq 0x0A)
 }
 
 Write-Host "[upload.ps1] validating 4 variants in $resolvedStaging" -ForegroundColor Cyan
 foreach ($spec in $VariantSpecs) {
     $path = $variantFiles[$spec.FileName]
 
-    # Magic bytes — even though System.Drawing can sometimes load WebP via
-    # a codec, the magic check is faster and rules out wrong-extension files.
-    if (-not (Test-WebPMagicBytes -Path $path)) {
-        throw "$path is not a valid WebP (RIFF/WEBP magic bytes missing)."
+    if (-not (Test-PngMagicBytes -Path $path)) {
+        throw "$path is not a valid PNG (89 50 4E 47 ... magic bytes missing)."
     }
 
-    # Pixel-size check — System.Drawing throws on .webp without a codec.
-    # If decoding fails we fall back to a hint rather than blocking, since
-    # the upload script's job is naming + transport, not decoding.
+    # Pixel-size check — System.Drawing decodes PNG natively on Windows.
+    $bmp = [System.Drawing.Bitmap]::FromFile($path)
     try {
-        $bmp = [System.Drawing.Bitmap]::FromFile($path)
-        try {
-            if ($bmp.Width -ne $spec.Width -or $bmp.Height -ne $spec.Height) {
-                throw "$($spec.FileName) is $($bmp.Width)x$($bmp.Height); expected $($spec.Width)x$($spec.Height)."
-            }
+        if ($bmp.Width -ne $spec.Width -or $bmp.Height -ne $spec.Height) {
+            throw "$($spec.FileName) is $($bmp.Width)x$($bmp.Height); expected $($spec.Width)x$($spec.Height)."
         }
-        finally {
-            $bmp.Dispose()
-        }
-        Write-Host "  ✓ $($spec.FileName) — $($spec.Width)x$($spec.Height)" -ForegroundColor Green
     }
-    catch [System.OutOfMemoryException], [System.ArgumentException] {
-        # System.Drawing can't always decode .webp on Windows without an
-        # extra codec install; that's not our problem to solve here. The
-        # magic-bytes check above already enforces "this is webp". We log
-        # a soft warning so the operator knows to spot-check elsewhere.
-        Write-Warning "  ! $($spec.FileName) — System.Drawing can't decode WebP on this host; skipping pixel-size assertion. Magic-bytes check passed."
+    finally {
+        $bmp.Dispose()
     }
+    Write-Host "  $($spec.FileName) - $($spec.Width)x$($spec.Height) [OK]" -ForegroundColor Green
 }
 
 # --- Resolve credentials ----------------------------------------------------
@@ -217,7 +203,7 @@ foreach ($r in $results) {
     Write-Host "  → $($r.S3Uri)" -ForegroundColor Cyan
     & aws s3 cp $r.LocalPath $r.S3Uri `
         --endpoint-url $endpoint `
-        --content-type "image/webp" `
+        --content-type "image/png" `
         --cache-control "public,max-age=31536000,immutable" | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "aws s3 cp failed for $($r.FileName) (exit $LASTEXITCODE)"

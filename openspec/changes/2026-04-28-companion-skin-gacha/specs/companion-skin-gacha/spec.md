@@ -2,17 +2,17 @@
 
 ### Requirement: Companion-skin assets are served from a single Cloudflare R2 bucket behind a custom CDN domain with versioned, immutable keys
 
-The system SHALL store all companion-skin image assets in the public Cloudflare R2 bucket `gkim-assets` and serve them through the custom domain `cdn.lastxuans.sbs`. Asset keys MUST follow the contract `character-skins/{characterId}/{skinId}/v{n}/{variant}.webp` where `variant` is one of `thumb` (96 × 96), `avatar` (256 × 256), `portrait` (512 × 768), or `banner` (1080 × 2400), encoded as WebP. Once written, a versioned key MUST NOT be mutated; an updated skin MUST be uploaded as `v{n+1}` and reflected by bumping `art_version` in `character_skins`. Every served object MUST carry the response headers `Cache-Control: public, max-age=31536000, immutable` and `Content-Type: image/webp`.
+The system SHALL store all companion-skin image assets in the public Cloudflare R2 bucket `gkim-assets` and serve them through the custom domain `cdn.lastxuans.sbs`. Asset keys MUST follow the contract `character-skins/{characterId}/{skinId}/v{n}/{variant}.png` where `variant` is one of `thumb` (96 × 96), `avatar` (256 × 256), `portrait` (512 × 768), or `banner` (1080 × 2400), encoded as PNG. Once written, a versioned key MUST NOT be mutated; an updated skin MUST be uploaded as `v{n+1}` and reflected by bumping `art_version` in `character_skins`. Every served object MUST carry the response headers `Cache-Control: public, max-age=31536000, immutable` and `Content-Type: image/png`.
 
 #### Scenario: A skin asset URL resolves to the contract-shaped path
 
 - **WHEN** the client constructs the URL for `(characterId="founder-architect", skinId="lantern-keeper", version=1, variant=PORTRAIT)`
-- **THEN** the URL equals `https://cdn.lastxuans.sbs/character-skins/founder-architect/lantern-keeper/v1/portrait.webp`
+- **THEN** the URL equals `https://cdn.lastxuans.sbs/character-skins/founder-architect/lantern-keeper/v1/portrait.png`
 
 #### Scenario: A served skin object carries the immutable cache header
 
 - **WHEN** any GET request is issued against a skin asset URL
-- **THEN** the response includes `Cache-Control: public, max-age=31536000, immutable` and `Content-Type: image/webp`
+- **THEN** the response includes `Cache-Control: public, max-age=31536000, immutable` and `Content-Type: image/png`
 
 #### Scenario: Updates ship as a new version, never overwrite
 

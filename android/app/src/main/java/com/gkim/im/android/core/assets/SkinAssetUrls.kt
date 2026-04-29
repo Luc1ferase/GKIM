@@ -12,10 +12,10 @@ const val SkinAssetCdnHost: String = "cdn.lastxuans.sbs"
 const val SkinAssetKeyPrefix: String = "character-skins"
 
 enum class SkinVariant(val fileName: String) {
-    Thumb("thumb.webp"),
-    Avatar("avatar.webp"),
-    Portrait("portrait.webp"),
-    Banner("banner.webp"),
+    Thumb("thumb.png"),
+    Avatar("avatar.png"),
+    Portrait("portrait.png"),
+    Banner("banner.png"),
 }
 
 fun skinAssetUrl(

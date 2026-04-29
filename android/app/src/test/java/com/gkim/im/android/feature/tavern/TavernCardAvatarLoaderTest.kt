@@ -9,10 +9,10 @@ class TavernCardAvatarLoaderTest {
     @Test
     fun `tavern card avatar resolves the active skin thumb url`() {
         // R2.5 — every tavern card asks the singleton ImageLoader for the
-        // (characterId, activeSkinId) pair's v1 thumb.webp. The activeSkinId
+        // (characterId, activeSkinId) pair's v1 thumb.png. The activeSkinId
         // comes from the resolved card; tests pin both values explicitly.
         assertEquals(
-            "https://cdn.lastxuans.sbs/character-skins/architect-oracle/default/v1/thumb.webp",
+            "https://cdn.lastxuans.sbs/character-skins/architect-oracle/default/v1/thumb.png",
             tavernCardAvatarUrl(
                 characterId = "architect-oracle",
                 activeSkinId = "default",
