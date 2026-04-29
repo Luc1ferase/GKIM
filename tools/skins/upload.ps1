@@ -68,10 +68,10 @@ $KeyPrefix = "character-skins"
 $BucketName = "gkim-assets"
 
 $VariantSpecs = @(
-    @{ FileName = "thumb.png";    Width =   96; Height =   96 },
-    @{ FileName = "avatar.png";   Width =  256; Height =  256 },
-    @{ FileName = "portrait.png"; Width =  512; Height =  768 },
-    @{ FileName = "banner.png";   Width =  941; Height = 1672 }
+    @{ FileName = "thumb.png";    Width =   96; Height =   96; AspectTolerance = 0.10 },
+    @{ FileName = "avatar.png";   Width =  256; Height =  256; AspectTolerance = 0.05 },
+    @{ FileName = "portrait.png"; Width =  512; Height =  768; AspectTolerance = 0.05 },
+    @{ FileName = "banner.png";   Width =  941; Height = 1672; AspectTolerance = 0.05 }
 )
 
 # --- Param validation -------------------------------------------------------
@@ -146,17 +146,31 @@ foreach ($spec in $VariantSpecs) {
         throw "$path is not a valid PNG (89 50 4E 47 ... magic bytes missing)."
     }
 
-    # Pixel-size check — System.Drawing decodes PNG natively on Windows.
+    # Aspect-ratio sanity (warn, don't block) — pixel sizes are intentionally
+    # lenient. R2 storage is plentiful and Coil downsamples on device, so
+    # uploading at-or-above the target size with the right aspect is fine.
+    # Big aspect mismatches (square asset uploaded as a 16:9 banner) still
+    # warrant a warning so the operator can spot a misnamed file.
     $bmp = [System.Drawing.Bitmap]::FromFile($path)
     try {
-        if ($bmp.Width -ne $spec.Width -or $bmp.Height -ne $spec.Height) {
-            throw "$($spec.FileName) is $($bmp.Width)x$($bmp.Height); expected $($spec.Width)x$($spec.Height)."
+        $actual = "{0}x{1}" -f $bmp.Width, $bmp.Height
+        $targetAspect = $spec.Width / [double]$spec.Height
+        $actualAspect = $bmp.Width / [double]$bmp.Height
+        $aspectDelta = [Math]::Abs($actualAspect - $targetAspect) / $targetAspect
+        $tolerance = $spec.AspectTolerance
+        if ($aspectDelta -gt $tolerance) {
+            Write-Warning ("  ! {0} aspect {1} differs from target {2}x{3} by {4:P1} (> tolerance {5:P0}); uploading anyway." -f `
+                $spec.FileName, $actual, $spec.Width, $spec.Height, $aspectDelta, $tolerance)
         }
+        if ($bmp.Width -lt $spec.Width -or $bmp.Height -lt $spec.Height) {
+            Write-Warning ("  ! {0} {1} is below target {2}x{3} on at least one axis; image will look soft when displayed." -f `
+                $spec.FileName, $actual, $spec.Width, $spec.Height)
+        }
+        Write-Host ("  {0,-12} {1,-12} target {2}x{3}" -f $spec.FileName, $actual, $spec.Width, $spec.Height) -ForegroundColor Green
     }
     finally {
         $bmp.Dispose()
     }
-    Write-Host "  $($spec.FileName) - $($spec.Width)x$($spec.Height) [OK]" -ForegroundColor Green
 }
 
 # --- Resolve credentials ----------------------------------------------------
@@ -178,35 +192,36 @@ foreach ($line in Get-Content $EnvFile) {
     }
 }
 
-$accessKey = $envValues["R2_GKIM_ASSETS_ACCESS_KEY_ID"]
-$secretKey = $envValues["R2_GKIM_ASSETS_SECRET"]
-$endpoint  = $envValues["R2_GKIM_ASSETS_ENDPOINT"]
-if (-not $accessKey -or -not $secretKey -or -not $endpoint) {
-    throw "Missing R2_GKIM_ASSETS_ACCESS_KEY_ID / R2_GKIM_ASSETS_SECRET / R2_GKIM_ASSETS_ENDPOINT in $EnvFile."
+# --- wrangler presence ------------------------------------------------------
+
+$wranglerExe = Get-Command wrangler -ErrorAction SilentlyContinue
+if (-not $wranglerExe) {
+    throw "wrangler CLI not found on PATH. Install via 'npm install -g wrangler' (Node + npm required), then 'wrangler login'."
 }
 
-# --- AWS CLI presence -------------------------------------------------------
+# --- Upload via wrangler r2 object put --------------------------------------
+#
+# Auth precedence: wrangler reads CLOUDFLARE_API_TOKEN if set, falls back to
+# OAuth credentials from `wrangler login`. We explicitly clear the bucket-
+# scoped cfut_ token because it's missing the account-level permission
+# `wrangler r2 object put` requires — the OAuth login captures full-account
+# scope and is the cleaner path here.
+#
+# The --remote flag is required so the command actually targets prod R2
+# (without it, wrangler tries to write to the local emulated dev storage).
 
-$awsExe = Get-Command aws -ErrorAction SilentlyContinue
-if (-not $awsExe) {
-    throw "aws CLI not found on PATH. Install via 'winget install Amazon.AWSCLI' or use any S3-compatible client. R2 endpoint: $endpoint"
-}
+Remove-Item Env:CLOUDFLARE_API_TOKEN -ErrorAction SilentlyContinue
 
-# --- Upload -----------------------------------------------------------------
-
-$env:AWS_ACCESS_KEY_ID     = $accessKey
-$env:AWS_SECRET_ACCESS_KEY = $secretKey
-$env:AWS_DEFAULT_REGION    = "auto"
-
-Write-Host "[upload.ps1] uploading 4 variants to $endpoint/$BucketName" -ForegroundColor Cyan
+Write-Host "[upload.ps1] uploading 4 variants to r2://$BucketName via wrangler" -ForegroundColor Cyan
 foreach ($r in $results) {
-    Write-Host "  → $($r.S3Uri)" -ForegroundColor Cyan
-    & aws s3 cp $r.LocalPath $r.S3Uri `
-        --endpoint-url $endpoint `
+    Write-Host "  → r2://$BucketName/$($r.Key)" -ForegroundColor Cyan
+    & wrangler r2 object put "$BucketName/$($r.Key)" `
+        --file "$($r.LocalPath)" `
         --content-type "image/png" `
-        --cache-control "public,max-age=31536000,immutable" | Out-Null
+        --cache-control "public,max-age=31536000,immutable" `
+        --remote 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {
-        throw "aws s3 cp failed for $($r.FileName) (exit $LASTEXITCODE)"
+        throw "wrangler r2 object put failed for $($r.FileName) (exit $LASTEXITCODE)"
     }
     Write-Host "    ✓ live at $($r.CdnUrl)" -ForegroundColor Green
 }
