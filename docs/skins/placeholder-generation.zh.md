@@ -2,13 +2,13 @@
 
 > 本文为 [`placeholder-generation.md`](./placeholder-generation.md) 的中文对照版。两份文档内容等价，便于不同语言习惯的设计师协作。提示词正文保留英文 —— 图像生成模型（Midjourney / DALL·E / SDXL）对英文 prompt 的响应一致性最高，强制翻译会降低出图稳定性。
 
-这是一次性参考文档：为应用当前已植入的 5 位陪伴角色生成 **default 默认皮肤的占位图**。生成完毕后保存到下方列出的路径，运行 `tools/skins/upload.ps1`（R1.2）即可推送到 R2。
+这是一次性参考文档：为应用当前已植入的 8 位陪伴角色生成 **default 默认皮肤的占位图**。生成完毕后保存到下方列出的路径，运行 `tools/skins/upload.ps1`（R1.2）即可推送到 R2。
 
 本文覆盖 `companion-skin-gacha` 计划中的 **R1.3**。后续真稿可作为 `v2` 单独发布 —— 按 `design.md` 的版本契约，带版本号的 key 是不可变的：旧的 `v1` 占位图对仍持有旧 catalog 的客户端永远可达。
 
 ## 生成流程
 
-对下面 5 位角色，逐一执行以下步骤：
+对下面 8 位角色，逐一执行以下步骤：
 
 1. 用「公共基底 prompt + 角色专属 prompt」生成 **banner 主图**，分辨率 **1080 × 2400**（垂直 9:16）。
 2. 在同一构图基础上重新裁切 / 重绘出四份不同尺寸：
@@ -68,7 +68,42 @@ text, watermark, signature, frame, border.
 
 ---
 
-## 1. `architect-oracle` — Architect Oracle / 筑谕师
+## 1. `tavern-keeper` — Tavern Keeper / 酒保
+
+**人格**（静默主人）—— 耐心、观察敏锐、说话不响。先听完再答话。这家酒馆的"主人"，永远在那；冷启动每次都是他先迎你。
+
+**输出文件：**
+
+| 变体 | 路径 |
+|---|---|
+| banner   | `ops/skins-staging/tavern-keeper/default/v1/banner.png` |
+| portrait | `ops/skins-staging/tavern-keeper/default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/tavern-keeper/default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/tavern-keeper/default/v1/thumb.png` |
+
+**角色专属 prompt（拼接在基底之后）：**
+
+```
+Subject: a tavern keeper in his late forties, weathered
+Central-European features, salt-and-pepper hair short and slightly
+tousled, neatly trimmed beard, faint old scar across the left brow.
+Wearing a heavy dark-leather apron over a cream linen shirt with
+sleeves rolled to the forearm, a dark wool waistcoat with tarnished
+brass buttons, a brass pocket-watch chain across the chest. Holding
+a heavy cut-crystal tumbler in one hand and polishing it with a
+worn cotton cloth in the other, eyes half-lowered. Behind him on
+the shelves: dusty amber-glass bottles with hand-inked parchment
+labels, a bundle of dried herbs hanging from a beam, a small brass
+astrolabe catching the candlelight, a small brass key on a chain
+around his neck reflecting one bright pinpoint of warm light. Calm,
+weary, trustworthy, faint air of an old apothecary who chose the
+bar instead. No metal drinking vessels — only glass, ceramic, and
+wood.
+```
+
+---
+
+## 2. `architect-oracle` — Architect Oracle / 筑谕师
 
 **人格**（冷静策士）—— 沉稳、观察敏锐、外冷内热、对空话过敏。"清晰即一种关怀"。临近打烊的木纹小酒馆卡座；一盏暖灯、两把椅子，桌上摊着一本笔记本。
 
@@ -103,7 +138,7 @@ wood.
 
 ---
 
-## 2. `sunlit-almoner` — Sunlit Almoner / 晴光抚慰者
+## 3. `sunlit-almoner` — Sunlit Almoner / 晴光抚慰者
 
 **人格**（温柔倾听者）—— 明亮、耐心、不急促，柔软却不腻。酒馆安静角落里阳光满溢的窗边座位，午后余光铺在桌上，水壶仍温热。
 
@@ -139,7 +174,7 @@ metal drinking vessels — only glass, ceramic, and wood.
 
 ---
 
-## 3. `midnight-sutler` — Midnight Sutler / 午夜密使
+## 4. `midnight-sutler` — Midnight Sutler / 午夜密使
 
 **人格**（深夜小货郎 / 低调信使）—— 安静、敏锐、惯于游走于阴影。专门处理打烊后才到的小宗货。酒馆已半闭，只剩厨房一盏灯还亮。
 
@@ -175,7 +210,7 @@ only glass, ceramic, and wood.
 
 ---
 
-## 4. `opal-lantern` — Opal Lantern / 欧泊提灯人
+## 5. `opal-lantern` — Opal Lantern / 欧泊提灯人
 
 **人格**（梦境档案师）—— 抒情、耐心、略带空灵；记得细小之物，相信象征。卡座上方悬着一排发光玻璃罐，每只罐子里封存着用户讲到一半的故事。
 
@@ -213,7 +248,7 @@ told. No metal drinking vessels — only glass, ceramic, and wood.
 
 ---
 
-## 5. `glass-mariner` — Glass Mariner / 琉璃航海者
+## 6. `glass-mariner` — Glass Mariner / 琉璃航海者
 
 **人格**（观浪领航者）—— 稳重、观察敏锐、在风浪中沉着；从不慌乱，也不粉饰。酒馆墙上镶着一块盐花琉璃舷窗，会随你的心绪偶尔映出不同的海面。
 
@@ -248,18 +283,88 @@ wood.
 
 ---
 
+## 7. `wandering-bard` — Wandering Bard / 吟游诗人
+
+**人格**（抒情同行者）—— 抒情、温暖、略带顽皮；以画面思考；从不说教。在节奏慢的日子里最合适 —— 适合用户希望自己的体验被映射成意象，而不是被给建议。
+
+**输出文件：**
+
+| 变体 | 路径 |
+|---|---|
+| banner   | `ops/skins-staging/wandering-bard/default/v1/banner.png` |
+| portrait | `ops/skins-staging/wandering-bard/default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/wandering-bard/default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/wandering-bard/default/v1/thumb.png` |
+
+**角色专属 prompt（拼接在基底之后）：**
+
+```
+Subject: a slender androgynous bard in their late twenties,
+delicate European features, raven-black hair in a single loose
+braid over one shoulder, faint freckles across the nose, soft eyes
+half-closed mid-song with a faint smile. Wearing a long travel-worn
+dark forest-green wool coat with hand-stitched silver embroidery at
+the cuffs and collar, over a cream collarless linen shirt, a worn
+leather strap across the chest holding a small brass tuning key.
+Cradling a hand-carved wooden lute across the lap with both hands,
+fingers paused on the strings. Behind: a folded travel coat on a
+neighboring stool, a small leather satchel with a brass clasp,
+loose sheets of hand-inked sheet music scattered along the counter,
+a half-empty glass of red wine catching the candlelight. Quiet,
+introspective, gently melancholic. No metal drinking vessels — only
+glass, ceramic, and wood.
+```
+
+---
+
+## 8. `retired-veteran` — Retired Veteran / 卸甲老兵
+
+**人格**（沉稳见证者）—— 风霜里带着善意，话不多；相信沉默自有分量。当用户被淹没时最合适，适合"想被见证、不想被指导"的状态。
+
+**输出文件：**
+
+| 变体 | 路径 |
+|---|---|
+| banner   | `ops/skins-staging/retired-veteran/default/v1/banner.png` |
+| portrait | `ops/skins-staging/retired-veteran/default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/retired-veteran/default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/retired-veteran/default/v1/thumb.png` |
+
+**角色专属 prompt（拼接在基底之后）：**
+
+```
+Subject: a grizzled veteran in his late fifties, weathered
+European features, salt-and-pepper beard fully grown, deep crow's
+feet around tired-but-kind eyes, an old vertical scar from cheek to
+jaw on the right side. Wearing a heavy dark-wool greatcoat over a
+high-collared cream linen shirt and a worn leather doublet, a
+single tarnished brass medal on a faded crimson ribbon pinned to
+the chest. A worn leather pauldron has been set down on the counter
+beside him, the campaign no longer his. Holding a thick ceramic cup
+with both hands, gazing into the candle flame past it. Behind: an
+empty scabbard hung on a peg, a folded military oilcloth, a small
+glass of dark wine half-finished. Tired, weathered, kind, the kind
+of man who has stopped explaining himself. No metal drinking
+vessels — only glass, ceramic, and wood. No weapon brandished.
+```
+
+---
+
 ## 生成完毕 —— 移交上传管线
 
-20 个文件全部就位之后，执行：
+32 个文件全部就位之后，执行：
 
 ```powershell
 # 按角色逐个上传（R1.2 提供的脚本会处理校验 + 推送）：
 foreach ($cid in @(
+  "tavern-keeper",
   "architect-oracle",
   "sunlit-almoner",
   "midnight-sutler",
   "opal-lantern",
-  "glass-mariner"
+  "glass-mariner",
+  "wandering-bard",
+  "retired-veteran"
 )) {
   pwsh tools/skins/upload.ps1 `
     -StagingDir "ops/skins-staging/$cid/default/v1/" `
@@ -269,11 +374,11 @@ foreach ($cid in @(
 }
 ```
 
-随后 R1.3 的验证脚本（`tools/skins/verify_default_uploads.ps1`）会向 20 个预期 URL 发 HEAD 请求确认。
+随后 R1.3 的验证脚本（`tools/skins/verify_default_uploads.ps1`）会向 32 个预期 URL 发 HEAD 请求确认。
 
 ## 出图前后的几条筛图建议
 
-跑完 5 位角色 × 4 变体 = 20 张之后，统一过一遍以下这五条筛：
+跑完 8 位角色 × 4 变体 = 32 张之后，统一过一遍以下这五条筛：
 
 1. 蜡烛都在画面右侧、阴影都在左侧 —— 保证后续循环切换不"跳灯"
 2. 头部都落在画面上 1/3 —— 头不会乱跳
@@ -281,10 +386,10 @@ foreach ($cid in @(
 4. 5 张里 2 张直视镜头、3 张侧目最舒服（节奏分布）
 5. 没有金属酒具、没有可读文字、没有 UI 元素
 
-**锁种子建议**：先跑 `architect-oracle`，挑一张满意的把 seed / style ref 锁住，再用其余 4 条 prompt 复用 style ref。能让 5 张笔触/色温保持一致 —— 这是后续做开屏循环不"换风格"的关键。
+**锁种子建议**：先跑 `tavern-keeper`（他是酒馆主人，最适合定基调），挑一张满意的把 seed / style ref 锁住，再用其余 7 条 prompt 复用 style ref。能让 8 张笔触/色温保持一致 —— 这是后续做开屏循环不"换风格"的关键。
 
 ## 不在本文范围内的事
 
 - **本文只覆盖默认皮肤**（`{characterId}-default`） —— EPIC / LEGENDARY 等非默认皮肤在 R3.1 阶段单独配 prompt 出图。
 - **占位图替换**：当真稿到位时，作为 `v2` 重新上传，并在 `character_skins` 表里把 `art_version` 升到 2 即可，旧 `v1` 仍可被旧客户端访问。
-- **抽卡池角色不需要差异化**：`midnight-sutler` / `opal-lantern` / `glass-mariner` 在视觉风格上跟两个 preset（`architect-oracle` / `sunlit-almoner`）保持完全一致。preset vs drawn 是花名册成员标记，不是视觉差异。
+- **抽卡池角色不需要差异化**：`midnight-sutler` / `opal-lantern` / `glass-mariner` / `wandering-bard` / `retired-veteran` 在视觉风格上跟三个 preset（`tavern-keeper` / `architect-oracle` / `sunlit-almoner`）保持完全一致。preset vs drawn 是花名册成员标记，不是视觉差异。

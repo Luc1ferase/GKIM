@@ -74,11 +74,14 @@ class InMemoryCompanionSkinRepository(
 // the EPIC + LEGENDARY skins, those rows append here until R2.2
 // swaps the source for the network catalog.
 internal val SeedDefaultSkins: List<CharacterSkin> = listOf(
+    "tavern-keeper"    to LocalizedText(english = "Default", chinese = "默认"),
     "architect-oracle" to LocalizedText(english = "Default", chinese = "默认"),
     "sunlit-almoner"   to LocalizedText(english = "Default", chinese = "默认"),
     "midnight-sutler"  to LocalizedText(english = "Default", chinese = "默认"),
     "opal-lantern"     to LocalizedText(english = "Default", chinese = "默认"),
     "glass-mariner"    to LocalizedText(english = "Default", chinese = "默认"),
+    "wandering-bard"   to LocalizedText(english = "Default", chinese = "默认"),
+    "retired-veteran"  to LocalizedText(english = "Default", chinese = "默认"),
 ).map { (cid, name) ->
     CharacterSkin(
         skinId = "$cid-default",

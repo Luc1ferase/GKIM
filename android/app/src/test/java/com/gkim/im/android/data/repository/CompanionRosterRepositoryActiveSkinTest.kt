@@ -29,15 +29,18 @@ class CompanionRosterRepositoryActiveSkinTest {
     }
 
     @Test
-    fun `seed catalog contains exactly the five seeded characters' default skins`() {
+    fun `seed catalog contains exactly the eight seeded characters' default skins`() {
         val skins = SeedDefaultSkins
-        assertEquals(5, skins.size)
+        assertEquals(8, skins.size)
         val expectedCharacterIds = setOf(
+            "tavern-keeper",
             "architect-oracle",
             "sunlit-almoner",
             "midnight-sutler",
             "opal-lantern",
             "glass-mariner",
+            "wandering-bard",
+            "retired-veteran",
         )
         assertEquals(expectedCharacterIds, skins.map { it.characterId }.toSet())
         // Every seed row is the character's `is_default = true` row.

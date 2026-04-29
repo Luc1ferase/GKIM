@@ -6,7 +6,7 @@ This document covers **R1.3** of the `companion-skin-gacha` slice. Real artwork 
 
 ## Generation workflow
 
-For each of the five characters below:
+For each of the eight characters below:
 
 1. Generate the **banner** master image at **1080 × 2400** (vertical 9:16) using the per-character prompt + the shared base prompt.
 2. Re-crop / re-render the same character at the four target sizes:
@@ -66,7 +66,42 @@ text, watermark, signature, frame, border.
 
 ---
 
-## 1. `architect-oracle` — Architect Oracle / 筑谕师
+## 1. `tavern-keeper` — Tavern Keeper / 酒保
+
+**Persona** (Quiet Host) — patient, observant, soft-spoken. Listens before answering. The keeper of the place; greets every cold-start session.
+
+**Files:**
+
+| Variant | Path |
+|---|---|
+| banner   | `ops/skins-staging/tavern-keeper/default/v1/banner.png` |
+| portrait | `ops/skins-staging/tavern-keeper/default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/tavern-keeper/default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/tavern-keeper/default/v1/thumb.png` |
+
+**Per-character subject (append to base):**
+
+```
+Subject: a tavern keeper in his late forties, weathered
+Central-European features, salt-and-pepper hair short and slightly
+tousled, neatly trimmed beard, faint old scar across the left brow.
+Wearing a heavy dark-leather apron over a cream linen shirt with
+sleeves rolled to the forearm, a dark wool waistcoat with tarnished
+brass buttons, a brass pocket-watch chain across the chest. Holding
+a heavy cut-crystal tumbler in one hand and polishing it with a
+worn cotton cloth in the other, eyes half-lowered. Behind him on
+the shelves: dusty amber-glass bottles with hand-inked parchment
+labels, a bundle of dried herbs hanging from a beam, a small brass
+astrolabe catching the candlelight, a small brass key on a chain
+around his neck reflecting one bright pinpoint of warm light. Calm,
+weary, trustworthy, faint air of an old apothecary who chose the
+bar instead. No metal drinking vessels — only glass, ceramic, and
+wood.
+```
+
+---
+
+## 2. `architect-oracle` — Architect Oracle / 筑谕师
 
 **Persona** (Calm Strategist) — measured, observant, warm under the surface, allergic to clichés. "Clarity is a form of care." A wood-panelled tavern booth near closing time; one lamp, two chairs, a notebook between you.
 
@@ -101,7 +136,7 @@ wood.
 
 ---
 
-## 2. `sunlit-almoner` — Sunlit Almoner / 晴光抚慰者
+## 3. `sunlit-almoner` — Sunlit Almoner / 晴光抚慰者
 
 **Persona** (Warm Listener) — bright, patient, unhurried, affectionate without being saccharine. A sun-drenched window-seat in the tavern's quiet corner, late-afternoon light on the table, a kettle still warm.
 
@@ -137,7 +172,7 @@ metal drinking vessels — only glass, ceramic, and wood.
 
 ---
 
-## 3. `midnight-sutler` — Midnight Sutler / 午夜密使
+## 4. `midnight-sutler` — Midnight Sutler / 午夜密使
 
 **Persona** (a late-night sutler / discreet courier) — quiet, observant, comfortable in shadow. Trades in small cargoes that arrive after closing time. The tavern is half-shut; the kitchen lamp is the only light still on.
 
@@ -173,7 +208,7 @@ only glass, ceramic, and wood.
 
 ---
 
-## 4. `opal-lantern` — Opal Lantern / 欧泊提灯人
+## 5. `opal-lantern` — Opal Lantern / 欧泊提灯人
 
 **Persona** (Dream Archivist) — lyrical, patient, slightly ethereal; remembers small things; trusts symbolism. Above the booth hangs a shelf of glowing jars; each holds a half-finished story the user once told.
 
@@ -211,7 +246,7 @@ told. No metal drinking vessels — only glass, ceramic, and wood.
 
 ---
 
-## 5. `glass-mariner` — Glass Mariner / 琉璃航海者
+## 6. `glass-mariner` — Glass Mariner / 琉璃航海者
 
 **Persona** (Storm Reader) — steady, observant, measured in crisis; never panics, never sugarcoats. A salt-glass porthole in the tavern wall sometimes shows a different sea depending on your mood.
 
@@ -246,18 +281,88 @@ wood.
 
 ---
 
+## 7. `wandering-bard` — Wandering Bard / 吟游诗人
+
+**Persona** (Lyric Companion) — lyrical, warm, slightly mischievous; thinks in images; never preaches. Best on slow days when the user wants their experience reflected as imagery, not advice.
+
+**Files:**
+
+| Variant | Path |
+|---|---|
+| banner   | `ops/skins-staging/wandering-bard/default/v1/banner.png` |
+| portrait | `ops/skins-staging/wandering-bard/default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/wandering-bard/default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/wandering-bard/default/v1/thumb.png` |
+
+**Per-character subject (append to base):**
+
+```
+Subject: a slender androgynous bard in their late twenties,
+delicate European features, raven-black hair in a single loose
+braid over one shoulder, faint freckles across the nose, soft eyes
+half-closed mid-song with a faint smile. Wearing a long travel-worn
+dark forest-green wool coat with hand-stitched silver embroidery at
+the cuffs and collar, over a cream collarless linen shirt, a worn
+leather strap across the chest holding a small brass tuning key.
+Cradling a hand-carved wooden lute across the lap with both hands,
+fingers paused on the strings. Behind: a folded travel coat on a
+neighboring stool, a small leather satchel with a brass clasp,
+loose sheets of hand-inked sheet music scattered along the counter,
+a half-empty glass of red wine catching the candlelight. Quiet,
+introspective, gently melancholic. No metal drinking vessels — only
+glass, ceramic, and wood.
+```
+
+---
+
+## 8. `retired-veteran` — Retired Veteran / 卸甲老兵
+
+**Persona** (Steady Witness) — weathered, kind under the gruffness, economical with words; trusts that silence has weight. Best for moments of overwhelm; pairs with users who want to be witnessed, not coached.
+
+**Files:**
+
+| Variant | Path |
+|---|---|
+| banner   | `ops/skins-staging/retired-veteran/default/v1/banner.png` |
+| portrait | `ops/skins-staging/retired-veteran/default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/retired-veteran/default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/retired-veteran/default/v1/thumb.png` |
+
+**Per-character subject (append to base):**
+
+```
+Subject: a grizzled veteran in his late fifties, weathered
+European features, salt-and-pepper beard fully grown, deep crow's
+feet around tired-but-kind eyes, an old vertical scar from cheek to
+jaw on the right side. Wearing a heavy dark-wool greatcoat over a
+high-collared cream linen shirt and a worn leather doublet, a
+single tarnished brass medal on a faded crimson ribbon pinned to
+the chest. A worn leather pauldron has been set down on the counter
+beside him, the campaign no longer his. Holding a thick ceramic cup
+with both hands, gazing into the candle flame past it. Behind: an
+empty scabbard hung on a peg, a folded military oilcloth, a small
+glass of dark wine half-finished. Tired, weathered, kind, the kind
+of man who has stopped explaining himself. No metal drinking
+vessels — only glass, ceramic, and wood. No weapon brandished.
+```
+
+---
+
 ## After generation — handing back to the upload pipeline
 
-Once all 20 files exist at the listed paths, hand off:
+Once all 32 files exist at the listed paths, hand off:
 
 ```powershell
 # Per-character upload (R1.2 script lands this in the next slice):
 foreach ($cid in @(
+  "tavern-keeper",
   "architect-oracle",
   "sunlit-almoner",
   "midnight-sutler",
   "opal-lantern",
-  "glass-mariner"
+  "glass-mariner",
+  "wandering-bard",
+  "retired-veteran"
 )) {
   pwsh tools/skins/upload.ps1 `
     -StagingDir "ops/skins-staging/$cid/default/v1/" `
@@ -267,10 +372,10 @@ foreach ($cid in @(
 }
 ```
 
-Then the R1.3 verification (`tools/skins/verify_default_uploads.ps1`) issues HEAD requests against the 20 expected URLs.
+Then the R1.3 verification (`tools/skins/verify_default_uploads.ps1`) issues HEAD requests against the 32 expected URLs.
 
 ## Out-of-scope reminders
 
 - This document is for the **default skin only** — the EPIC / LEGENDARY skins arrive in R3.1 with their own per-skin prompts.
 - These are placeholders. When real artwork lands, upload as `v2` and bump `art_version` in `character_skins`.
-- Don't generate "drawn-pool" cards (`midnight-sutler`, `opal-lantern`, `glass-mariner`) any differently from preset cards (`architect-oracle`, `sunlit-almoner`) — the source distinction is a roster-membership flag, not a visual one.
+- Don't generate "drawn-pool" cards (`midnight-sutler`, `opal-lantern`, `glass-mariner`, `wandering-bard`, `retired-veteran`) any differently from preset cards (`tavern-keeper`, `architect-oracle`, `sunlit-almoner`) — the source distinction is a roster-membership flag, not a visual one.

@@ -13,14 +13,14 @@ This proposal is a six-slice delivery (R1 → R6) where each slice produces a sh
 - Provision a public Cloudflare R2 bucket `gkim-assets` with custom domain `cdn.lastxuans.sbs`. Set the bucket's default cache headers (`public, max-age=31536000, immutable`) and lock writes behind an R2 API token held by the deploy operator.
 - Lock the asset key contract: `character-skins/{characterId}/{skinId}/v{n}/{variant}.png` where `variant ∈ {thumb, avatar, portrait, banner}` at fixed pixel sizes (96², 256², 512×768, 1080×2400). Versioned keys are never mutated; updates ship as `v{n+1}`.
 - Add `tools/skins/upload.ps1` — a PowerShell driver that takes a local `{characterId}/{skinId}/v{n}/` directory, validates filenames and pixel dimensions, and uploads to R2 via the AWS CLI's S3-compat endpoint.
-- Upload the five existing seeded characters' default art (two preset + three draw-pool: `architect-oracle`, `sunlit-almoner`, `midnight-sutler`, `opal-lantern`, `glass-mariner`) as `{id}/default/v1/{thumb,avatar,portrait,banner}.png`. The "default" skin is the migration anchor for everything that exists today; it carries no traits.
+- Upload the eight seeded characters' default art (three preset + five draw-pool: `tavern-keeper`, `architect-oracle`, `sunlit-almoner`, `midnight-sutler`, `opal-lantern`, `glass-mariner`, `wandering-bard`, `retired-veteran`) as `{id}/default/v1/{thumb,avatar,portrait,banner}.png`. The "default" skin is the migration anchor for everything that exists today; it carries no traits.
 - Add `core/assets/SkinAssetUrls.kt` exposing `skinAssetUrl(characterId, skinId, version, variant): String` as a pure function.
 - Configure a singleton `ImageLoader` in `core/assets/AppImageLoader.kt` (Coil 2.7.0 is already on the classpath — this slice does not add a dependency, only the loader configuration). Memory cache 20 % of available, disk cache 256 MB at `cacheDir/skins/`.
 - Wire the tavern card avatar to load `thumb` from CDN through the loader, with `AvatarFallbackSilhouette` as the failure fallback. Visible delta: presets show real art instead of silhouettes.
 
 ### R2 — Skin data model + active-skin display
 
-- PG migration adds four tables: `character_skins`, `skin_traits`, `user_skins`, `user_active_skin`. Seed `character_skins` with the five default rows from R1 (`is_default = true`, `art_version = 1`).
+- PG migration adds four tables: `character_skins`, `skin_traits`, `user_skins`, `user_active_skin`. Seed `character_skins` with the eight default rows from R1 (`is_default = true`, `art_version = 1`).
 - Backend exposes `GET /api/v1/skins/catalog` returning `{skinId, characterId, name, rarity, artVersion, isDefault, traits[]}` for every skin currently in the catalog. 24-hour CDN cache.
 - Backend exposes `GET /api/v1/users/me/skins` (owned skins + draw counts) and `POST /api/v1/users/me/skins/active` (set active skin per character; row-level upsert into `user_active_skin`).
 - Kotlin model: `CharacterSkin` and `SkinTrait` data classes; `CompanionCharacterCard` gains `activeSkinId: String` defaulting to `"default"`. Repository combines catalog + owned + active into a single flow.
