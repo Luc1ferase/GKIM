@@ -66,6 +66,13 @@ private interface ImBackendService {
     @POST("api/companions/draw")
     suspend fun drawCompanionCharacter(@Header("Authorization") authorization: String): CompanionDrawResultDto
 
+    // R4.3 — companion-skin-gacha skin-granular draw endpoint.
+    @POST("api/v1/skins/draw")
+    suspend fun drawSkin(
+        @Header("Authorization") authorization: String,
+        @Body request: SkinDrawRequestDto,
+    ): SkinDrawResponseDto
+
     @POST("api/companions/select")
     suspend fun selectCompanionCharacter(
         @Header("Authorization") authorization: String,
@@ -329,6 +336,15 @@ class ImBackendHttpClient(
 
     override suspend fun drawCompanionCharacter(baseUrl: String, token: String): CompanionDrawResultDto =
         serviceFor(baseUrl).drawCompanionCharacter(bearerToken(token))
+
+    override suspend fun drawSkin(
+        baseUrl: String,
+        token: String,
+        rolls: Int,
+    ): SkinDrawResponseDto = serviceFor(baseUrl).drawSkin(
+        authorization = bearerToken(token),
+        request = SkinDrawRequestDto(rolls = rolls),
+    )
 
     override suspend fun selectCompanionCharacter(
         baseUrl: String,

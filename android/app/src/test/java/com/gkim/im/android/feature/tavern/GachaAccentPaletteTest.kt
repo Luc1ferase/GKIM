@@ -46,13 +46,17 @@ class GachaAccentPaletteTest {
     }
 
     @Test
-    fun `gacha accent manifest covers the three known result surfaces`() {
+    fun `gacha accent manifest covers the four known result surfaces`() {
+        // R4.3 — added the NEW_SKIN label slot. The four-element invariant
+        // pins three result-label slots (NEW_CHARACTER / DUPLICATE_SKIN /
+        // NEW_SKIN) plus the duplicate "keep as bonus" CTA.
         val tags = GachaResultAccents.map { it.testTag }.toSet()
         assertEquals(
             setOf(
                 "tavern-draw-result-latest-label",
                 "tavern-draw-result-duplicate-label",
                 "tavern-draw-keep-as-bonus",
+                "tavern-draw-result-new-skin-label",
             ),
             tags,
         )

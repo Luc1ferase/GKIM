@@ -1,8 +1,8 @@
 package com.gkim.im.android.feature.tavern
 
+import com.gkim.im.android.core.model.SkinDrawResultState
 import com.gkim.im.android.feature.tavern.animation.RevealCaptionKind
 import com.gkim.im.android.feature.tavern.animation.RevealSurfaceScale
-import com.gkim.im.android.feature.tavern.animation.SkinDrawResultState
 import com.gkim.im.android.feature.tavern.animation.SkinRevealTracks
 import com.gkim.im.android.feature.tavern.animation.trackForState
 import org.junit.Assert.assertEquals

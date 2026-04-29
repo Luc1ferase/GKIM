@@ -117,7 +117,35 @@ val CompanionCharacterCard.isDeletable: Boolean
 data class CompanionDrawResult(
     val card: CompanionCharacterCard,
     val wasNew: Boolean,
+    // R4.3 — companion-skin-gacha three-state result. The skin-granular
+    // /skins/draw endpoint returns one of NEW_CHARACTER / NEW_SKIN /
+    // DUPLICATE_SKIN; the post-draw surface routes off this value when
+    // present. Pre-existing call sites (legacy /draw, in-memory roster
+    // repo) leave it null and fall back to the `wasNew` heuristic via
+    // gachaResultVariant(). Stored as a closed [SkinDrawResultState]
+    // enum so the routing helpers + reveal-track router share a single
+    // contract.
+    val drawResultState: SkinDrawResultState? = null,
+    // R4.3 — currency awarded for this draw (DUPLICATE_SKIN only). Null
+    // for the other two states; rendered via the duplicate caption when
+    // > 0. Pinned in story-shard units (1 / 5 / 25 / 125 by rarity per
+    // design.md).
+    val currencyDelta: Int? = null,
 )
+
+/**
+ * R4.3 — companion-skin-gacha closed-set draw response state.
+ *
+ * The skin-granular `/api/v1/skins/draw` endpoint returns exactly one of
+ * these three states per result entry. New states require extending the
+ * downstream variant + reveal-track maps in lockstep; the unit tests pin
+ * "every state has a unique routing target".
+ */
+enum class SkinDrawResultState {
+    NewCharacter,
+    NewSkin,
+    DuplicateSkin,
+}
 
 @Suppress("unused")
 fun CompanionCharacterCard.extensionValue(key: String): JsonElement? = extensions[key]

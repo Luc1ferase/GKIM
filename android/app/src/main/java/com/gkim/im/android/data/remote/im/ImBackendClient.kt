@@ -33,6 +33,22 @@ interface ImBackendClient {
         error("drawCompanionCharacter is not implemented for this backend client")
     }
 
+    /**
+     * R4.3 — companion-skin-gacha skin-granular draw.
+     *
+     * Calls `POST /api/v1/skins/draw` with the requested roll count and returns
+     * the three-state response. Implementations that don't support the new
+     * endpoint can fail with the legacy `error(...)` default, which the
+     * repository layer handles by falling back to [drawCompanionCharacter].
+     */
+    suspend fun drawSkin(
+        baseUrl: String,
+        token: String,
+        rolls: Int = 1,
+    ): SkinDrawResponseDto {
+        error("drawSkin is not implemented for this backend client")
+    }
+
     suspend fun selectCompanionCharacter(
         baseUrl: String,
         token: String,

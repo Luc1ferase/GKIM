@@ -66,6 +66,11 @@ internal val GachaResultAccents: List<GachaAccentBinding> = listOf(
     GachaAccentBinding("tavern-draw-result-latest-label", "tertiary"),
     GachaAccentBinding("tavern-draw-result-duplicate-label", "tertiary"),
     GachaAccentBinding("tavern-draw-keep-as-bonus", "primary"),
+    // R4.3 — companion-skin-gacha NEW_SKIN surface accent. Pinned to
+    // tertiary (ember) so all three result-label slots share the same
+    // chromatic emphasis token; the per-state animation track + caption
+    // ("新装束") is what differentiates them visually, not the label color.
+    GachaAccentBinding("tavern-draw-result-new-skin-label", "tertiary"),
 )
 
 internal enum class HeaderActionKind { Pill, Rectangle }
@@ -463,6 +468,10 @@ private fun DrawEntryCard(
                         onOpenCharacter = onOpenCharacter,
                         onBonusAwarded = onBonusAwarded,
                     )
+                    GachaResultVariant.NewSkin -> DrawResultNewSkin(
+                        result = result,
+                        onOpenCharacter = onOpenCharacter,
+                    )
                 }
             }
         }
@@ -493,6 +502,44 @@ private fun DrawResultNewCard(
         )
         Text(
             text = appLanguage.pick("New card added to roster", "新角色已加入持有列表"),
+            style = MaterialTheme.typography.bodyLarge,
+            color = AetherColors.OnSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun DrawResultNewSkin(
+    result: CompanionDrawResult,
+    onOpenCharacter: (CompanionDrawResult) -> Unit,
+) {
+    // R4.3 — NEW_SKIN surface: user already owns the character but tonight's
+    // draw landed an alternate outfit. The R5.2 reveal track plays the
+    // mid-card portrait + ember-red 1 dp pulse + "新装束" / "New attire"
+    // caption; this surface is the post-reveal summary card.
+    val appLanguage = LocalAppLanguage.current
+    val resolvedCard = result.card.resolve(appLanguage)
+    GlassCard(
+        modifier = Modifier
+            .testTag("tavern-draw-result-new-skin")
+            .clickable { onOpenCharacter(result) },
+    ) {
+        Text(
+            text = appLanguage.pick("New attire", "新装束"),
+            style = MaterialTheme.typography.labelLarge,
+            color = AetherColors.Tertiary,
+            modifier = Modifier.testTag("tavern-draw-result-new-skin-label"),
+        )
+        Text(
+            text = resolvedCard.displayName,
+            style = MaterialTheme.typography.headlineMedium,
+            color = AetherColors.OnSurface,
+        )
+        Text(
+            text = appLanguage.pick(
+                "A different evening with someone you've already met.",
+                "你已经认识 ta，今晚他换了一身行头。",
+            ),
             style = MaterialTheme.typography.bodyLarge,
             color = AetherColors.OnSurfaceVariant,
         )

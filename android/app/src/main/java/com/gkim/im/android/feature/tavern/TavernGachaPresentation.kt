@@ -2,6 +2,7 @@ package com.gkim.im.android.feature.tavern
 
 import com.gkim.im.android.core.model.CompanionCharacterCard
 import com.gkim.im.android.core.model.CompanionDrawResult
+import com.gkim.im.android.core.model.SkinDrawResultState
 
 /**
  * §7.1 / §7.2 — presentation-layer helpers for the gacha surface.
@@ -90,17 +91,50 @@ internal fun formatProbabilityPercent(probability: Float): String {
 // -------------------------------------------------------------------------
 
 /**
- * Which post-draw animation the surface should render. [NewCard] is the standard "added to
- * roster" flow from the existing gacha; [AlreadyOwned] is the §7.2-added duplicate variant
- * whose rendering includes a "Keep as bonus" CTA.
+ * Which post-draw animation the surface should render.
+ *
+ * - [NewCard] is the standard "added to roster" flow from the original gacha (§7.2)
+ *   and the R4.3 mapping target for `NEW_CHARACTER`.
+ * - [AlreadyOwned] is the duplicate variant whose rendering includes a "Keep as
+ *   bonus" CTA (§7.2) and the R4.3 mapping target for `DUPLICATE_SKIN`.
+ * - [NewSkin] is the R4.3 surface for the case where the user already owns the
+ *   *character* but tonight's draw landed a new outfit. Carries its own caption
+ *   ("新装束" / "New attire") wired via [com.gkim.im.android.feature.tavern.animation.SkinRevealTracks.NewSkinReveal].
  */
 sealed interface GachaResultVariant {
     data object NewCard : GachaResultVariant
     data object AlreadyOwned : GachaResultVariant
+    data object NewSkin : GachaResultVariant
 }
 
+/**
+ * R4.3 — three-state router. Maps the closed-set [SkinDrawResultState] from the
+ * `/api/v1/skins/draw` response to the matching surface variant. Every state must
+ * map to a unique variant; the contract test in `GachaThreeStateRouterTest` pins
+ * the surjection so a future fourth state can't silently collapse onto an
+ * existing surface.
+ */
+internal val SkinDrawStateToVariant: Map<SkinDrawResultState, GachaResultVariant> = mapOf(
+    SkinDrawResultState.NewCharacter  to GachaResultVariant.NewCard,
+    SkinDrawResultState.NewSkin       to GachaResultVariant.NewSkin,
+    SkinDrawResultState.DuplicateSkin to GachaResultVariant.AlreadyOwned,
+)
+
+internal fun gachaResultVariantForState(state: SkinDrawResultState): GachaResultVariant =
+    SkinDrawStateToVariant.getValue(state)
+
+/**
+ * Resolve the post-draw surface variant for a result.
+ *
+ * When the backend ships a [CompanionDrawResult.drawResultState] (R4.3), the
+ * router uses it directly. Pre-R4.3 results (legacy `/draw` endpoint, in-memory
+ * roster repo) leave the field null and fall back to the `wasNew` heuristic —
+ * which collapses NEW_SKIN onto AlreadyOwned because there's no way to tell.
+ */
 internal fun gachaResultVariant(result: CompanionDrawResult): GachaResultVariant =
-    if (result.wasNew) GachaResultVariant.NewCard else GachaResultVariant.AlreadyOwned
+    result.drawResultState
+        ?.let { gachaResultVariantForState(it) }
+        ?: if (result.wasNew) GachaResultVariant.NewCard else GachaResultVariant.AlreadyOwned
 
 /**
  * Event payload recorded when a user taps "Keep as bonus" on an already-owned duplicate

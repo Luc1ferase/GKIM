@@ -435,6 +435,43 @@ data class CompanionDrawResultDto(
     )
 }
 
+// R4.3 — companion-skin-gacha three-state draw wire types.
+//
+// `POST /api/v1/skins/draw` body { rolls?: Int = 1 }
+// Response: { results: [{ skinId, characterId, state, awardedTraits, currencyDelta }], pityCounter }
+//
+// State is the closed string set NEW_CHARACTER / NEW_SKIN / DUPLICATE_SKIN
+// per design.md §10. Wire types stay strings (rather than the enum) so a
+// future rename / additional state on the server side can be handled with
+// graceful degradation, rather than a hard JSON-decoding crash.
+
+@Serializable
+data class SkinDrawRequestDto(
+    val rolls: Int = 1,
+)
+
+@Serializable
+data class SkinDrawResultEntryDto(
+    val skinId: String,
+    val characterId: String,
+    val state: String,
+    val card: CompanionCharacterCardDto? = null,
+    val awardedTraits: List<String> = emptyList(),
+    val currencyDelta: Int = 0,
+)
+
+@Serializable
+data class SkinDrawPityCounterDto(
+    val drawsSinceEpic: Int,
+    val drawsSinceLegendary: Int,
+)
+
+@Serializable
+data class SkinDrawResponseDto(
+    val results: List<SkinDrawResultEntryDto>,
+    val pityCounter: SkinDrawPityCounterDto,
+)
+
 @Serializable
 data class SelectCompanionCharacterRequestDto(
     val characterId: String,
