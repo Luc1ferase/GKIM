@@ -71,7 +71,7 @@ $VariantSpecs = @(
     @{ FileName = "thumb.png";    Width =   96; Height =   96 },
     @{ FileName = "avatar.png";   Width =  256; Height =  256 },
     @{ FileName = "portrait.png"; Width =  512; Height =  768 },
-    @{ FileName = "banner.png";   Width = 1080; Height = 2400 }
+    @{ FileName = "banner.png";   Width =  941; Height = 1672 }
 )
 
 # --- Param validation -------------------------------------------------------

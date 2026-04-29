@@ -8,15 +8,15 @@ This document covers **R1.3** of the `companion-skin-gacha` slice. Real artwork 
 
 For each of the eight characters below:
 
-1. Generate the **banner** master image at **1080 × 2400** (vertical 9:16) using the per-character prompt + the shared base prompt.
-2. Re-crop / re-render the same character at the four target sizes:
+1. Generate the **banner** master image at **941 × 1672** (vertical 9:16) using the per-character prompt + the shared base prompt.
+2. Re-crop / re-render the same character at the four target sizes (the master is bigger than every other variant, so all three smaller variants are direct crops from it):
 
 | Variant | Pixel size | Crop |
 |---|---|---|
-| `banner`   | 1080 × 2400 | full output, head in upper third, lower edge fades to `#1A0F0A` |
-| `portrait` | 512 × 768   | head + upper torso centered, ~30 % crop from banner top |
-| `avatar`   | 256 × 256   | head + shoulders, square crop |
-| `thumb`    | 96 × 96     | face only, square crop, simplified detail (low-detail re-render is OK; pure downscale loses the face at this size) |
+| `banner`   | 941 × 1672 | the master itself, head in upper third, lower edge fades to `#1A0F0A` |
+| `portrait` | 512 × 768  | head + upper torso centered, ~30 % crop from master top (master is 941×1672, this is a 512-wide × 768-tall slice) |
+| `avatar`   | 256 × 256  | head + shoulders, square crop from upper region of master |
+| `thumb`    | 96 × 96    | face only, square crop, simplified detail (low-detail re-render is OK; pure downscale from 941×1672 loses the face at this size) |
 
 3. Encode each variant as **PNG** at quality ≈ 88 (adjust until under the size budget below).
 4. Save under the listed `ops/skins-staging/{characterId}/default/v1/{variant}.png` path verbatim — the upload script reads exactly these paths.
@@ -44,7 +44,7 @@ alchemical undertones, hand-painted illustration feel, no East-Asian
 costume cues unless the character explicitly calls for it.
 Hand-painted texture, muted color grading. Color palette anchored
 to brass #E0A04D, ember red #B85450, espresso #1A0F0A background,
-aged-paper #F1E7D2 highlight. Vertical portrait 9:16 (1080 × 2400),
+aged-paper #F1E7D2 highlight. Vertical portrait 9:16 (941 × 1672),
 head and upper torso framed in upper third, lower edge softly
 fading into espresso black. Mood: quiet, contemplative, slightly
 melancholic, warm candle glow on the cheek and shoulder. No metal

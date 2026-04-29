@@ -30,7 +30,7 @@ character-skins/{characterId}/{skinId}/v{n}/{variant}.png
 | `thumb`    | 96 × 96    | tavern card grid, conversation-row avatar, gallery cell, probability-tree row |
 | `avatar`   | 256 × 256  | chat header, chat bubble incoming-side avatar |
 | `portrait` | 512 × 768  | character detail hero, gallery preview sheet, skin reveal mid-card |
-| `banner`   | 1080 × 2400 | gacha `NEW_CHARACTER` reveal, splash carousel slide |
+| `banner`   | 941 × 1672 | gacha `NEW_CHARACTER` reveal, splash carousel slide |
 
 ### Versioning rule
 
@@ -229,7 +229,7 @@ ops/skins-staging/{characterId}/{skinId}/v{n}/   ← designer drops 4 png files 
   ├── thumb.png     96  ×  96
   ├── avatar.png   256  × 256
   ├── portrait.png 512  × 768
-  └── banner.png  1080  ×2400
+  └── banner.png   941  ×1672
               ↓
    tools/skins/upload.ps1  → validates + uploads to R2 → reports CDN URLs
               ↓

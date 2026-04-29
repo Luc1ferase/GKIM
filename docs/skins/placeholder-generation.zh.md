@@ -10,15 +10,15 @@
 
 对下面 8 位角色，逐一执行以下步骤：
 
-1. 用「公共基底 prompt + 角色专属 prompt」生成 **banner 主图**，分辨率 **1080 × 2400**（垂直 9:16）。
-2. 在同一构图基础上重新裁切 / 重绘出四份不同尺寸：
+1. 用「公共基底 prompt + 角色专属 prompt」生成 **banner 主图**，分辨率 **941 × 1672**（垂直 9:16）。
+2. 在同一主图基础上裁出 4 个不同尺寸（主图比其余三个变体都大，所以小尺寸全是从主图直接裁切）：
 
 | 变体 | 分辨率 | 裁切策略 |
 |---|---|---|
-| `banner`   | 1080 × 2400 | 完整出图，头部位于上 1/3，下边缘渐隐到 `#1A0F0A` |
-| `portrait` | 512 × 768   | 头部 + 上半身居中，从 banner 顶部约 30% 处裁切 |
-| `avatar`   | 256 × 256   | 头部 + 肩部，正方形裁切 |
-| `thumb`    | 96 × 96     | 仅面部，正方形裁切，简化细节（96 × 96 直接缩图会糊面，可低细节重绘）|
+| `banner`   | 941 × 1672 | 主图本身，头部位于上 1/3，下边缘渐隐到 `#1A0F0A` |
+| `portrait` | 512 × 768  | 头部 + 上半身居中，从主图顶部约 30% 处裁出 512 宽 × 768 高的切片 |
+| `avatar`   | 256 × 256  | 头部 + 肩部，从主图上半部分正方形裁切 |
+| `thumb`    | 96 × 96    | 仅面部，正方形裁切，简化细节（96 × 96 直接从 941 × 1672 缩图会糊面，建议低细节重绘）|
 
 3. 每个变体编码为 **PNG**，质量约 88（按下方体积预算微调）。
 4. 严格保存到列出的 `ops/skins-staging/{characterId}/default/v1/{variant}.png` 路径 —— 上传脚本只认这个路径形状。
@@ -46,7 +46,7 @@ alchemical undertones, hand-painted illustration feel, no East-Asian
 costume cues unless the character explicitly calls for it.
 Hand-painted texture, muted color grading. Color palette anchored
 to brass #E0A04D, ember red #B85450, espresso #1A0F0A background,
-aged-paper #F1E7D2 highlight. Vertical portrait 9:16 (1080 × 2400),
+aged-paper #F1E7D2 highlight. Vertical portrait 9:16 (941 × 1672),
 head and upper torso framed in upper third, lower edge softly
 fading into espresso black. Mood: quiet, contemplative, slightly
 melancholic, warm candle glow on the cheek and shoulder. No metal

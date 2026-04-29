@@ -2,7 +2,7 @@
 
 ### Requirement: Companion-skin assets are served from a single Cloudflare R2 bucket behind a custom CDN domain with versioned, immutable keys
 
-The system SHALL store all companion-skin image assets in the public Cloudflare R2 bucket `gkim-assets` and serve them through the custom domain `cdn.lastxuans.sbs`. Asset keys MUST follow the contract `character-skins/{characterId}/{skinId}/v{n}/{variant}.png` where `variant` is one of `thumb` (96 × 96), `avatar` (256 × 256), `portrait` (512 × 768), or `banner` (1080 × 2400), encoded as PNG. Once written, a versioned key MUST NOT be mutated; an updated skin MUST be uploaded as `v{n+1}` and reflected by bumping `art_version` in `character_skins`. Every served object MUST carry the response headers `Cache-Control: public, max-age=31536000, immutable` and `Content-Type: image/png`.
+The system SHALL store all companion-skin image assets in the public Cloudflare R2 bucket `gkim-assets` and serve them through the custom domain `cdn.lastxuans.sbs`. Asset keys MUST follow the contract `character-skins/{characterId}/{skinId}/v{n}/{variant}.png` where `variant` is one of `thumb` (96 × 96), `avatar` (256 × 256), `portrait` (512 × 768), or `banner` (941 × 1672), encoded as PNG. Once written, a versioned key MUST NOT be mutated; an updated skin MUST be uploaded as `v{n+1}` and reflected by bumping `art_version` in `character_skins`. Every served object MUST carry the response headers `Cache-Control: public, max-age=31536000, immutable` and `Content-Type: image/png`.
 
 #### Scenario: A skin asset URL resolves to the contract-shaped path
 
