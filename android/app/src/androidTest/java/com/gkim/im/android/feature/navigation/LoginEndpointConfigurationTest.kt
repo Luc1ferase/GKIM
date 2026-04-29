@@ -25,6 +25,8 @@ import com.gkim.im.android.data.repository.AppContainer
 import com.gkim.im.android.data.repository.CompanionMemoryRepository
 import com.gkim.im.android.data.repository.CompanionPresetRepository
 import com.gkim.im.android.data.repository.CompanionRosterRepository
+import com.gkim.im.android.data.repository.CompanionSkinRepository
+import com.gkim.im.android.data.repository.InMemoryCompanionSkinRepository
 import com.gkim.im.android.data.repository.CompanionTurnRepository
 import com.gkim.im.android.data.repository.DefaultCompanionMemoryRepository
 import com.gkim.im.android.data.repository.DefaultCompanionPresetRepository
@@ -123,6 +125,7 @@ private class LoginEndpointTestAppContainer(
         presetCharacters = seedPresetCharacters,
         drawPool = seedDrawPoolCharacters,
     )
+    override val companionSkinRepository: CompanionSkinRepository = InMemoryCompanionSkinRepository()
     override val companionTurnRepository: CompanionTurnRepository = DefaultCompanionTurnRepository()
     override val cardInteropRepository: CardInteropRepository = DefaultCardInteropRepository(
         delegate = LiveCardInteropRepository(

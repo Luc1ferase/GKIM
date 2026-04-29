@@ -24,7 +24,11 @@ class CompanionRosterRepositoryTest {
         assertEquals(seedPresetCharacters.map { it.id }, repository.presetCharacters.value.map { it.id })
         assertTrue(repository.ownedCharacters.value.isEmpty())
         assertTrue(repository.userCharacters.value.isEmpty())
-        assertEquals("architect-oracle", repository.activeCharacterId.value)
+        // The active character defaults to the first seeded preset; the seeded
+        // roster grew from 5 to 8 archetypes in companion-skin-gacha §0
+        // (tavern-keeper became the new index-0 preset), so the assertion
+        // tracks the seed list rather than hard-coding the id.
+        assertEquals(seedPresetCharacters.first().id, repository.activeCharacterId.value)
     }
 
     @Test
