@@ -28,7 +28,7 @@ Each task is a single DELIVERY_WORKFLOW unit (verify → review ≥ 95 → commi
 
 ## R3. Skin gallery on character detail
 
-- [ ] R3.1 Author + upload one EPIC skin per seeded character (seven skins total — every character except `tavern-keeper`) plus one LEGENDARY skin for `tavern-keeper` (one skin total, the brand-anchor host gets the legendary tier). Register all eight in `character_skins`; for skins with traits, populate `skin_traits` with `PERSONA_MOD` or `GREETING` payloads. Verification: `pwsh tools/skins/verify_default_uploads.ps1 -IncludeNonDefault` returns HTTP 200 for the new 32 URLs (8 skins × 4 variants), and the catalog endpoint lists 16 total skins (8 default + 8 new).
+- [x] R3.1 Author + upload one EPIC skin per seeded character (seven skins total — every character except `tavern-keeper`) plus one LEGENDARY skin for `tavern-keeper` (one skin total, the brand-anchor host gets the legendary tier). Register all eight in `character_skins`; for skins with traits, populate `skin_traits` with `PERSONA_MOD` or `GREETING` payloads. Verification: `pwsh tools/skins/verify_default_uploads.ps1 -IncludeNonDefault` returns HTTP 200 for the new 32 URLs (8 skins × 4 variants), and the catalog endpoint lists 16 total skins (8 default + 8 new).
 
 - [x] R3.2 Add `feature/tavern/SkinGallery.kt` — a `LazyRow` of cells with sealed `GalleryCellState` enum (`OwnedActive / OwnedInactive / Locked`). Render contracts per state per `design.md`. Verification: `.\gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.gkim.im.android.feature.tavern.SkinGalleryStateTest` covers each state's border / opacity / icon contract via a `GalleryCellRenderSpec` manifest.
 

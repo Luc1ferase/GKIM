@@ -34,9 +34,20 @@ $DefaultCharacters = @(
     "retired-veteran"
 )
 
-# R3.1 hook: when non-default skins land, list their (characterId, skinId)
-# pairs here. Empty for now.
-$AdditionalSkins = @()
+# R3.1: 8 EPIC/LEGENDARY skins live on R2 — one alternate per seeded
+# character. Each pair below resolves to four CDN URLs
+# (thumb / avatar / portrait / banner) that the -IncludeNonDefault
+# pass HEAD-checks.
+$AdditionalSkins = @(
+    @{ CharacterId = "tavern-keeper";    SkinId = "crystal-host"      },  # LEGENDARY
+    @{ CharacterId = "architect-oracle"; SkinId = "star-cartographer" },
+    @{ CharacterId = "sunlit-almoner";   SkinId = "lavender-keeper"   },
+    @{ CharacterId = "midnight-sutler";  SkinId = "ledger-courier"    },
+    @{ CharacterId = "opal-lantern";     SkinId = "dawn-cartographer" },
+    @{ CharacterId = "glass-mariner";    SkinId = "harbor-watcher"    },
+    @{ CharacterId = "wandering-bard";   SkinId = "dawn-balladeer"    },
+    @{ CharacterId = "retired-veteran";  SkinId = "hearth-watcher"    }
+)
 
 $Variants = @("thumb", "avatar", "portrait", "banner")
 
