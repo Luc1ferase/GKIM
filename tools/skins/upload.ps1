@@ -45,7 +45,7 @@
 
 .EXAMPLE
   pwsh tools/skins/upload.ps1 `
-    -StagingDir ops/skins-staging/architect-oracle/default/v1/ `
+    -StagingDir ops/skins-staging/architect-oracle-default/v1/ `
     -CharacterId architect-oracle -SkinId default -Version 1
 #>
 

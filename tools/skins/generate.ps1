@@ -7,7 +7,12 @@
   R3.1 helper. Calls POST /v1/images/generations on the configured gateway
   with the per-skin prompt, decodes the base64 master to a 1024×1024 PNG,
   and writes thumb / avatar / portrait / banner crops under
-  ops/skins-staging/{characterId}/{skinId}/v1/{variant}.png.
+  ops/skins-staging/{characterId}-{skinId}/v{version}/{variant}.png.
+
+  Local staging is intentionally flat (one folder per character+skin pair)
+  so a directory listing shows every skin variant at a glance, rather than
+  forcing the operator to drill into nested {character}/{skin}/ folders.
+  The R2 upload path (set by upload.ps1) stays nested per design.md.
 
   Gateway: api.lastxuans.sbs caps gpt-image-2 requests at ~60s, which only
   square 1024×1024 can sneak under reliably. Tall-aspect variants are
@@ -82,7 +87,7 @@ if (-not $prompt) {
 # --- Output paths -----------------------------------------------------------
 
 $repoRoot = (Resolve-Path "$PSScriptRoot/../..").Path
-$stagingDir = Join-Path $repoRoot "ops/skins-staging/$CharacterId/$SkinId/v$Version"
+$stagingDir = Join-Path $repoRoot "ops/skins-staging/$CharacterId-$SkinId/v$Version"
 New-Item -ItemType Directory -Force -Path $stagingDir | Out-Null
 
 $masterPath   = Join-Path $stagingDir "master-1024.png"

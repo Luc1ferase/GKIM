@@ -19,7 +19,7 @@ For each of the eight characters below:
 | `thumb`    | 96 × 96    | face only, square crop, simplified detail (low-detail re-render is OK; pure downscale from 941×1672 loses the face at this size) |
 
 3. Encode each variant as **PNG** at quality ≈ 88 (adjust until under the size budget below).
-4. Save under the listed `ops/skins-staging/{characterId}/default/v1/{variant}.png` path verbatim — the upload script reads exactly these paths.
+4. Save under the listed `ops/skins-staging/{characterId}-default/v1/{variant}.png` path verbatim — the upload script reads exactly these paths.
 
 ### Size budgets per variant (so the catalog stays light)
 
@@ -74,10 +74,10 @@ text, watermark, signature, frame, border.
 
 | Variant | Path |
 |---|---|
-| banner   | `ops/skins-staging/tavern-keeper/default/v1/banner.png` |
-| portrait | `ops/skins-staging/tavern-keeper/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/tavern-keeper/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/tavern-keeper/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/tavern-keeper-default/v1/banner.png` |
+| portrait | `ops/skins-staging/tavern-keeper-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/tavern-keeper-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/tavern-keeper-default/v1/thumb.png` |
 
 **Per-character subject (append to base):**
 
@@ -109,10 +109,10 @@ wood.
 
 | Variant | Path |
 |---|---|
-| banner   | `ops/skins-staging/architect-oracle/default/v1/banner.png` |
-| portrait | `ops/skins-staging/architect-oracle/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/architect-oracle/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/architect-oracle/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/architect-oracle-default/v1/banner.png` |
+| portrait | `ops/skins-staging/architect-oracle-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/architect-oracle-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/architect-oracle-default/v1/thumb.png` |
 
 **Per-character subject (append to base):**
 
@@ -144,10 +144,10 @@ wood.
 
 | Variant | Path |
 |---|---|
-| banner   | `ops/skins-staging/sunlit-almoner/default/v1/banner.png` |
-| portrait | `ops/skins-staging/sunlit-almoner/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/sunlit-almoner/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/sunlit-almoner/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/sunlit-almoner-default/v1/banner.png` |
+| portrait | `ops/skins-staging/sunlit-almoner-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/sunlit-almoner-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/sunlit-almoner-default/v1/thumb.png` |
 
 **Per-character subject (append to base, override the candle-only lighting clause):**
 
@@ -180,10 +180,10 @@ metal drinking vessels — only glass, ceramic, and wood.
 
 | Variant | Path |
 |---|---|
-| banner   | `ops/skins-staging/midnight-sutler/default/v1/banner.png` |
-| portrait | `ops/skins-staging/midnight-sutler/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/midnight-sutler/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/midnight-sutler/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/midnight-sutler-default/v1/banner.png` |
+| portrait | `ops/skins-staging/midnight-sutler-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/midnight-sutler-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/midnight-sutler-default/v1/thumb.png` |
 
 **Per-character subject (append to base):**
 
@@ -216,10 +216,10 @@ only glass, ceramic, and wood.
 
 | Variant | Path |
 |---|---|
-| banner   | `ops/skins-staging/opal-lantern/default/v1/banner.png` |
-| portrait | `ops/skins-staging/opal-lantern/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/opal-lantern/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/opal-lantern/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/opal-lantern-default/v1/banner.png` |
+| portrait | `ops/skins-staging/opal-lantern-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/opal-lantern-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/opal-lantern-default/v1/thumb.png` |
 
 **Per-character subject (append to base, allow a soft second light source from the glowing jars):**
 
@@ -254,10 +254,10 @@ told. No metal drinking vessels — only glass, ceramic, and wood.
 
 | Variant | Path |
 |---|---|
-| banner   | `ops/skins-staging/glass-mariner/default/v1/banner.png` |
-| portrait | `ops/skins-staging/glass-mariner/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/glass-mariner/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/glass-mariner/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/glass-mariner-default/v1/banner.png` |
+| portrait | `ops/skins-staging/glass-mariner-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/glass-mariner-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/glass-mariner-default/v1/thumb.png` |
 
 **Per-character subject (append to base):**
 
@@ -289,10 +289,10 @@ wood.
 
 | Variant | Path |
 |---|---|
-| banner   | `ops/skins-staging/wandering-bard/default/v1/banner.png` |
-| portrait | `ops/skins-staging/wandering-bard/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/wandering-bard/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/wandering-bard/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/wandering-bard-default/v1/banner.png` |
+| portrait | `ops/skins-staging/wandering-bard-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/wandering-bard-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/wandering-bard-default/v1/thumb.png` |
 
 **Per-character subject (append to base):**
 
@@ -323,10 +323,10 @@ glass, ceramic, and wood.
 
 | Variant | Path |
 |---|---|
-| banner   | `ops/skins-staging/retired-veteran/default/v1/banner.png` |
-| portrait | `ops/skins-staging/retired-veteran/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/retired-veteran/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/retired-veteran/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/retired-veteran-default/v1/banner.png` |
+| portrait | `ops/skins-staging/retired-veteran-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/retired-veteran-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/retired-veteran-default/v1/thumb.png` |
 
 **Per-character subject (append to base):**
 
@@ -365,7 +365,7 @@ foreach ($cid in @(
   "retired-veteran"
 )) {
   pwsh tools/skins/upload.ps1 `
-    -StagingDir "ops/skins-staging/$cid/default/v1/" `
+    -StagingDir "ops/skins-staging/$cid-default/v1/" `
     -CharacterId $cid `
     -SkinId "default" `
     -Version 1

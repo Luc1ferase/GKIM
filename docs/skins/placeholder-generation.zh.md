@@ -21,7 +21,7 @@
 | `thumb`    | 96 × 96    | 仅面部，正方形裁切，简化细节（96 × 96 直接从 941 × 1672 缩图会糊面，建议低细节重绘）|
 
 3. 每个变体编码为 **PNG**，质量约 88（按下方体积预算微调）。
-4. 严格保存到列出的 `ops/skins-staging/{characterId}/default/v1/{variant}.png` 路径 —— 上传脚本只认这个路径形状。
+4. 严格保存到列出的 `ops/skins-staging/{characterId}-default/v1/{variant}.png` 路径 —— 上传脚本只认这个路径形状。
 
 ### 各变体体积预算（保持 catalog 轻量）
 
@@ -76,10 +76,10 @@ text, watermark, signature, frame, border.
 
 | 变体 | 路径 |
 |---|---|
-| banner   | `ops/skins-staging/tavern-keeper/default/v1/banner.png` |
-| portrait | `ops/skins-staging/tavern-keeper/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/tavern-keeper/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/tavern-keeper/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/tavern-keeper-default/v1/banner.png` |
+| portrait | `ops/skins-staging/tavern-keeper-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/tavern-keeper-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/tavern-keeper-default/v1/thumb.png` |
 
 **角色专属 prompt（拼接在基底之后）：**
 
@@ -111,10 +111,10 @@ wood.
 
 | 变体 | 路径 |
 |---|---|
-| banner   | `ops/skins-staging/architect-oracle/default/v1/banner.png` |
-| portrait | `ops/skins-staging/architect-oracle/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/architect-oracle/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/architect-oracle/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/architect-oracle-default/v1/banner.png` |
+| portrait | `ops/skins-staging/architect-oracle-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/architect-oracle-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/architect-oracle-default/v1/thumb.png` |
 
 **角色专属 prompt（拼接在基底之后）：**
 
@@ -146,10 +146,10 @@ wood.
 
 | 变体 | 路径 |
 |---|---|
-| banner   | `ops/skins-staging/sunlit-almoner/default/v1/banner.png` |
-| portrait | `ops/skins-staging/sunlit-almoner/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/sunlit-almoner/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/sunlit-almoner/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/sunlit-almoner-default/v1/banner.png` |
+| portrait | `ops/skins-staging/sunlit-almoner-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/sunlit-almoner-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/sunlit-almoner-default/v1/thumb.png` |
 
 **角色专属 prompt（拼接在基底之后，覆盖「单蜡烛光源」条款）：**
 
@@ -182,10 +182,10 @@ metal drinking vessels — only glass, ceramic, and wood.
 
 | 变体 | 路径 |
 |---|---|
-| banner   | `ops/skins-staging/midnight-sutler/default/v1/banner.png` |
-| portrait | `ops/skins-staging/midnight-sutler/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/midnight-sutler/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/midnight-sutler/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/midnight-sutler-default/v1/banner.png` |
+| portrait | `ops/skins-staging/midnight-sutler-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/midnight-sutler-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/midnight-sutler-default/v1/thumb.png` |
 
 **角色专属 prompt（拼接在基底之后）：**
 
@@ -218,10 +218,10 @@ only glass, ceramic, and wood.
 
 | 变体 | 路径 |
 |---|---|
-| banner   | `ops/skins-staging/opal-lantern/default/v1/banner.png` |
-| portrait | `ops/skins-staging/opal-lantern/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/opal-lantern/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/opal-lantern/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/opal-lantern-default/v1/banner.png` |
+| portrait | `ops/skins-staging/opal-lantern-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/opal-lantern-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/opal-lantern-default/v1/thumb.png` |
 
 **角色专属 prompt（拼接在基底之后；允许第二束柔和的光从发光罐传来）：**
 
@@ -256,10 +256,10 @@ told. No metal drinking vessels — only glass, ceramic, and wood.
 
 | 变体 | 路径 |
 |---|---|
-| banner   | `ops/skins-staging/glass-mariner/default/v1/banner.png` |
-| portrait | `ops/skins-staging/glass-mariner/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/glass-mariner/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/glass-mariner/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/glass-mariner-default/v1/banner.png` |
+| portrait | `ops/skins-staging/glass-mariner-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/glass-mariner-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/glass-mariner-default/v1/thumb.png` |
 
 **角色专属 prompt（拼接在基底之后）：**
 
@@ -291,10 +291,10 @@ wood.
 
 | 变体 | 路径 |
 |---|---|
-| banner   | `ops/skins-staging/wandering-bard/default/v1/banner.png` |
-| portrait | `ops/skins-staging/wandering-bard/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/wandering-bard/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/wandering-bard/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/wandering-bard-default/v1/banner.png` |
+| portrait | `ops/skins-staging/wandering-bard-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/wandering-bard-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/wandering-bard-default/v1/thumb.png` |
 
 **角色专属 prompt（拼接在基底之后）：**
 
@@ -325,10 +325,10 @@ glass, ceramic, and wood.
 
 | 变体 | 路径 |
 |---|---|
-| banner   | `ops/skins-staging/retired-veteran/default/v1/banner.png` |
-| portrait | `ops/skins-staging/retired-veteran/default/v1/portrait.png` |
-| avatar   | `ops/skins-staging/retired-veteran/default/v1/avatar.png` |
-| thumb    | `ops/skins-staging/retired-veteran/default/v1/thumb.png` |
+| banner   | `ops/skins-staging/retired-veteran-default/v1/banner.png` |
+| portrait | `ops/skins-staging/retired-veteran-default/v1/portrait.png` |
+| avatar   | `ops/skins-staging/retired-veteran-default/v1/avatar.png` |
+| thumb    | `ops/skins-staging/retired-veteran-default/v1/thumb.png` |
 
 **角色专属 prompt（拼接在基底之后）：**
 
@@ -367,7 +367,7 @@ foreach ($cid in @(
   "retired-veteran"
 )) {
   pwsh tools/skins/upload.ps1 `
-    -StagingDir "ops/skins-staging/$cid/default/v1/" `
+    -StagingDir "ops/skins-staging/$cid-default/v1/" `
     -CharacterId $cid `
     -SkinId "default" `
     -Version 1
